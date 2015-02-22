@@ -1,0 +1,69 @@
+type proc blah ();
+
+mobile proc void goo() implements blah {
+}
+
+type protocol myCaseProtocol {
+  tag1 : { int a; int b;	}
+  tag2 : { int c; double d; }
+}
+
+type protocol yourCaseProtocol extends myCaseProtocol;
+
+proc void f(chan<yourCaseProtocol>.read c) {
+}
+
+proc void g() {
+  chan<myCaseProtocol> c;
+  f(c.read);
+}
+
+
+proc void bar(chan<int>.write myChan) {
+  mobile blah mymobile;   // blah does not get written	
+  const int aa = 900;
+  int a = 98;
+  int c;
+  int b = 1 + 2;
+  
+  c = 9;
+  int qwerty=900;
+
+  {
+    a = a + 10;
+    int a = 80;
+    a = 90;
+  }
+}
+
+proc void baz(chan<int> myChan) {
+}
+
+proc void foo(int aaa) {
+  shared chan<int> c1;          // SHARED CHAN INT c1:
+  shared write chan<int> c2;    // SHARED ! CHAN INT c2:
+  shared read chan<int> c3;     // SHARED ? CHAN INT c3:
+  chan<int> c4;                 // CHAN INT c4:
+  chan<myCaseProtocol> mcpc;
+  shared chan<int>.read c5;     
+  shared chan<int>.write c6;
+  chan<int>.read c7;
+  chan<int>.write c8;
+
+  chan<int> c9[100];
+
+  //bar(c9[0]); //  <-- this should fail!!
+  //bar(c4);    //  <-- so should this!
+  bar(c4.write);
+  //bar(c4.read);   // <-- this should also fail!
+
+  //baz(c4.read);
+  baz(c4);
+  myCaseProtocol mp;
+  switch(mp = mcpc.read()) {
+  case tag1: int a = mp.a;
+  case tag2: skip;
+  }
+  
+
+}

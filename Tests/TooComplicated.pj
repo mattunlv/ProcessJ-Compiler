@@ -1,0 +1,34 @@
+//
+// Tests the NameChecker's ability to to catch qualified names as
+// being 'too complicated' to resolve without type checking.
+//
+// 2: (RecordTypeDecl) 'GenericRecords.A' too complicated for now.
+// 6: (ProtocolTypeDecl) 'NetworkProtocols.TCP' too complicated for now.
+// 10: (ProcTypeDecl) 'mobiles.bar' too complicated for now.
+// 11: (RecordLiteral) 'GenericRecords.A' too complicated for now.
+// 12: (ProtocolLiteral) 'NetworkProtocol.UDP' too complicated for now.
+// 14: (NewMobile) 'mobiles.bar' too complicated for now.
+// 16: (NameExpr) 'x.x.x.f' too complicated for now.
+// 18: (NamedType) 'x.x.x.x.Foo' too complicated for now.
+// 19: (Invocation) target too complicated for now
+
+public record A extends GenericRecords.A {
+  int a;
+}
+
+public protocol Proto extends NetworkProtocols.TCP {
+  tag: { int a; int b; }
+}
+
+public mobile proc void foo() implements mobiles.bar {
+  A aa = new GenericRecords.A{1,2,3};
+  Proto bb = new NetworkProtocol.UDP{ack:};
+
+  foo f = new mobile(mobiles.bar);
+
+  int c = x.x.x.f;
+
+  x.x.x.x.Foo ff;
+  x.x.x.x.f(34);
+}
+

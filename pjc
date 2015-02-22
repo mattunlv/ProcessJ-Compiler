@@ -1,0 +1,1 @@
+java -cp bin:src/Utilities/java_cup_runtime.jar:. ProcessJc $@

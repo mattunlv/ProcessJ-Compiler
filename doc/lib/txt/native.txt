@@ -1,0 +1,89 @@
+Creating Native Libraries in ProcessJ with C
+--------------------------------------------
+
+A ProcessJ native library is a library that requires no implementation in ProcessJ or 
+the native language; that is, the ProcessJ library maps directly to an existing native
+library.
+
+To define a native library in ProcessJ follow this example:
+
+To create a ProcessJ math library that maps directly to C's <math.h> library create the 
+following ProcessJ file:
+
+---------- cut here ----------
+
+#pragma LIBRARY;
+#pragma LANGUAGE "C";
+#pragma NATIVELIB "math.h";
+#pragma FILE "math";
+
+package std;
+
+public native const double M_PI;        /* pi */
+public native const double M_PI_2;      /* pi/2 */
+public native const double M_PI_4;      /* pi/4 */
+public native const double M_1_PI;      /* 1/pi */ 
+public native const double M_2_PI;      /* 2/pi */ 
+public native const double M_2_SQRTPI;  /* 2/sqrt(pi) */
+public native const double M_SQRT2;     /* sqrt(2) */
+public native const double M_SQRT1_2;   /* 1/sqrt(2) */
+
+public proc double acos(double x) ;
+public native proc double asin(double x) ;
+public native proc double atan(double x) ;
+public native proc double atan2(double y, double x) ;
+public native proc double cos(double x) ;
+public native proc double cosh(double x) ;
+public native proc double sin(double x) ;
+public native proc double sinh(double x) ;
+public native proc double tanh(double x) ;
+public native proc double exp(double x) ;
+public native proc double ldexp(double x, int exponent) ;
+public native proc double log(double x) ;
+public native proc double log10(double x) ;
+public native proc double pow(double x, double y) ;
+public native proc double sqrt(double x) ;
+public native proc double ceil(double x) ;
+public native proc double fabs(double x) ;
+public native proc long abs(long x) ;
+public native proc int abs(int x) ;
+public native proc double floor(double x) ;
+public native proc double fmod(double x, double y) ;
+
+---------- cut here ----------
+
+Both constants and procedures must be declared native and procedures cannot have a body
+and constants cannot be initialized.
+
+The pragmas instruct the compiler to create a library with native C mappings to <math.h>.
+The compiler will generate:
+
+"std_math.h" which will look like this:
+
+#ifndef _LIB_STD_MATH_
+#define _LIB_STD_MATH_
+#include <math.h>
+#endif
+
+which should be moved to lib/C/include
+
+and 
+
+"std_math.c" which will look like this:
+
+#ifndef _STD_MATH_H
+#define _STD_MATH_H
+#include "std_math.h"
+#endif
+
+which should be moved to lib/C/src
+
+The object file "std_math.o" should be moved to /lib/C/obj
+
+The original ProcessJ file should be named "math.pj" and 
+re-located to include/C/std/
+
+To avoid manually moving files around you can use the pjc-install-c-library script.
+
+
+

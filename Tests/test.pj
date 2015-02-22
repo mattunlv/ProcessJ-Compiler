@@ -1,0 +1,87 @@
+
+import io.*;
+import std.math;
+
+//zimport utils.floatmath;
+
+public protocol B { 
+  a: { int a; }
+}
+
+public record C { int a; }
+
+public record A extends C {
+  int a;
+  int b,c;
+  double d;
+}
+
+record X {
+  X x;
+  int f;
+}
+
+public proc void bar() ;
+
+public proc void fez() {
+  int[][] a;
+  a[1][2] = 45;
+}
+
+private proc void foo(int a, double b) implements bar {
+  for(int x=0,i=0,y,z=10;i<x+1;x++) { 
+    x=x-1; 
+    x=x+2;
+  }
+  X x;
+  x.x.x.x.x.f = 8;
+  while (x.f<10) {
+   x.f++;
+  }
+  double a,b,y;
+  if (a<100) 
+     x.f = 7;
+  if (b==8) {
+    x = 9;
+    y = 10;
+  } 
+  if (b==8) {
+    x = 9;
+    y = 10;
+  } else 
+    y = 9;
+
+  if (b==8) {
+    x = M_PI;
+    y = 10;
+  } else {
+    x = 9;
+    y = 45;//fileClose();
+  }
+
+  do 
+    x=9; 
+  while (x==x);
+
+  do {
+    x = x;
+    y = y;
+  } while (x.f > y);
+  chan<int> c;
+ alt {
+   (x.f == 7) && x.f = c.read({
+       x=7;
+       y=8;}
+     ) : { 
+       //y[4] = y[4] + 1;
+       do 
+         x = 4;
+       while (x.f<y);
+       do {
+         x.x.x.f = 7;
+       } 
+       while (y>9)
+         ;
+     }
+  }      
+}

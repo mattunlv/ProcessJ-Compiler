@@ -1,0 +1,30 @@
+//import t4.*;
+//import t3.*;
+
+public record R1 { 
+int h;
+R1 x;
+}
+
+public record R extends R1, F1.R2, P1.F2.R3, A.B.C.D {  // check for	qualified names longer than 3! can do in parser!
+  int a;
+}
+
+public protocol P {
+  tag1: { int a; int b; }
+  tag2: { }
+}
+
+public int a;     // check that the modifier CONST is used
+public const pack.file.myRecord myR = new myR{1,2,3};
+
+public proc void foo() {
+  R r;
+  int x;
+  x.f = r.a;
+  x.x.x.x.x.x.x.h = 76; 
+  x = pack.file.foo();
+  foo()[3].r = 87;
+  pack.file.type[] mysillytype;
+  foo(x,76).field = 2;
+}     

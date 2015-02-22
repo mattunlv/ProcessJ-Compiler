@@ -1,0 +1,9 @@
+import Import.A;
+import Import.M;
+import Import.N;
+import Import.Foo.*;
+import Bar.*;
+
+
+private const int i = 0;
+

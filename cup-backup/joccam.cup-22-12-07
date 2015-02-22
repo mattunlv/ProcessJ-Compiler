@@ -1,0 +1,1368 @@
+package edu.unlv.cs.Joccam.Parser;
+
+import edu.unlv.cs.Joccam.AST.*;
+import edu.unlv.cs.Joccam.Scanner.Scanner;
+import edu.unlv.cs.Joccam.Utils.Error;
+import java_cup.runtime.*;
+
+import java_cup.runtime.*;
+
+parser code  {: 
+  Scanner lexer;
+
+  public parser(Scanner l) {
+    this();
+    lexer=l;
+  }
+
+  public void syntax_error(java_cup.runtime.Symbol current) {
+    if(current.value == null) {
+      System.out.println("Unexpected end of file." + Scanner.curLine);
+      System.exit(1);
+    }   
+    else {
+      Token t = (Token)current.value;
+      //System.out.println(Error.fileName + ":" + Scanner.lineCount + ": Syntax error:\n\n" + Scanner.curLine);
+      System.out.println(Scanner.lineCount + ": Syntax error:\n\n" + Scanner.curLine);
+      for (int i=1; i<Scanner.curLine.length()-t.text.length(); i++) 
+        System.out.print("-");
+      System.out.println("^");
+      System.out.println("Found '" + t.text + "'. I did not expect that.");
+
+      System.exit(1);
+    }
+  }
+:};
+
+scan with {: return lexer.next_token(); :};
+
+// _____________________________________________________________________________
+// Terminals
+// _____________________________________________________________________________
+
+//
+// KEYWORDS
+//
+
+terminal Token BOOLEAN;         // boolean
+terminal Token BYTE;            // byte
+terminal Token INT;             // int
+terminal Token LONG;            // long
+terminal Token SHORT;           // short
+terminal Token FLOAT;           // float
+terminal Token STRING;          // string
+terminal Token DOUBLE;          // double
+terminal Token CHAR;            // char
+terminal Token CONST;           // const
+terminal Token CHAN;            // chan
+terminal Token BARRIER;         // barrier
+terminal Token TIMER;           // timer
+terminal Token PROC;            // proc
+terminal Token INCLUDE;         // include
+terminal Token MOBILE;          // mobile
+terminal Token TYPE;            // type
+terminal Token READ;            // read
+terminal Token WRITE;           // write
+terminal Token READWRITE;       // readwrite
+terminal Token SHARED;          // shared
+terminal Token TIMEOUT;         // timeout
+terminal Token SKIP;            // skip
+terminal Token STOP;            // stop
+terminal Token SYNC;            // sync
+terminal Token CLAIM;           // claim
+terminal Token SEQ;             // seq
+terminal Token PAR;             // par
+terminal Token IF;              // if
+terminal Token ELSE;            // else
+terminal Token FOR;             // for
+terminal Token WHILE;           // while
+terminal Token SWITCH;          // switch
+terminal Token CASE;            // case
+terminal Token DO;              // do
+terminal Token DEFAULT;         // default
+terminal Token BREAK;           // break
+terminal Token CONTINUE;        // continue
+terminal Token RETURN;          // return
+terminal Token NEW;             // new
+terminal Token RESUME;          // resume
+terminal Token SUSPEND;         // suspend
+terminal Token WITH;            // with 
+terminal Token PRI;             // pri
+terminal Token ALT;             // alt
+terminal Token UNION;           // union
+terminal Token PROTOCOL;        // protocol
+terminal Token EXTENDS;         // extends
+terminal Token VOID;            // void
+terminal Token IMPLEMENTS;      // implements
+terminal Token RECORD;          // record
+//
+// SEPARATORS
+//
+terminal Token LPAREN;          // (
+terminal Token RPAREN;          // )
+terminal Token LBRACE;          // {
+terminal Token RBRACE;          // }
+terminal Token COLON;           // :
+terminal Token SEMICOLON;       // ;
+terminal Token COMMA;           // ,
+terminal Token DOT;             // .
+terminal Token QUEST;           // ?
+terminal Token LBRACKET;        // [
+terminal Token RBRACKET;        // ]
+
+//
+// OPERATORS
+//
+terminal Token EQ;              // =
+terminal Token GT;              // >
+terminal Token LT;              // <
+terminal Token LSHIFT;          // <<
+terminal Token RSHIFT;          // >>
+terminal Token RRSHIFT;         // >>>
+terminal Token NOT;             // !
+terminal Token COMP;            // ~
+terminal Token EQEQ;            // ==
+terminal Token LTEQ;            // <=
+terminal Token GTEQ;            // GTEQ
+terminal Token NOTEQ;           // !=
+terminal Token ANDAND;          // &&
+terminal Token OROR;            // ||
+terminal Token PLUSPLUS;        // ++
+terminal Token MINUSMINUS;      // --
+terminal Token PLUS;            // +
+terminal Token MINUS;           // -
+terminal Token MULT;            // *
+terminal Token DIV;             // /
+terminal Token AND;             // &
+terminal Token OR;              // |
+terminal Token XOR;             // ^
+terminal Token MOD;             // %
+terminal Token MULTEQ;          // *=
+terminal Token DIVEQ;           // /=
+terminal Token MODEQ;           // %=
+terminal Token PLUSEQ;          // +=
+terminal Token MINUSEQ;         // -=
+terminal Token LSHIFTEQ;        // <<=
+terminal Token RSHIFTEQ;        // >>=
+terminal Token RRSHIFTEQ;       // >>>=
+terminal Token ANDEQ;           // &=
+terminal Token XOREQ;           // ^=
+terminal Token OREQ;            // |=
+
+// 
+// LITERALS
+//
+
+terminal Token INTEGER_LITERAL;
+terminal Token LONG_LITERAL;
+terminal Token FLOAT_LITERAL;
+terminal Token DOUBLE_LITERAL;
+terminal Token BOOLEAN_LITERAL; // true or false
+terminal Token STRING_LITERAL;
+terminal Token CHARACTER_LITERAL;
+
+terminal Token IDENTIFIER;      // names
+
+// _____________________________________________________________________________
+// Non terminals
+// _____________________________________________________________________________
+
+// 1.0 Start of Production -----------------------------------------------------
+non terminal Compilation   goal;
+non terminal Compilation   compilation_unit;
+non terminal Sequence      top_level_definitions;
+non terminal Definition    top_level_definition;
+// -----------------------------------------------------------------------------
+
+// 2.0 Includes ----------------------------------------------------------------
+non terminal Include       include;
+non terminal AST           semicolon_opt;
+// -----------------------------------------------------------------------------
+
+// 3.0 Type Definitions and Global Constants -----------------------------------
+non terminal Definition    type_definition;
+// -----------------------------------------------------------------------------
+
+// 3.1 Procedure Types ---------------------------------------------------------
+non terminal ProcedureType procedure_type;
+// -----------------------------------------------------------------------------
+
+// 3.2 Union Types -------------------------------------------------------------
+non terminal UnionType     union_type;
+non terminal Sequence      union_cases;
+non terminal UnionCase     union_case;
+non terminal Sequence      union_record_members;
+non terminal UnionRecordMember union_record_member;
+// -----------------------------------------------------------------------------
+
+// 3.3 Record Types ------------------------------------------------------------
+non terminal RecordType    record_type;
+non terminal Sequence      record_members;
+// -----------------------------------------------------------------------------
+
+// 3.4 Protocol Types ----------------------------------------------------------
+non terminal ProtocolType  protocol_type;
+non terminal Sequence      type_list;
+non terminal Type	   type_proto;
+// -----------------------------------------------------------------------------
+
+
+// 4.0 Built-in types ----------------------------------------------------------
+non terminal Type          type;
+//non terminal NamedType     named_type;
+non terminal ChannelType   channel_type;
+non terminal TimerType     timer_type;
+non terminal PrimitiveType primitive_type;
+non terminal BarrierType   barrier_type;
+non terminal ArrayType     array_type; 
+non terminal Literal       integral_constant_expression_opt;
+// -----------------------------------------------------------------------------
+
+// 5.0 Declarations ------------------------------------------------------------
+
+// 5.1 Procedure Declarations --------------------------------------------------
+non terminal ProcedureDecl procedure_definition;
+non terminal Sequence      formal_parameter_list;
+non terminal Sequence      formal_parameter_list_opt;
+non terminal ParamDecl     formal_parameter;
+non terminal Block         body;
+// -----------------------------------------------------------------------------
+
+// 5.2 Local Declaration and Constant Declarations -----------------------------
+non terminal Sequence      local_variable_declaration;
+non terminal LocalDecl     constant_declaration;
+non terminal Sequence      variable_declaration;
+non terminal Sequence      variable_declarators;
+non terminal Var           variable_declarator;
+non terminal Expression    variable_initializer;
+// -----------------------------------------------------------------------------
+
+// 6.0 Literals ----------------------------------------------------------------
+non terminal Type type_or_named_type;
+non terminal Literal       literal;
+non terminal Literal       union_constant;  // <------ UnionConstant
+non terminal Literal       record_constant; // <----- RecordConstant
+non terminal ArrayConstant array_constant;  
+non terminal Sequence      constant_array_expression;
+
+// -----------------------------------------------------------------------------
+
+// 7.0 Statements --------------------------------------------------------------
+non terminal Sequence      block_statements_opt;
+non terminal Sequence      block_statements;
+non terminal Sequence      block_statement;
+non terminal Sequence      statements;
+non terminal Statement     statement;
+non terminal Statement     statement_no_short_if;
+non terminal Statement     statement_without_trailing_substatement;
+// -----------------------------------------------------------------------------
+
+// 7.1 Alt ---------------------------------------------------------------------
+non terminal AltStat       alternation;
+non terminal Sequence      alternation_body;
+non terminal AltCase       alternation_case;
+non terminal Guard         guard;
+non terminal Expression    pre_cond_opt;
+non terminal Block         rendez_vous_block_opt;
+// -----------------------------------------------------------------------------
+
+// 7.2 Channel Communication (Write), Timeouts, and Synchronization ------------
+non terminal ChanCommStat  channel_communication;
+non terminal TimeoutStat   timeout_statement;
+non terminal SyncStat      barrier_sync_statement;
+// -----------------------------------------------------------------------------
+
+// 7.3 Simple Statements -------------------------------------------------------
+non terminal Statement     empty_statement;
+non terminal BreakStat     break_statement;
+non terminal ContinueStat  continue_statement;
+non terminal ReturnStat    return_statement;
+// ------------------------------------------------------------------------------
+
+// 7.4 Expression Statements / Statement Expressions ----------------------------
+non terminal Statement     expression_statement; 
+non terminal Expression    statement_expression;
+non terminal Sequence      statement_expression_list;
+// ------------------------------------------------------------------------------
+
+// 7.5 If statement -------------------------------------------------------------
+non terminal IfStat        if_then_statement;
+non terminal IfStat        if_then_else_statement;
+non terminal IfStat        if_then_else_statement_no_short_if;
+// ------------------------------------------------------------------------------
+
+// 7.6 Do / While statements ----------------------------------------------------
+non terminal DoStat        do_statement;
+non terminal WhileStat     while_statement;
+non terminal WhileStat     while_statement_no_short_if;
+// ------------------------------------------------------------------------------
+
+// 7.7 Switch statement ---------------------------------------------------------
+non terminal SwitchStat    switch_statement;
+non terminal Sequence      switch_block;
+non terminal Sequence      switch_block_statement_groups_opt;
+non terminal Sequence      switch_block_statement_groups;
+non terminal SwitchGroup   switch_block_statement_group;
+non terminal Sequence      switch_labels;
+non terminal SwitchLabel   switch_label;
+// ------------------------------------------------------------------------------
+
+// 7.8 Claim statement ----------------------------------------------------------
+non terminal ClaimStat     claim_statement_no_short_if;
+non terminal ClaimStat     claim_statement;
+// ------------------------------------------------------------------------------
+
+// 7.9 For statement ------------------------------------------------------------
+non terminal ForStat       for_statement;
+non terminal ForStat       for_statement_no_short_if;
+non terminal Sequence      for_init_opt;
+non terminal Sequence      for_init;
+non terminal Sequence      for_update_opt;
+non terminal Sequence      for_update;
+// ------------------------------------------------------------------------------
+
+// 8.0 Expressions --------------------------------------------------------------
+non terminal Expression    primary;
+non terminal Invocation    procedure_invocation;
+//non terminal MobileCreationExpr mobile_creation; 
+non terminal AST mobile_creation; 
+non terminal ChanCommExpr  channel_communication_expression;
+non terminal Sequence      argument_list_opt;
+non terminal Sequence      argument_list;
+non terminal Expression    postfix_expression;
+non terminal UnaryPostExpr post_increment_expression;
+non terminal UnaryPostExpr post_decrement_expression;
+non terminal Expression    unary_expression;
+non terminal Expression    pre_increment_expression;
+non terminal Expression    pre_decrement_expression;
+non terminal Expression    unary_expression_not_plus_minus;
+non terminal CastExpr      cast_expression;
+non terminal Type          cast_type; 
+non terminal Expression    multiplicative_expression;
+non terminal Expression    additive_expression;
+non terminal Expression    shift_expression;
+non terminal Expression    relational_expression;
+non terminal Expression    equality_expression;
+non terminal Expression    and_expression;
+non terminal Expression    exclusive_or_expression;
+non terminal Expression    inclusive_or_expression;
+non terminal Expression    conditional_and_expression;
+non terminal Expression    conditional_or_expression;
+non terminal Expression    conditional_expression;
+non terminal Expression    assignment_expression;
+non terminal Assignment    assignment;
+non terminal AssignmentOp  assignment_operator;
+non terminal Expression    left_hand_side;
+non terminal Expression    array_access;
+non terminal Expression    record_access;
+non terminal Expression    expression_opt;
+non terminal Expression    expression;
+non terminal Expression    constant_expression_opt;
+non terminal Expression    constant_expression;
+non terminal Name          name;
+
+
+
+non terminal AST union_record_access;
+
+
+// ==========================================================================================
+// 1.0 Start of productions =========================================================== DONE!
+// ==========================================================================================
+
+// Compilation :> AST
+goal ::=        compilation_unit:cu                                        {: RESULT = cu; :}
+        ;
+
+// Compilation  :> AST
+compilation_unit ::= 
+                top_level_definitions:ltd                {: RESULT = new Compilation(ltd); :}
+        ;
+
+// Sequence(Definitions :> AST) :> AST
+top_level_definitions ::= 
+                top_level_definitions:tlds top_level_definition:tld
+                                                       {: RESULT = tlds.append((AST)tld);  :}
+        |       top_level_definition:tld               {: RESULT = new Sequence((AST)tld); :}
+        ;
+
+// Definition :> AST
+top_level_definition ::=
+                include:i                                                  {: RESULT = i;  :}
+        |       procedure_definition:pd                                    {: RESULT = pd; :}
+        |       type_definition:td                                         {: RESULT = td; :}
+        |       constant_declaration:cd SEMICOLON                          {: RESULT = cd; :}
+        ;
+
+// ==========================================================================================
+// 2.0 INCLUDES ======================================================================= DONE!
+// ==========================================================================================
+
+// Include :> Definition :> AST
+include ::=     
+                INCLUDE STRING_LITERAL:s semicolon_opt
+                                                     {: RESULT = new Include(new Name(s)); :}
+        ;
+
+// AST
+semicolon_opt ::=
+                SEMICOLON                                                {: RESULT = null; :}
+        |       /* Empty */                                              {: RESULT = null; :}
+        ;
+
+// ==========================================================================================
+// 3.0 TYPE DEFINITIONS ================================================================
+// ==========================================================================================
+
+// Definition :> AST
+type_definition ::=
+                procedure_type:pt                                          {: RESULT = pt; :}
+        |       union_type:ut                                              {: RESULT = ut; :}
+        |       record_type:rt                                             {: RESULT = rt; :}
+        |       protocol_type:pt                                           {: RESULT = pt; :}
+        |       array_type:at                                              {: RESULT = at; :}
+        ;
+
+// ------------------------------------------------------------
+// 3.1 Procedure types (Should really be Process Type)
+// ------------------------------------------------------------
+
+// ProcedureType :> Type :> AST (implements Definition)
+procedure_type ::=
+                TYPE PROC name:n
+                  LPAREN formal_parameter_list_opt:fpl RPAREN 
+                  SEMICOLON                         {: RESULT = new ProcedureType(n, fpl); :}
+        ;
+
+// ------------------------------------------------------------
+// 3.2 Union types
+// ------------------------------------------------------------
+
+// UnionType :> Type :> AST (implements Definition)
+union_type ::=
+                TYPE UNION name:n LBRACE
+                  CASE name:s LBRACE
+                    union_cases:ucs
+                  RBRACE
+                RBRACE                               {: RESULT = new UnionType(n, s, ucs); :}
+        ;
+
+// Sequence(UnionCase :> AST ) :> AST
+union_cases ::= 
+                union_cases:ucs union_case:uc                  {: RESULT = ucs.append(uc); :}
+        |       union_case:uc                                {: RESULT = new Sequence(uc); :}
+        ;
+
+// UnionCase :> AST
+union_case ::=
+                name:n COLON LBRACE union_record_members:urm RBRACE
+                                                        {: RESULT = new UnionCase(n, urm); :}
+        ;
+
+// Sequence(UnionRecordMember :> AST) :> AST
+union_record_members ::=
+                union_record_members:urms union_record_member:urm  
+                                                             {: RESULT = urms.append(urm); :}
+        |       union_record_member:urm                     {: RESULT = new Sequence(urm); :}
+        ;
+
+//UnionRecordMember :> AST
+union_record_member ::=
+                type:t name:n SEMICOLON           {: RESULT = new UnionRecordMember(t, n); :}
+        ;
+
+// ------------------------------------------------------------
+// 3.3 Record types
+// ------------------------------------------------------------
+
+// RecordType :> Type :> AST (implements Definition)
+record_type ::=
+                TYPE RECORD name:n LBRACE
+                  union_record_members: urms
+                RBRACE                                {: RESULT = new RecordType(n, urms); :}
+        ;
+
+// ------------------------------------------------------------
+// 3.4 Protocol types
+// ------------------------------------------------------------
+
+// ProtocolType :> Type :> AST (implements Definition)
+protocol_type ::=
+               TYPE PROTOCOL name:n EQ type_proto SEMICOLON 
+        |      TYPE PROTOCOL name:n EXTENDS type_list:tl SEMICOLON                      
+                                                      {: RESULT = new ProtocolType(n, tl); :}
+        ;
+
+// This is not right!
+// Should 
+
+// Sequence(Type) :> AST
+type_list ::=
+                type_list:tl COMMA type_proto:t               {: RESULT = tl.append(t);    :}
+        |       type_proto:t                                  {: RESULT = new Sequence(t); :}
+        ;
+
+// Type :> AST
+type_proto ::=
+                type_or_named_type
+        |       union_type
+        |       record_type
+        ;
+
+
+
+// =========================================================================================
+// 4.0 BUILT IN TYPES ================================================================ DONE!
+// =========================================================================================
+
+// Type :> AST
+type ::=
+               primitive_type:t                                             {: RESULT = t; :}
+        |      channel_type:t                                               {: RESULT = t; :}
+        |      timer_type:t                                                 {: RESULT = t; :}
+        |      barrier_type:t                                               {: RESULT = t; :}
+	|      array_type:t {: RESULT = t; :}
+        ;
+
+type_or_named_type ::=
+	       type:t    {: RESULT = t; :}
+	|      name:n   {: RESULT = new NamedType(false, n); :}
+	;
+
+// PrimitiveType :> Type :> AST
+primitive_type ::=
+               BOOLEAN:l      {: RESULT = new PrimitiveType(l, PrimitiveType.BooleanKind); :}
+        |      BYTE:l         {: RESULT = new PrimitiveType(l, PrimitiveType.ByteKind);    :}
+        |      SHORT:l        {: RESULT = new PrimitiveType(l, PrimitiveType.ShortKind);   :}
+        |      INT:l          {: RESULT = new PrimitiveType(l, PrimitiveType.IntKind);     :}
+        |      LONG:l         {: RESULT = new PrimitiveType(l, PrimitiveType.LongKind);    :}
+        |      STRING:l       {: RESULT = new PrimitiveType(l, PrimitiveType.StringKind);  :}
+        |      CHAR:l         {: RESULT = new PrimitiveType(l, PrimitiveType.CharKind);    :}
+        |      FLOAT:l        {: RESULT = new PrimitiveType(l, PrimitiveType.FloatKind);   :}
+        |      DOUBLE:l       {: RESULT = new PrimitiveType(l, PrimitiveType.DoubleKind);  :}
+        |      VOID:l         {: RESULT = new PrimitiveType(l, PrimitiveType.VoidKind);    :}
+        ;
+
+// ChannelType :> Type :> AST
+channel_type ::= 
+               SHARED READ CHAN LT type_or_named_type:t GT 
+                     {: RESULT = new ChannelType(ChannelType.Shared, ChannelType.Read, t); :}
+        |      SHARED QUEST CHAN LT type_or_named_type:t GT 
+                     {: RESULT = new ChannelType(ChannelType.Shared, ChannelType.Read, t); :}
+        |      SHARED WRITE CHAN LT type_or_named_type:t GT 
+                    {: RESULT = new ChannelType(ChannelType.Shared, ChannelType.Write, t); :}
+        |      SHARED NOT CHAN LT type_or_named_type:t GT
+                    {: RESULT = new ChannelType(ChannelType.Shared, ChannelType.Write, t); :}
+        |      SHARED CHAN:c LT type_or_named_type:t GT
+                  {: RESULT = new ChannelType(ChannelType.Shared, ChannelType.Default, t); :}
+        |      READ CHAN LT type_or_named_type:t GT
+                  {: RESULT = new ChannelType(ChannelType.NotShared, ChannelType.Read, t); :}
+        |      QUEST CHAN LT type_or_named_type:t GT
+                  {: RESULT = new ChannelType(ChannelType.NotShared, ChannelType.Read, t); :}
+        |      NOT CHAN LT type_or_named_type:t GT
+                 {: RESULT = new ChannelType(ChannelType.NotShared, ChannelType.Write, t); :}
+        |      WRITE CHAN LT type_or_named_type:t GT
+                 {: RESULT = new ChannelType(ChannelType.NotShared, ChannelType.Write, t); :}
+        |      CHAN LT type_or_named_type:t GT
+               {: RESULT = new ChannelType(ChannelType.NotShared, ChannelType.Default, t); :}
+        ;
+
+// TimerType :> Type :> AST
+timer_type ::=
+              TIMER:t                                        {: RESULT = new TimerType(t); :}
+        ;
+
+
+/// Hmm can barriers be mobile ???? yes
+// BarrierType :> Type :> AST
+barrier_type ::= 
+               BARRIER:b                                   {: RESULT = new BarrierType(b); :}
+        ;
+
+// ArrayType :> Type :> AST
+array_type ::= 
+               primitive_type:t LBRACKET integral_constant_expression_opt:i RBRACKET
+                                                          {: RESULT = new ArrayType(t, i); :}
+        |      barrier_type:t   LBRACKET integral_constant_expression_opt:i RBRACKET 
+                                                          {: RESULT = new ArrayType(t, i); :}
+        |      timer_type:t     LBRACKET integral_constant_expression_opt:i RBRACKET 
+                                                          {: RESULT = new ArrayType(t, i); :}
+        |      channel_type:t   LBRACKET integral_constant_expression_opt:i RBRACKET 
+                                                          {: RESULT = new ArrayType(t, i); :}
+        |      array_type:t     LBRACKET integral_constant_expression_opt:i RBRACKET 
+                                                          {: RESULT = new ArrayType(t, i); :}
+	|      TYPE name  LBRACKET integral_constant_expression_opt:i RBRACKET 
+        ;  
+
+
+
+
+
+// Literal :> Expression :> AST
+integral_constant_expression_opt ::=
+                INTEGER_LITERAL:l         {: RESULT = new Literal(l, Literal.IntKind);     :}
+        |       /* Empty */
+        ;
+
+// type[] is allowed as a formal parameter, but not as a variable declaration.
+// UNLESS there is an initializer. This must be checked by a parse tree pass.
+// Also we use Type[] as a counted array in a protocol definition; such values
+// must be received back into a variable of type Type[] and then have the size
+// function applied to it.
+
+// ==========================================================================================
+// PROCEDURES ===============================================================================
+// ==========================================================================================
+
+// can barriers be passed as parameters ???   ANSWER: YES
+
+// SHOULD WE INCLUDE FUNC for Functions ??
+
+//the aren't really  PROCEDURES - as much as they are PROCESSES
+
+// ProcedureDefinition :> Definition :> AST
+procedure_definition ::=
+                       PROC type name LPAREN formal_parameter_list_opt RPAREN
+                  body
+        |       MOBILE PROC type name LPAREN formal_parameter_list_opt RPAREN 
+                  IMPLEMENTS name 
+                  body
+        ;
+
+// Sequence(ParameterDecl :> VarDecl :> AST) :> AST
+formal_parameter_list_opt ::= 
+                formal_parameter_list:fpl                      {: RESULT = fpl;            :}
+        |       /* Empty */                                    {: RESULT = new Sequence(); :}
+        ;
+
+// Sequence(ParameterDecl :> VarDecl :> AST) :> AST
+formal_parameter_list ::=
+                formal_parameter_list:fpl COMMA formal_parameter:fp 
+                                                             {: RESULT = fpl.append(fp);   :}
+        |       formal_parameter:fp                          {: RESULT = new Sequence(fp); :}
+        ;
+
+// ParameterDecl :> AST
+formal_parameter ::=
+                type:t name:n                      {: RESULT = new ParamDecl(false, t, n); :}
+        |       CONST type:t name:n                {: RESULT = new ParamDecl(true, t, n);  :}
+        ;
+
+// Block :> Statement :> AST
+body ::= 
+                LBRACE block_statements_opt:bs RBRACE    {: RESULT = new Block(bs, false); :}
+     ;
+
+
+// ==========================================================================================
+// DECLARATIONS =============================================================================
+// ==========================================================================================
+       // questions: do channel declarators have initializers? answer: NO
+
+                                   
+// Sequence(LocalDecl :> Statement) :> AST
+local_variable_declaration ::=  
+                 constant_declaration:cd                     {: RESULT = new Sequence(cd); :}
+        |        variable_declaration:vd                     {: RESULT = vd;               :}
+        ;
+
+// LocalDecl :> Statement :> AST
+constant_declaration ::=
+                CONST type:t name:n EQ constant_expression:e
+                                        {: RESULT = new LocalDecl (true, t, new Var(n, e)); :}
+        ;
+
+// Sequence(LocalDecl :> Statement :> AST) :> AST
+variable_declaration ::=
+                 type_or_named_type:t variable_declarators:v 
+                        {: 
+                            for (int i=0;i<v.nchildren; i++)
+                              v.children[i] = new LocalDecl(false, t, (Var)v.children[i]);
+                            RESULT = v; 
+                         :}
+//               |      name:t LBRACKET integral_constant_expression_opt:i RBRACKET  variable_declarators:v
+
+
+        ;
+
+// Sequence(Var :> AST) :> AST
+variable_declarators ::=
+                 variable_declarators:vds COMMA variable_declarator:vd
+                                                             {: RESULT = vds.append(vd);   :}
+        |        variable_declarator:vd                      {: RESULT = new Sequence(vd); :}
+        ;
+
+// Var :> AST
+variable_declarator ::=
+                 name:n                                         {: RESULT = new Var(n);    :}
+        |        name:n EQ variable_initializer:e               {: RESULT = new Var(n, e); :}
+        ;
+
+// Expression :> AST
+variable_initializer ::=
+                 expression:e                                               {: RESULT = e; :}
+        ;
+
+// ==========================================================================================
+// LITERALS ============================================================================ DONE
+// ==========================================================================================
+
+// Literal :> Expression :> AST
+literal ::=     
+                INTEGER_LITERAL:l         {: RESULT = new Literal(l, Literal.IntKind);     :}
+        |       LONG_LITERAL:l            {: RESULT = new Literal(l, Literal.LongKind);    :}
+        |       FLOAT_LITERAL:l           {: RESULT = new Literal(l, Literal.FloatKind);   :}
+        |       DOUBLE_LITERAL:l          {: RESULT = new Literal(l, Literal.DoubleKind);  :}
+        |       BOOLEAN_LITERAL:l         {: RESULT = new Literal(l, Literal.BooleanKind); :}
+        |       STRING_LITERAL:l          {: RESULT = new Literal(l, Literal.StringKind);  :}
+        |       CHARACTER_LITERAL:l       {: RESULT = new Literal(l, Literal.CharKind);    :}
+        ;
+
+// ==========================================================================================
+// STATEMENTS ===============================================================================
+// ==========================================================================================
+
+
+// hmm should declaration subclass statement.. or are declarations only for the toplevel?
+
+// Sequence(Statement :> AST) :> AST
+block_statements_opt ::=
+                block_statements:bs                            {: RESULT = bs;             :}
+        |       /* Empty */                                    {: RESULT = new Sequence(); :}
+        ;
+
+// Sequence(Statement :> AST) :> AST
+block_statements ::=  
+                block_statement:b                                 {: RESULT = b;           :}
+        |       block_statements:bs block_statement:b             {: RESULT = bs.merge(b); :}
+        ;
+
+// Sequence(statement :> AST) :> AST
+block_statement ::=
+                local_variable_declaration:lvd SEMICOLON      {: RESULT = lvd;             :}
+        |       statement:s                                   {: RESULT = new Sequence(s); :}
+        ;
+
+// Sequence(Statement :> AST) :> AST
+statements ::=
+                statements:ss statement:s                     {: RESULT = ss.append(s);    :}
+        |       statement:s                                   {: RESULT = new Sequence(s); :}
+        ;
+
+// Statement :> AST
+statement ::=
+                statement_without_trailing_substatement:s                   {: RESULT = s; :}
+        |       if_then_statement:s                                         {: RESULT = s; :}
+        |       if_then_else_statement:s                                    {: RESULT = s; :}
+        |       while_statement:s                                           {: RESULT = s; :}
+        |       for_statement:s                                             {: RESULT = s; :}
+        |       do_statement:s                                              {: RESULT = s; :}
+        |       claim_statement:s                                           {: RESULT = s; :}
+        |       SEQ body:s                                                  {: RESULT = s; :}
+        |       PAR LBRACE statements:s RBRACE             {: RESULT = new Block(s, true); :}        ;
+
+// Statement :> AST
+statement_no_short_if ::=
+                statement_without_trailing_substatement:s                   {: RESULT = s; :}
+        |       if_then_else_statement_no_short_if:s                        {: RESULT = s; :}
+        |       while_statement_no_short_if:s                               {: RESULT = s; :}
+        |       for_statement_no_short_if:s                                 {: RESULT = s; :}
+        |       claim_statement_no_short_if:s                               {: RESULT = s; :}
+        ;
+
+// Statement :> AST
+statement_without_trailing_substatement ::=
+                body
+        |       SEMICOLON:s                                   {: RESULT = new SkipStat(s); :}
+        |       expression_statement:s                                      {: RESULT = s; :}
+        |       break_statement:s                                           {: RESULT = s; :}
+        |       continue_statement:s                                        {: RESULT = s; :}
+        |       switch_statement:s                                          {: RESULT = s; :}
+        |       return_statement:s                                          {: RESULT = s; :}
+        |       SKIP:s SEMICOLON                              {: RESULT = new SkipStat(s); :}
+        |       STOP:s SEMICOLON                              {: RESULT = new StopStat(s); :}
+        |       barrier_sync_statement:s SEMICOLON                          {: RESULT = s; :}
+        |       timeout_statement:s SEMICOLON                               {: RESULT = s; :}
+        |       channel_communication:s                                     {: RESULT = s; :}
+        |       RESUME PROC name LPAREN argument_list_opt RPAREN 
+        |       SUSPEND RESUME WITH LPAREN formal_parameter_list_opt RPAREN
+        |       alternation:a                                               {: RESULT = a; :}
+        ;
+
+// --------------------------------------------------
+// alt                                          DONE!
+// --------------------------------------------------
+
+// AltStat :> Statement :> AST
+alternation ::=
+                PRI ALT:a LBRACE alternation_body:ab RBRACE 
+                                                     {: RESULT = new AltStat(a, true, ab); :}
+        |       ALT:a LBRACE alternation_body:ab RBRACE
+                                                     {:RESULT = new AltStat(a, false, ab); :}
+        ;
+
+// Sequence(Guard :> AST) :> AST
+alternation_body ::=
+                alternation_body:ab alternation_case:ac      {: RESULT = ab.append(ac);    :}
+        |       alternation_case:ac                          {: RESULT = new Sequence(ac); :}
+        ;
+
+//AltCase :> AST
+alternation_case ::=
+                 LPAREN expression:e RPAREN ANDAND guard:g COLON statement:s
+                                                      {: RESULT = new AltCase(e, g, s);    :}
+        |        guard:g COLON statement:s            {: RESULT = new AltCase(null, g, s); :}
+        ;
+
+// Guard :> Statement :> AST
+guard ::=
+                barrier_sync_statement:bs                       {: RESULT = new Guard(bs); :}
+        |       timeout_statement:ts                            {: RESULT = new Guard(ts); :}
+        |       name:v EQ name:n DOT READ LPAREN rendez_vous_block_opt:rb RPAREN
+                                        {: RESULT = new Guard(new ExprStat(new Assignment(
+                                                     new NameExpr(n), 
+                                                     new ChanCommExpr(n, rb),
+                                                     new AssignmentOp(AssignmentOp.EQ)))); :}
+        ;
+
+// Block :> AST
+rendez_vous_block_opt ::=
+                body:b                                                      {: RESULT = b; :}
+        |       PAR:p body:b                             {: b.parBlock = true; RESULT = b; :}
+        |       /* Empty */                                              {: RESULT = null; :}
+        ;
+
+// --------------------------------------------------
+// Channel communication (Writes only)          DONE!
+// --------------------------------------------------
+
+// ChanCommStat :> Statement :> AST
+channel_communication ::=
+                name:n DOT WRITE LPAREN expression:e RPAREN SEMICOLON
+                                                       {: RESULT = new ChanCommStat(n, e); :}
+        ;
+
+// --------------------------------------------------
+// Timeouts                                     DONE!
+// --------------------------------------------------
+
+// TimeoutStat:> Statement :> AST
+timeout_statement ::=
+                name:n DOT TIMEOUT LPAREN expression:e RPAREN 
+                                                        {: RESULT = new TimeoutStat(n, e); :}
+        ;
+
+// --------------------------------------------------
+// Simple statements                            DONE!
+// --------------------------------------------------
+
+// BreakStat :> Statement :> AST
+break_statement ::=
+                BREAK:b SEMICOLON                            {: RESULT = new BreakStat(b); :}
+        ;
+
+// ContinueStat :> Statement :> AST
+continue_statement ::=
+                CONTINUE:c SEMICOLON                      {: RESULT = new ContinueStat(c); :}
+        ;
+
+// ReturnStat :> Statement :> AST
+return_statement ::=
+                RETURN:r expression_opt:e SEMICOLON      {: RESULT = new ReturnStat(r, e); :}
+        ;
+
+// --------------------------------------------------
+// Expression statements / statement expressions DONE!
+// --------------------------------------------------
+
+// ExprStat :> Statement :> AST
+expression_statement ::=
+                statement_expression:s SEMICOLON             {: RESULT = new ExprStat(s);  :}
+        ;
+
+// Expression :> AST
+statement_expression ::=
+                assignment:e                                                {: RESULT = e; :}
+        |       pre_increment_expression:e                                  {: RESULT = e; :}
+        |       post_increment_expression:e                                 {: RESULT = e; :}
+        |       pre_decrement_expression:e                                  {: RESULT = e; :}
+        |       post_decrement_expression:e                                 {: RESULT = e; :}
+        |       procedure_invocation:e                                      {: RESULT = e; :}
+        ;
+
+// Sequence(ExprStat :> Statement :> AST) :> AST
+statement_expression_list ::=
+                statement_expression:se        {: RESULT = new Sequence(new ExprStat(se)); :}
+        |       statement_expression_list:sel COMMA statement_expression:se
+                                               {: RESULT = sel.append(new ExprStat(se));   :}
+        ;
+
+// ------------------------------------------------
+// SYNC                                       DONE!
+// ------------------------------------------------
+
+// SyncStat :> Statement :> AST
+barrier_sync_statement ::=
+                SYNC:s LPAREN name:n RPAREN                   {: RESULT = new SyncStat(n); :}
+        ;
+
+// ------------------------------------------------
+// CHAN COMMUNICATION Expression(READ)        DONE!
+// ------------------------------------------------
+
+// ChanCommExpr :> Expression :> AST
+channel_communication_expression ::=
+                name:n DOT READ LPAREN rendez_vous_block_opt:r RPAREN 
+                                                       {: RESULT = new ChanCommExpr(n, r); :}
+        ;
+
+// ------------------------------------------------
+// IF                                         DONE!
+// ------------------------------------------------
+
+// IfStatement :> Statement :> AST
+if_then_statement ::=
+                IF:i LPAREN expression:e RPAREN statement:t {: RESULT = new IfStat(i,e,t); :}
+        ;
+
+// IfStatement :> Statement :> AST
+if_then_else_statement ::=
+                IF:i LPAREN expression:e RPAREN statement_no_short_if:t
+                ELSE statement:el                        {: RESULT = new IfStat(i,e,t,el); :}
+        ;
+
+// IfStatement :> Statement :> AST
+if_then_else_statement_no_short_if ::=
+                IF:i LPAREN expression:e RPAREN statement_no_short_if:t
+                ELSE statement_no_short_if:el            {: RESULT = new IfStat(i,e,t,el); :}
+        ;
+
+// ------------------------------------------------
+// DO                                         DONE!
+// ------------------------------------------------
+
+// DoStatement :> Statement :> AST
+do_statement ::=
+                DO:d statement:s WHILE LPAREN expression:e RPAREN SEMICOLON
+                                                            {: RESULT = new DoStat(d,s,e); :}
+        ;
+
+// ------------------------------------------------
+// SWITCH / CASE                              DONE!
+// ------------------------------------------------
+
+// SwitchStatement :> Statement :> AST
+switch_statement ::=
+                SWITCH:s LPAREN expression:e RPAREN switch_block:sb 
+                                                      {: RESULT = new SwitchStat(s,e, sb); :}
+        ;
+
+// Sequence(SwitchGroup :> AST) :> AST
+switch_block ::=
+                LBRACE switch_block_statement_groups_opt:s RBRACE           {: RESULT = s; :}
+        ;
+                
+// Sequence(SwitchGroup :> AST) :> AST
+switch_block_statement_groups_opt ::=
+                switch_block_statement_groups:s                {: RESULT = s;              :}
+        |       /* Empty */                                    {: RESULT = new Sequence(); :}
+        ;
+        
+// Sequence(SwitchGroup :> AST) :> AST
+switch_block_statement_groups ::=
+                switch_block_statement_group:s                {: RESULT = new Sequence(s); :}
+        |       switch_block_statement_groups:ss switch_block_statement_group:s
+                                                              {: RESULT = ss.append(s);    :}
+        ;
+
+// SwitchGroup :> AST
+switch_block_statement_group ::=
+                switch_labels:sl block_statements:bs   {: RESULT = new SwitchGroup(sl,bs); :}
+        ;
+
+// Sequence(SwitchLabel :> AST) :> AST
+switch_labels ::=
+                switch_label:s                                {: RESULT = new Sequence(s); :}
+        |       switch_labels:ss switch_label:s                {: RESULT = ss.append(s);   :}
+        ;
+
+// SwitchLabel :> AST
+switch_label ::=
+                CASE:c constant_expression:e COLON 
+                                              {: RESULT = new SwitchLabel(c, e,    false); :}
+        |       DEFAULT:d COLON               {: RESULT = new SwitchLabel(d, null, true);  :}
+        ;
+
+// ------------------------------------------------
+// WHILE                                      DONE!
+// ------------------------------------------------
+
+// WhileStatement :> Statement :> AST
+while_statement ::=
+                WHILE:w LPAREN expression:e RPAREN statement:s
+                                                       {: RESULT = new WhileStat(w, e, s); :}
+        ;
+
+// WhileStatement :> Statement :> AST
+while_statement_no_short_if ::=
+                WHILE:w LPAREN expression:e RPAREN statement_no_short_if:s
+                                                       {: RESULT = new WhileStat(w, e, s); :}
+        ;
+
+// ------------------------------------------------
+// CLAIM                                      DONE!
+// ------------------------------------------------
+
+// ClaimStatement :> Statement :> AST
+claim_statement ::=
+                CLAIM:c LPAREN name:n RPAREN statement:s
+                                                       {: RESULT = new ClaimStat(c, n, s); :}
+        ;
+
+// ClaimStatement :> Statement :> AST
+claim_statement_no_short_if ::=
+                CLAIM:c LPAREN name:n RPAREN statement_no_short_if:s
+                                                       {: RESULT = new ClaimStat(c, n, s); :}
+        ;
+
+// ------------------------------------------------
+// FOR                                        DONE!
+// ------------------------------------------------
+
+// ForStatement :> Statement :> AST
+for_statement ::=
+                FOR:f LPAREN for_init_opt:fi SEMICOLON expression_opt:e SEMICOLON
+                for_update_opt:fo RPAREN statement:s
+                                                 {: RESULT = new ForStat(f, fi, e, fo, s); :}
+        ;
+
+// ForStatement :> Statement :> AST
+for_statement_no_short_if ::=
+                FOR:f LPAREN for_init_opt:fi SEMICOLON expression_opt:e SEMICOLON
+                for_update_opt:fo RPAREN statement_no_short_if:s
+                                                 {: RESULT = new ForStat(f, fi, e, fo, s); :}
+        ;
+
+// Sequence(ExprStat :> AST) :> AST 
+for_init_opt ::=
+                for_init:fi                                    {: RESULT = fi;             :}
+        |       /* Empty */                                    {: RESULT = new Sequence(); :}
+        ;
+
+// Sequence(ExprStat :> AST) :> AST 
+for_init ::=    
+                statement_expression_list:sel                             {: RESULT = sel; :}
+        |       local_variable_declaration:lvd                            {: RESULT = lvd; :}
+        ;
+
+// Sequence(ExprStat :> AST) :> AST  
+for_update_opt ::=
+                for_update:fu                                  {: RESULT = fu;             :}
+        |       /* Empty */                                    {: RESULT = new Sequence(); :}
+        ;
+
+// Sequence(ExprStat :> AST) :> AST
+for_update ::=  
+                statement_expression_list:sel                             {: RESULT = sel; :}
+        ;
+
+// ==========================================================================================
+// EXPRESSIONS ==============================================================================
+// ==========================================================================================
+
+
+// Expression :> AST
+primary ::=
+                literal:l                                                   {: RESULT = l; :}
+        |       LPAREN expression:e RPAREN
+        |       procedure_invocation:pi
+        |       channel_communication_expression:cce
+        |       mobile_creation:mc
+        |       name:n DOT READ
+        |       name:n DOT WRITE
+        |       union_record_access            // union or record access
+	|	array_access
+
+        // we have to repeat the constant expressions here to avoid S/R conflicts       
+        |       LBRACKET argument_list RBRACKET
+        |       name:n LBRACE argument_list RBRACE
+        |       name:n LBRACE name COLON argument_list RBRACE   
+        ;
+        
+array_access ::= 
+	        primary LBRACKET literal RBRACKET
+	|	name LBRACKET literal RBRACKET
+        ;
+
+
+mobile_creation ::=
+                NEW MOBILE name
+        ;
+
+// Invocation :> Expression :> AST
+procedure_invocation ::=
+                name:n LPAREN argument_list_opt:al RPAREN
+                                                        {: RESULT = new Invocation(n, al); :}
+        ;
+
+// Sequence(Expression :> AST) :> AST
+argument_list_opt ::=
+                argument_list:al                              {: RESULT = al;              :}
+        |       /* Empty */                                   {: RESULT = new Sequence();  :}
+        ;
+
+// Sequence(Expression :> AST) :> AST
+argument_list ::=                                          
+                expression:e                                  {: RESULT = new Sequence(e); :}
+        |       argument_list:al COMMA expression:e           {: RESULT = al.append(e);    :}
+        ;
+
+// Expression :> AST
+postfix_expression ::=
+                primary:p                                     {: RESULT = p;               :}
+        |       post_increment_expression:p                   {: RESULT = p;               :}
+        |       post_decrement_expression:p                   {: RESULT = p;               :}
+        |       name:n                                        {: RESULT = new NameExpr(n); :}
+        ;
+
+// UnaryPostExpr :> Expression :> AST
+post_increment_expression ::=
+                postfix_expression:pe PLUSPLUS:o          
+                        {: RESULT = new UnaryPostExpr(pe, new PostOp(o, PostOp.PLUSPLUS)); :}
+        ;
+
+// UnaryPostExpr :> Expression :> AST
+post_decrement_expression ::=
+                postfix_expression:pe MINUSMINUS:o
+                      {: RESULT = new UnaryPostExpr(pe, new PostOp(o, PostOp.MINUSMINUS)); :}
+        ;
+
+// Expression :> AST
+unary_expression ::=
+                pre_increment_expression:pie                              {: RESULT = pie; :}
+        |       pre_decrement_expression:pde                              {: RESULT = pde; :}
+        |       PLUS:o unary_expression:ue      
+                              {: RESULT = new UnaryPreExpr(ue, new PreOp(o, PreOp.PLUS));  :}
+        |       MINUS:o unary_expression:ue     
+                              {: RESULT = new UnaryPreExpr(ue, new PreOp(o, PreOp.MINUS)); :}
+        |       unary_expression_not_plus_minus:l                         {: RESULT = l;   :}
+        ;
+
+// UnaryPreExpr :> Expression :> AST
+pre_increment_expression ::=
+                PLUSPLUS:o unary_expression:e
+                            {: RESULT = new UnaryPreExpr(e, new PreOp(o, PreOp.PLUSPLUS)); :}
+        ;
+// UnaryPreExpr :> Expression :> AST
+pre_decrement_expression ::=
+                MINUSMINUS:o unary_expression:e 
+                          {: RESULT = new UnaryPreExpr(e, new PreOp(o, PreOp.MINUSMINUS)); :}
+        ;
+
+// Expression :> AST
+unary_expression_not_plus_minus ::=
+                postfix_expression:l                                        {: RESULT = l; :}
+        |       COMP:o unary_expression:e   
+                                {: RESULT = new UnaryPreExpr(e, new PreOp(o, PreOp.COMP)); :}
+        |       NOT:o unary_expression:e
+                                {: RESULT = new UnaryPreExpr(e, new PreOp(o, PreOp.NOT));  :}
+        |       cast_expression:c                                           {: RESULT = c; :}
+        ;
+
+// CastExpr :> Expression :> AST
+cast_expression ::=
+                cast_type:t unary_expression_not_plus_minus:e 
+                                                           {: RESULT = new CastExpr(t, e); :}
+        ;
+
+// PrimitiveType :> AST
+cast_type::=
+               LPAREN primitive_type:p RPAREN                               {: RESULT = p; :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+multiplicative_expression ::=
+                unary_expression:e                                          {: RESULT = e; :}
+        |       multiplicative_expression:e1 MULT:o unary_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.MULT)); :}
+        |       multiplicative_expression:e1 DIV:o  unary_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.DIV));  :}
+        |       multiplicative_expression:e1 MOD:o  unary_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.MOD));  :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+additive_expression ::= 
+                multiplicative_expression:e                                 {: RESULT = e; :}
+        |       additive_expression:e1 PLUS:o  multiplicative_expression:e2
+                            {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.PLUS));  :}
+        |       additive_expression:e1 MINUS:o multiplicative_expression:e2
+                            {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.MINUS)); :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+shift_expression ::=
+                additive_expression:e                                       {: RESULT = e; :}
+        |       shift_expression:e1 LSHIFT:o  additive_expression:e2
+                          {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.LSHIFT));  :}
+        |       shift_expression:e1 RSHIFT:o  additive_expression:e2
+                          {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.RSHIFT));  :}
+        |       shift_expression:e1 RRSHIFT:o additive_expression:e2
+                          {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.RRSHIFT)); :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+relational_expression ::=
+                shift_expression:e                                          {: RESULT = e; :}
+        |       relational_expression:e1 LT:o   shift_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.LT));   :}
+        |       relational_expression:e1 GT:o   shift_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.GT));   :}
+        |       relational_expression:e1 LTEQ:o shift_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.LTEQ)); :}
+        |       relational_expression:e1 GTEQ:o shift_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.GTEQ)); :}
+        ;
+
+// BinaryExpression :> Expression :> AST
+equality_expression ::=
+                relational_expression:e                                      {: RESULT = e; :}
+        |       equality_expression:e1 EQEQ:o  relational_expression:e2 
+                            {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.EQEQ));  :}
+        |       equality_expression:e1 NOTEQ:o relational_expression:e2
+                            {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.NOTEQ)); :}
+        ;
+
+// BinaryExpression :> Expression :> AST
+and_expression ::=
+                equality_expression:e                                       {: RESULT = e; :}
+        |       and_expression:e1 AND:o equality_expression:e2  
+                               {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.AND)); :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+exclusive_or_expression ::=
+                and_expression:ae                                          {: RESULT = ae; :}
+        |       exclusive_or_expression:e1 XOR:o and_expression:e2
+                               {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.XOR)); :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+inclusive_or_expression ::=
+                exclusive_or_expression:e                                   {: RESULT = e; :}
+        |       inclusive_or_expression:e1 OR:o exclusive_or_expression:e2
+                                {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.OR)); :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+conditional_and_expression ::=
+                inclusive_or_expression:e                                   {: RESULT = e; :}
+        |       conditional_and_expression:e1 ANDAND:o inclusive_or_expression:e2
+                            {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.ANDAND)); :}
+        ;
+
+// BinaryExpr :> Expression :> AST
+conditional_or_expression ::=
+                conditional_and_expression:e                                {: RESULT = e; :}
+        |       conditional_or_expression:e1 OROR:o conditional_and_expression:e2
+                             {: RESULT = new BinaryExpr(e1, e2, new BinOp(o, BinOp.OROR)); :}
+        ;
+
+// Expression :> AST
+conditional_expression ::=
+                conditional_or_expression:e                                 {: RESULT = e; :}
+        |       conditional_or_expression:t QUEST expression:e1 
+                                            COLON conditional_expression:e2
+                                                       {: RESULT = new Ternary(t, e1, e2); :}
+        ;
+
+// Expression :> AST
+assignment_expression ::=
+                conditional_expression:c                                    {: RESULT = c; :}
+        |       assignment:a                                                {: RESULT = a; :}
+        ;
+
+// Assignment :> Expression :> AST
+assignment ::=  
+                left_hand_side:e1 assignment_operator:o assignment_expression:e2
+                                                    {: RESULT = new Assignment(e1, e2, o); :}
+        ;
+
+// AssignmentOpreator :> AST
+assignment_operator ::=
+                EQ:o              {: RESULT = new AssignmentOp(o, AssignmentOp.EQ);        :}
+        |       MULTEQ:o          {: RESULT = new AssignmentOp(o, AssignmentOp.MULTEQ);    :}
+        |       DIVEQ:o           {: RESULT = new AssignmentOp(o, AssignmentOp.DIVEQ);     :}
+        |       MODEQ:o           {: RESULT = new AssignmentOp(o, AssignmentOp.MODEQ);     :}
+        |       PLUSEQ:o          {: RESULT = new AssignmentOp(o, AssignmentOp.PLUSEQ);    :}
+        |       MINUSEQ:o         {: RESULT = new AssignmentOp(o, AssignmentOp.MINUSEQ);   :}
+        |       LSHIFTEQ:o        {: RESULT = new AssignmentOp(o, AssignmentOp.LSHIFTEQ);  :}
+        |       RSHIFTEQ:o        {: RESULT = new AssignmentOp(o, AssignmentOp.RSHIFTEQ);  :}
+        |       RRSHIFTEQ:o       {: RESULT = new AssignmentOp(o, AssignmentOp.RRSHIFTEQ); :}
+        |       ANDEQ:o           {: RESULT = new AssignmentOp(o, AssignmentOp.ANDEQ);     :}
+        |       XOREQ:o           {: RESULT = new AssignmentOp(o, AssignmentOp.XOREQ);     :}
+        |       OREQ:o            {: RESULT = new AssignmentOp(o, AssignmentOp.OREQ);      :}
+        ;       
+
+// Expression :> AST
+left_hand_side ::=
+                name:n                                        {: RESULT = new NameExpr(n); :}
+        |       union_record_access
+	| 	array_access
+//      |       // array access\: name[expr][expr] ... or name[expr,expr,expr]
+        ;
+        
+union_record_access ::=
+	        name DOT name
+	|       primary DOT name
+	;
+
+
+// Expression :> AST
+expression_opt ::=
+                expression:e                                             {: RESULT = e;    :}
+        |       /* Empty */                                              {: RESULT = null; :}
+        ;
+
+// Expression :> AST
+expression ::=  
+                assignment_expression:l                                     {: RESULT = l; :}
+        ;
+
+// Expression :> AST
+constant_expression_opt ::=
+               constant_expression:l                                     {: RESULT = l;    :}
+        |      /* Empty */                                               {: RESULT = null; :}
+        ;
+
+// Expression :> AST
+constant_expression ::=
+                literal:l                                     {: RESULT = l;               :}
+        |       name:n                                        {: RESULT = new NameExpr(n); :}
+        |       name:n LBRACE name COLON argument_list RBRACE
+        |       name:n LBRACE argument_list RBRACE
+        |       LBRACKET argument_list RBRACKET // array constant
+        ;
+
+
+//array_constant ::=
+//              LBRACKET constant_array_expression RBRACKET 
+//
+//      ;
+
+constant_array_expression ::=
+                constant_array_expression COMMA constant_expression
+        |       constant_expression
+        ;
+
+// Name :> AST
+name ::=
+                IDENTIFIER:id                                    {: RESULT = new Name(id); :}
+        ;
+
+
+// ==================================================
+// End of productions
+// ==================================================
+
+

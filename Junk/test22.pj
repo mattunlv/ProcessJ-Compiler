@@ -1,0 +1,23 @@
+proc void println(int i) { }
+
+proc void foo(chan<int>.write c) {
+     int myf = 1;
+     while (true) {
+     	   c.write(myf);
+	   myf++;
+     }
+}
+
+proc void bar(chan<int>.read c) {
+     while (true) {
+     	   println(c.read());
+     }
+}
+
+proc void main() {
+     chan<int> c;
+     par {
+       foo(c.write);
+       bar(c.read);
+     }
+}

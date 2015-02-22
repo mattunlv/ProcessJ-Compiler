@@ -1,0 +1,280 @@
+PROTOCOL Reindeer.msg
+  CASE
+    holiday; INT
+    deer.ready; INT
+    deliver; INT
+    deer.done; INT
+:
+
+PROTOCOL Elf.msg
+  CASE
+    working; INT
+    elf.ready; INT
+    consult; INT
+    eld.done; INT
+:
+
+PROTOCOL Santa.msg
+  CASE
+    reindeer.ready
+    harness; INT
+    mush.mush
+    woah
+    unharness; INT
+    elves.ready
+    greet; INT
+    consulting
+    santa.done
+    goodbye; INT
+:
+
+PROC display (CHAN Message in?) 
+  SEQ  
+
+:
+
+PROTOCOL Message EXTENDS Reindeer.msg, Elf.msg, Santa.msg:
+
+
+VAL INT N.REINDEER IS 9:
+
+VAL INT G.REINDEER IS N.REINDEER:
+
+VAL INT N.ELVES IS 10:
+
+VAL INT G.ELVES IS 3:
+
+VAL INT HOLIDAY.TIME IS 100000:
+
+VAL INT WORKING.TIME IS 200000:
+
+VAL INT DELIVERY.TIME IS 100000:
+
+VAL INT CONSULTATION.TIME IS 200000:
+
+PROC p.barrier.knock (VAL INT n, CHAN BOOL a?, CHAN BOOL b?, CHAN BOOL knock!) 
+  SEQ  
+    WHILE TRUE
+      SEQ  
+        SEQ
+          INITIAL INT i IS 0:
+          SEQ
+            WHILE (i < n)
+              SEQ
+                SEQ  
+                  BOOL any:
+                  SEQ  
+                    a ? any
+
+        knock ! TRUE
+        SEQ
+          INITIAL INT i IS 0:
+          SEQ
+            WHILE (i < n)
+              SEQ
+                SEQ  
+                  BOOL any:
+                  SEQ  
+                    b ? any
+
+:
+
+PROC p.barrier (VAL INT n, CHAN BOOL a?, CHAN BOOL b?) 
+  SEQ  
+    WHILE TRUE
+      SEQ  
+        SEQ
+          INITIAL INT i IS 0:
+          SEQ
+            WHILE (i < n)
+              SEQ
+                SEQ  
+                  BOOL any:
+                  SEQ  
+                    a ? any
+
+        SEQ
+          INITIAL INT i IS 0:
+          SEQ
+            WHILE (i < n)
+              SEQ
+                SEQ  
+                  BOOL any:
+                  SEQ  
+                    b ? any
+
+:
+
+PROC syncronize (SHARED CHAN BOOL a!, SHARED CHAN BOOL b!) 
+  SEQ  
+    CLAIM a!
+      a ! TRUE
+    CLAIM b!
+      b ! TRUE
+:
+
+PROC reindeer (VAL INT id, VAL INT seed, BARRIER just.reindeer, BARRIER santa.reindeer, SHARED CHAN INT to.santa!, SHARED CHAN Reindeer.msg report!) 
+  SEQ  
+    INITIAL INT my.seed IS seed:
+    TIMER tim:
+    INT64 t:
+    INT64 wait:
+    SEQ  
+      SEQ
+        INITIAL INT i IS 0:
+        SEQ
+          WHILE (i < 1000)
+            SEQ
+              SKIP
+
+      WHILE TRUE
+        SEQ  
+          CLAIM report!
+            SKIP
+          tim ? AFTER (t + wait)
+          CLAIM report!
+            SKIP
+          SYNC just.reindeer
+          CLAIM to.santa!
+            to.santa ! id
+          SYNC santa.reindeer
+          CLAIM report!
+            SKIP
+          SYNC santa.reindeer
+          CLAIM report!
+            SKIP
+          CLAIM to.santa!
+            to.santa ! id
+:
+
+PROC elf (VAL INT id, VAL INT seed, SHARED CHAN BOOL elves.a!, SHARED CHAN BOOL elves.b!, SHARED CHAN BOOL santa.elves.a!, SHARED CHAN BOOL santa.elves.b!, SHARED CHAN INT to.santa!, SHARED CHAN Elf.msg report!) 
+  SEQ  
+    INITIAL INT my.seed IS seed:
+    TIMER tim:
+    INT64 t:
+    INT64 wait:
+    SEQ  
+      SEQ
+        INITIAL INT i IS 0:
+        SEQ
+          WHILE (i < 1000)
+            SEQ
+              SKIP
+
+      WHILE TRUE
+        SEQ  
+          CLAIM report!
+            SKIP
+          tim ? AFTER (t + wait)
+          CLAIM report!
+            SKIP
+          syncronize (santa.elves.a!, santa.elves.b!)
+          tim ? AFTER (t + wait)
+          CLAIM report!
+            SKIP
+          syncronize (santa.elves.a!, santa.elves.b!)
+          syncronize (santa.elves.a!, santa.elves.b!)
+          CLAIM report!
+            SKIP
+          CLAIM to.santa!
+            to.santa ! id
+:
+
+PROC santa (VAL INT seed, CHAN BOOL knock?, CHAN INT from.reindeer?, CHAN INT from.elf?, BARRIER santa.reindeer, SHARED CHAN BOOL santa.elves.a!, SHARED CHAN BOOL santa.elves.b!, SHARED CHAN Santa.msg report!) 
+  SEQ  
+    INITIAL INT my.seed IS seed:
+    TIMER tim:
+    INT64 t:
+    INT64 wait:
+    SEQ  
+      SEQ
+        INITIAL INT i IS 0:
+        SEQ
+          WHILE (i < 1000)
+            SEQ
+              SKIP
+
+      WHILE TRUE
+        SEQ  
+          INT id:
+          BOOL any:
+          SEQ  
+            PRI ALT
+              from.reindeer ? id
+                SEQ  
+                  CLAIM report!
+                    SEQ  
+                      SKIP
+                      SKIP
+                  SEQ
+                    INITIAL INT i IS 0:
+                    SEQ
+                      WHILE (i < G.REINDEER)
+                        SEQ
+                          SEQ  
+                            from.reindeer ? id
+                            CLAIM report!
+                              SKIP
+
+                  SYNC santa.reindeer
+                  CLAIM report!
+                    SKIP
+                  tim ? AFTER (t + wait)
+                  CLAIM report!
+                    SKIP
+                  SYNC santa.reindeer
+                  SEQ
+                    INITIAL INT i IS 0:
+                    SEQ
+                      WHILE (i < G.REINDEER)
+                        SEQ
+                          SEQ  
+                            from.reindeer ?? id
+                              SEQ  
+                                CLAIM report!
+                                  SKIP
+
+              knock ? any
+                SEQ  
+
+
+:
+
+PROC main () 
+  SEQ  
+    TIMER tim:
+    INT seed:
+    BARRIER just.reindeer:
+    BARRIER santa.reindeer:
+    SHARED ! CHAN BOOL elves.a:
+    SHARED ! CHAN BOOL elves.b:
+    CHAN BOOL knock:
+    SHARED ! CHAN BOOL santa.elves.a:
+    SHARED ! CHAN BOOL santa.elves.b:
+    SHARED ! CHAN INT reindeer.santa:
+    SHARED ! CHAN INT elf.santa:
+    SHARED ! CHAN Message report:
+    SEQ  
+      PAR  
+        p.barrier.knock (G.ELVES, elves.a?, elves.b?, knock!)
+        p.barrier ((G.ELVES + 1), santa.elves.a?, santa.elves.b?)
+        SEQ
+          INITIAL INT i IS 0:
+          SEQ
+            WHILE (i < N.ELVES)
+              SEQ
+                SEQ  
+                  elf (i, (N.REINDEER + (seed + i)), elves.a!, elves.b!, santa.elves.a!, santa.elves.b!, elf.santa!, report!)
+
+        display (report?)
+        SEQ
+          INITIAL INT i IS 0:
+          SEQ
+            WHILE (i < N.REINDEER)
+              SEQ
+                SEQ  
+                  reindeer (i, (seed + i), just.reindeer, santa.reindeer, reindeer.santa!, report!)
+
+        santa ((seed + (N.REINDEER + N.ELVES)), knock?, reindeer.santa?, elf.santa?, santa.reindeer, santa.elves.a!, santa.elves.b!, report!)
+:
+

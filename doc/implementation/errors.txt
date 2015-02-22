@@ -1,0 +1,78 @@
+
+
+
+
+>>NameCheker Errors: (Group 2000)
+
+>>  NameChecker.java: (Group 2200)
+>>    visitInvocation
+[2201]  2201 >> Symbol 'XXX' not found.
+[2201]
+[2201]  The name used in an invocation was not found. 
+[2201]
+[2201]  Example:
+[2201]
+[2201]    f(7)
+[2201]
+[2201]  will cause this error if there is no declaration
+[2201]  of a procedure called f.        
+[2201]
+>>    visitLocalDecl
+[2202]  2202 >> XXX already declared in this scope.
+[2202]  
+[2202]  The name of a local clases with an already declared
+[2202]  local variable in the same scope.
+[2202]
+[2202]  Example:
+[2202]  
+[2202]    int a;
+[2202]
+[2202]    ...
+[2202]
+[2202]    int a;
+[2202]
+>>    visitNameExpr
+[2203]  2203 >> Symbol XXX not found.
+[2203]
+[2203]  The name represented by the name expressions was not found
+[2203]  in the scope chain, i.e., there was never a declaration of 
+[2203]  a variable, procedure, record, protocol or constant or
+[2203]  named type of that name.          
+[2203]
+[2203]  Example:
+[2203]
+[2203]    <none>
+[2203]
+>>    visitNewMobile
+[2204]  2204 >> Symbol XXX not found.
+[2204]
+[2204]  Nothing found in the scope chain with the name used in the
+[2204]  mobile creation expression.
+[2204]
+[2204]  Example:
+[2204]
+[2204]    new A;
+[2204]
+[2205]  2205 >> XXX is not a procedure.
+[2205]
+[2205]  The name used in the mobile creation does not refer to 
+[2205]  something of procedure type.
+[2205]
+[2205]  Example:
+[2205]  
+[2205]    int foo;
+[2205]    ...
+[2205]      new foo;
+[2205]
+>>    visitParamDecl
+[2206]  2206 >> XXX already declared in this scope.
+[2206]
+[2206]  The name of a parameter is used twice in the parameter list
+[2206]  of a procedure declaration.
+[2206]
+[2206]  Example:
+[2206]
+[2206]    public void foo(int a, double d, char a) { ... }
+[2206]
+>>
+         

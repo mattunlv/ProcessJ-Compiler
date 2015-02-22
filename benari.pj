@@ -1,0 +1,49 @@
+// took 11 minutes to type - worked first time!
+
+import std.io;
+
+public proc void N(chan<int>.read in1,
+              chan<int>.read in2,
+	      chan<int>.write out1,
+	      chan<int>.write out2,
+	      chan<boolean>.read request1,
+	      chan<boolean>.read request2) {
+  int n = 0;
+  for (int i=0; i<20; i++) {
+    boolean x;
+    alt {
+      x = request1.read() : {
+        out1.write(n);
+	n = in1.read();
+      }
+      x = request2.read() : {
+        out2.write(n);
+	n = in2.read();
+      }
+    }
+  }
+}
+
+public proc void P(chan<int>.write out,
+                   chan<int>.read in,
+		   chan<boolean>.write request) {
+  for (int i=0; i<10; i++) {
+    int myN;
+    request.write(true);
+    myN = in.read();
+    myN++;
+    out.write(myN);
+  }
+}
+
+public proc void main() {
+  chan<int> c11, c12, c21, c22;
+  chan<boolean> r1, r2;
+  par {
+    N(c11.read, c21.read,
+      c12.write, c22.write,
+      r1.read, r2.read);
+    P(c11.write, c12.read, r1.write);
+    P(c21.write, c22.read, r2.write);
+  }
+}

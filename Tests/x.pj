@@ -1,0 +1,6 @@
+
+public const int FOO = 42;
+
+public proc void foo() {
+  y.bar();
+}

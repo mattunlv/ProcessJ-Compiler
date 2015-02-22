@@ -1,0 +1,261 @@
+\documentclass[pdflatex,11pt,letter]{article}
+
+\begin{document}
+
+\begin{center}
+Version 1.0\hfill{}September 30, 2013\\[0.5cm]
+{\Huge Creating Native Libraries for ProcessJ Using C}\\[0.5cm]
+by Matt B. Pedersen
+\end{center}
+
+\section{Introduction}
+
+A {\it native} library in ProcessJ is a library that is written in C. There are 
+two different kinds of native libraries in ProcessJ:
+
+\begin{enumerate}
+\item A library that maps {\bf directly} to an existing C library like for example {\tt math.h}.
+\item A library that is implemented in C but does not map to any existing libraries.
+\end{enumerate}
+
+\noindent
+All ProcessJ files that implement libraries must include the pragma
+{\tt LIBRARY} as well as {\tt FILE} and either {\tt NATIVELIB} (if
+mapping to an existing library) or {\tt NATIVE} if the implementation
+will be written in C.
+
+\noindent
+All ProcessJ library files must declare a package name.
+
+\section{Mapping to and Existing Library}
+
+To define a native library mapping in ProcessJ follow the following example where 
+we map some of the existing constants an procedures from C's {\tt math.h} library to a 
+library called {\tt math} in the {\tt std} package. Simply create this ProcessJ file:
+
+\begin{verbatim}
+#pragma LIBRARY;
+#pragma NATIVELIB "math.h";
+#pragma LANGUAGE "C";
+#pragma FILE "math";
+
+package std;
+
+public native const double M_PI;        /* pi */
+public native const double M_PI_2;      /* pi/2 */
+public native const double M_PI_4;      /* pi/4 */
+public native const double M_1_PI;      /* 1/pi */ 
+public native const double M_2_PI;      /* 2/pi */ 
+public native const double M_2_SQRTPI;  /* 2/sqrt(pi) */
+public native const double M_SQRT2;     /* sqrt(2) */
+public native const double M_SQRT1_2;   /* 1/sqrt(2) */
+
+public native proc double acos(double x) ;
+public native proc double asin(double x) ;
+public native proc double atan(double x) ;
+public native proc double atan2(double y, double x) ;
+public native proc double cos(double x) ;
+public native proc double cosh(double x) ;
+public native proc double sin(double x) ;
+public native proc double sinh(double x) ;
+public native proc double tanh(double x) ;
+public native proc double exp(double x) ;
+public native proc double ldexp(double x, int exponent) ;
+public native proc double log(double x) ;
+public native proc double log10(double x) ;
+public native proc double pow(double x, double y) ;
+public native proc double sqrt(double x) ;
+public native proc double ceil(double x) ;
+public native proc double fabs(double x) ;
+public native proc long abs(long x) ;
+public native proc int abs(int x) ;
+public native proc double floor(double x) ;
+public native proc double fmod(double x, double y) ;
+\end{verbatim}
+
+\noindent
+Both constants and procedures must be declared native and procedures cannot have a body
+and constants cannot be initialized.\\
+
+\noindent
+The pragmas instruct the compiler to create a library with native C mappings to {\tt $<$math.h$>$}.\\
+
+\noindent
+The compiler will generate: {\tt std\_math.h} which will look like this:
+
+\begin{verbatim}
+#ifndef _LIB_STD_AMTH_
+#define _LIB_STD_MATH_
+#include <math.h>
+#endif
+\end{verbatim}
+
+\noindent
+which should be moved to {\tt lib/C/include}\\
+
+\noindent
+and {\tt std\_math.c} which will look like this:
+
+\begin{verbatim}
+#ifndef _STD_MATH_H
+#define _STD_MATH_H
+#include "std_math.h"
+#endif
+\end{verbatim}
+
+\noindent
+which should be moved to {\tt lib/C/src}.\\
+
+\noindent
+The object file {\tt std\_math.o} should be moved to {\tt /lib/C/obj}.\\
+
+\noindent
+The original ProcessJ file, {\tt math.pj} should be moved to {\tt include/C/std/}.\\
+
+\noindent
+To avoid manually moving files around you can use the {\tt pjc-install-c-library} script.
+
+\section{Self Written C libraries}
+
+To write a native library in C that does not map to an existing C
+library the {\tt NATIVELIB} pragma should be replaced by the {\tt
+  NATIVE} pragma.\\
+
+\noindent
+Procedures should use he {\tt native} keyword and have no
+implementation in the ProcessJ file.\\
+
+\noindent
+Constants should {\bf not} be declared {\tt native}.
+Non-native constants are declared without the
+{\tt native} keyword and an initializer is required.\\
+
+\noindent
+ProcessJ allows procedure overloading, C does not, we will return to
+this issue a little later.\\
+
+\noindent
+Here is an example of a ProcesJ native library that does not map
+directly to an existing C library:
+
+\begin{verbatim}
+#pragma LIBRARY;
+#pragma NATIVE;
+#pragma FILE "file";
+#pragma LANGUAGE "C";
+
+package io;
+
+public native const string READ;
+public native const string WRITE;
+
+public native proc int fileOpen(string fileName, string mode) ;
+public native proc int fileClose(int file) ;
+
+public native proc int fileWrite(int file, string data) ;
+public native proc int fileWrite(int file, int data) ;
+public native proc int fileWrite(int file, float data) ;
+public native proc int fileWrite(int file, long data) ;
+public native proc int fileWrite(int file, double data) ;
+public native proc int fileWrite(int file, short data) ;
+\end{verbatim}
+
+\noindent
+The ProcessJ compiler will generate a header ({\tt .h}) file {\tt
+  io\_file} which will look like this:
+
+
+\begin{verbatim}
+#ifndef _LIB_IO_FILE_
+#define _LIB_IO_FILE_
+
+// Add #include statements and constants here
+
+int io_fileOpen_TT(char* fileName, char* Mode) ;
+int io_fileClose_I(int file) ;
+int io_fileWrite_IT(int file, char* data) ;
+int io_fileWrite_II(int file, int data) ;
+int io_fileWrite_IF(int file, float data) ;
+int io_fileWrite_IJ(int file, long data) ;
+int io_fileWrite_ID(int file, double data) ;
+int io_fileWrite_IS(int file, short data) ;
+
+#endif
+\end{verbatim}
+
+\noindent
+Since the ProcessJ file contained multiple definitions (with different
+signatures) of the {\tt fileWrite} procedure, these must be generated
+with different names for the C compiler to be happy. Since the
+signatures of the parameters will differ, we use these to distinguish
+the different versions of the procedure.\\
+
+\noindent
+The generated C file looks like this:
+
+\begin{verbatim}
+#ifndef _IO_FILE_H
+#define _IO_FILE_H
+#include "io_file.h"
+int io_fileOpen_TT(char* fileName, char* Mode) {
+  // implementation code goes here.
+}
+
+int io_fileClose_I(int file) {
+  // implementation code goes here.
+}
+
+int io_fileWrite_IT(int file, char* data) {
+  // implementation code goes here.
+}
+
+int io_fileWrite_II(int file, int data) {
+  // implementation code goes here.
+}
+
+int io_fileWrite_IF(int file, float data) {
+  // implementation code goes here.
+}
+
+int io_fileWrite_IJ(int file, long data) {
+  // implementation code goes here.
+}
+
+int io_fileWrite_ID(int file, double data) {
+  // implementation code goes here.
+}
+
+int io_fileWrite_IS(int file, short data) {
+  // implementation code goes here.
+}
+
+#endif
+\end{verbatim}
+
+\noindent
+Also note, that the ProcessJ {\tt string} type is converted to {\tt
+  char*} and the {\tt boolean} type is converted to {\tt int}.\\
+
+\noindent
+Implement the library in the C templates generated by the compiler; if additional 
+internal functionality is required it can be added in this file as well, but be
+careful with naming these functions and ``global'' variables.\\
+
+\noindent
+The location of the {\tt .h}, {\tt .c}, {\tt .o} and {\tt .pj} files 
+go in the same locations as mentioned in the previous section.\\
+
+\noindent
+The {\tt pjc-install-c-library} can be used in the exact same way as
+in the previous section: if the third parameters is {\tt test} the
+script will check for all the files and compile the library, but not
+move the files. To force a move of the files, replace {\tt test} by {\tt install}.
+
+
+
+
+
+
+
+
+\end{document}

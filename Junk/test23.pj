@@ -1,0 +1,34 @@
+proc void println(int i) { }
+
+
+proc void foo(chan<int>.write c) {
+     int myf = 0;
+     while (true) {
+         c.write(myf);
+	 myf++;
+     }
+}
+
+proc void baz(chan<int>.read c1, chan<int>.read c2) {
+     while (true) {
+       int x;	  
+     	  alt {
+	    x = c1.read() : {
+	      println(x);
+	    }
+	    x = c2.read() : {
+	      println(x);
+	    }
+          }
+     }
+}
+
+proc void main() {
+  chan<int> c1, c2;
+  par {
+    foo(c1.write);
+    foo(c2.write);
+    baz(c1.read, c2.read);
+  }
+}
+

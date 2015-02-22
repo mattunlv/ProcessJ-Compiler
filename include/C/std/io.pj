@@ -1,0 +1,17 @@
+
+public proc void println(string s) ;
+public proc void println(int i) ;
+public proc void println(float f) ;
+public proc void println(double d) ;
+public proc void println(long l) ;
+public proc void println(char c) ;
+public proc void println(byte b) ;
+public proc void println(short s) ;
+public proc void print(string s) ;
+public proc void print(int i) ;
+public proc void print(float f) ;
+public proc void print(double d) ;
+public proc void print(long l) ;
+public proc void print(char c) ;
+public proc void print(byte b) ;
+public proc void print(short s) ;

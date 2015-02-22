@@ -1,0 +1,36 @@
+3000  Array type required, but found type XXX.
+3001  Array access index must be of integral type.
+3002  Array literal with the keyword 'new'.
+3003  Cannot assign value of type XXX to variable of type YYY.
+3004  Cannot assign value of type XXX to variable of type YYY.
+3005  Right hand side operand of operator X must be of numeric type.
+3006  Left hand side operand of operator X must be of numeric type.
+3007  Left hand side operand of operator X must be of integer type.
+3008  Right hand side operand of operator X must be of integer type.
+3009  Both right and left hand side operands of operator X must be either of boolean or integer type.
+3010  Operator X requires operands of numeric type.
+3011  Void type cannot be used here.
+3012  Operator X requires operands of the same type.
+3013  Operator X requires operands of boolean type.
+3014  Operator X requires both operands of either integral or boolean type.
+3015  Operator X requires operands of numeric type.
+3016  Operator X requires left operand of integral type.
+3017  Operator X requires right operand of integral type.
+3018  Unknown operator X.   (should never happen!)
+3019  Channel end expression requires channel type.
+3020  Unknown sharing status for channel end expression.
+3021  Channel or Timer type required in channel/timer read.
+3022  Timer read cannot have extended rendez-vous block.
+3023  Cannot write to a non-channel end.
+3024  Non boolean Expression found as test in do-statement.
+3025  Barrier type expected, found 'X'.
+3026  Non boolean Expression found in for-statement.
+3027  Non boolean Expression found as test in if-statement.
+3028  Undefined named type 'X'.
+3029  Unknown name expression 'X'.
+3030  Cannot assign value 'X' to type 'Y'.
+3031  Array dimension must be of integral type.
+3032  Array Initializer is not compatible with 'XXX'.
+3033  Incorrect number of expressions in protocol literal 'X'.
+3034  Cannot assign value of type 'X' to protocol field 'Y' of type 'Z'.
+// gone 3035  Non-array type cannot use .length operator.
