@@ -12,7 +12,7 @@ public class TimeoutStat extends Statement {
 	public Expression timer() { return (Expression)children[0]; }
 	public Expression delay() { return (Expression)children[1]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitTimeoutStat(this);
 	}
 }

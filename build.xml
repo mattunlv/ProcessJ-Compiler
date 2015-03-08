@@ -11,7 +11,7 @@
 	<property name="cupRuntimeJar" location="src/Utilities/java_cup_runtime.jar"/>
 	<property name="jflexJar" location="src/Utilities/JFlex.jar"/>
 	<property name="stringtemplatejar" location="src/Utilities/ST-4.0.7.jar"/>
-        <property name="classpath" value="${cupJar}:${cupRuntimeJar}:${jflexJar}:${stringeplatejar}:."/>
+        <property name="classpath" value="${cupJar}:${cupRuntimeJar}:${jflexJar}:${stringtemplatejar}:."/>
 	<description>
 		Build File for Processj Compiler Project
 	</description>

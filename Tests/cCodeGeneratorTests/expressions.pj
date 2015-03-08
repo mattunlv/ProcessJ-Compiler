@@ -1,0 +1,11 @@
+/**
+ * Simple program!
+ */
+
+proc void main2(){
+  double x = 100.0;
+  int i = 12;
+  x = (x + 10) * 5 * ( i ^ 2);
+  return;
+}
+

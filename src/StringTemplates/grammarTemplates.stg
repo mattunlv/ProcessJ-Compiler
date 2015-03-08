@@ -1,0 +1,132 @@
+info() ::= << 
+ This file contains all templates for the ProcessJ compiler based on the grammar of
+ ProcessJ. The CodeGeneratorC.java file then uses these rules as well as a visitor
+ to generate our C equivalent code.
+>>
+
+
+Compilation(pragmas, packageName, imports, typeDecls) ::= <<
+<! TODO pragmas !>
+<! TODO packageName !>
+<! TODO imports !>
+#include \<iostream.h>
+#include \<cif.h>
+<! ADD other C headers here?? !>
+<commentBar()>
+static void procMain(Workspace workspace);
+<! TODO function prototypes should go here! !>
+<commentBar()>
+<cMainFunction()>
+<commentBar()>
+<typeDecls; separator = "\n\n">
+>>
+
+
+Assignment(left, right, op) ::= <<
+<left> <op> <right>
+>>
+
+
+BinaryExpr(left, right, op) ::= "(<left> <op> <right>)"
+
+
+BreakStat() ::= "break"
+
+
+CastExpr(ct, expr) ::= "((<ct>) <expr>)"
+
+
+ContinueStat() ::= "continue"
+
+
+DoStat(stat, expr) ::= <<
+do{
+  <stat; separator = ";\n">;
+}while( <expr> )
+>>
+
+
+IfStat(expr, thenPart, elsePart) ::= <<
+if( <expr> ) {
+  <thenPart; separator = ";\n">;
+}<if(elsePart)> else {
+  <elsePart; separator = ";\n">;
+}<endif>
+>>
+
+
+ForStat(init, expr, incr, barriers, stats) ::= <<
+for(<init; separator = ",">; <expr>; <incr>){
+  <stats; separator = ";\n">
+}
+>>
+
+
+ReturnStat(expr) ::= "return<if(expr)> <expr><endif>;"
+
+
+ParamDecl(type, name, constant) ::= "<if(constant)>const <endif><type> <name>"
+
+
+ProcTypeDecl(modifiers, returnType, name, formals, implement, body) ::= <<
+<modifiers><returnType> <name> (<formals; separator = ", ">) <implement> {
+  <body; separator = ";\n">
+}
+>>
+
+
+LocalDecl(type, var, constant) ::= "<type> <var>"
+
+
+SwitchLabel(constExpr) ::= "case <constExpr>:"
+
+SwitchGroup(labels, stmts) ::= <<
+  <labels; separator = "\n">
+    <stmts; separator = ";\n">;
+>>
+
+SwitchStat(expr, switchGroups) ::= <<
+switch( <expr> ){
+  <switchGroups; separator = "\n">
+}
+>>
+
+
+Ternary(expr, trueBranch, falseBranch) ::= "<expr> ? <trueBranch> : <falseBranch>"
+
+
+UnaryPostExpr(expr, op) ::= "((<expr>) <op>)"
+
+
+UnaryPreExpr(expr, op) ::= "(<op> (<expr>))"
+
+WhileStat(expr, stat) ::= <<
+while( <expr> ) {
+  <stat; separator = ";\n">;
+}
+>>
+
+
+Var(name, init) ::= "<name><if(init)> = <init><endif>"
+
+
+commentBar() ::= "/*======================================================================================*/"
+
+
+cMainFunction() ::= <<
+int main(int argc, char** argv){
+  int cccspResults;
+  Workspace workspace;
+
+  /*Initialize CCSP*/
+  ccspResults = ccsp_init();
+  if(!ccspResults){
+    printf("Error starting CCSP, exiting...\n");
+    return 1;
+  }
+
+  ws = ProcAllocInitial(0, 1024 * 1024);
+  ProcStartInitial(ws, procMain);
+  return 0;
+}
+>>

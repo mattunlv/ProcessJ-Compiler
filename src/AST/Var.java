@@ -18,14 +18,14 @@ public class Var extends AST {
 		children = new AST[] { name, null };
 	}
 
-	public Name       name() { return (Name)children[0];       }
+	public Name       name() { return (Name)children[0];      }
 	public Expression init() { return (Expression)children[1]; }
 
 	public String toString() {
 		return name().toString();
 	}
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitVar(this);
 	}
 

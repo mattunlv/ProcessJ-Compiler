@@ -25,7 +25,7 @@ public class ForStat extends Statement {
 	public Sequence<Expression>  barriers()   { return (Sequence<Expression>)children[3];   }
 	public Statement  stats()                 { return (Statement)children[4];  }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitForStat(this);
 	}
 }

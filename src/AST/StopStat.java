@@ -8,7 +8,7 @@ public class StopStat extends Statement {
 		nchildren = 0;
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitStopStat(this);
 	}
 }

@@ -19,7 +19,7 @@ public class ChannelEndExpr extends Expression {
 	public boolean isWrite() { return end == WRITE; }
 	public Expression channel() { return (Expression)children[0]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitChannelEndExpr(this);
 	}
 }

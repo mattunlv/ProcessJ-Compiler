@@ -85,7 +85,7 @@ public class BinaryExpr extends Expression {
 		return null;
 	} 
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitBinaryExpr(this);
 	}
 }

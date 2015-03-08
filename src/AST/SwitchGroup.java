@@ -12,7 +12,7 @@ public class SwitchGroup extends AST {
 	public Sequence<SwitchLabel> labels()   { return (Sequence<SwitchLabel>)children[0]; }
 	public Sequence<Statement> statements() { return (Sequence<Statement>)children[1]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitSwitchGroup(this);
 	}
 

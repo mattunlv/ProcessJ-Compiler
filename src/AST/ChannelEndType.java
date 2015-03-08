@@ -41,7 +41,7 @@ public class ChannelEndType extends Type {
 
 	public Type baseType()  { return (Type)children[0]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitChannelEndType(this);
 	}
 }

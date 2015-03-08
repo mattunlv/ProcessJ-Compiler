@@ -12,7 +12,7 @@ public class DoStat extends Statement {
 	public Statement  stat() { return (Statement)children[0];  }
 	public Expression expr() { return (Expression)children[1]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitDoStat(this);
 	}
 }

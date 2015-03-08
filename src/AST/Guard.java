@@ -11,7 +11,7 @@ public class Guard extends AST {
 
 	public Statement guard() { return (Statement)children[0]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitGuard(this);
 	} 
 }

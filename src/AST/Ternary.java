@@ -26,7 +26,7 @@ public class Ternary extends Expression {
 		return falseBranch().constantValue();
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitTernary(this);
 	}
 }

@@ -83,11 +83,11 @@ public abstract class AST  {
 	/* **                                                       ** */
 	/* *********************************************************** */
 
-	public abstract <T extends AST> T visit(Visitor<T> v);
+	public abstract <T extends Object> T visit(Visitor<T> v);
 
 	/** Visit all children of this node from left to right.  Usually
 	called from within a visitor */
-	public <T extends AST> T visitChildren(Visitor<T> v) {
+	public <T extends Object> T visitChildren(Visitor<T> v) {
 	    for (int c = 0; c < nchildren; c++) {		    
 		if (children[c] != null) 
 		    children[c].visit(v);

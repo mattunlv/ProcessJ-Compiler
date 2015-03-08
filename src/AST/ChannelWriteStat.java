@@ -13,7 +13,7 @@ public class ChannelWriteStat extends Statement {
 	public Expression expr()    { return (Expression)children[1]; }
 
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitChannelWriteStat(this);
 	}
 }

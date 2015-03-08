@@ -25,7 +25,7 @@ public class ConstantDecl extends AST implements VarDecl, TopLevelDecl {
 	return "ConstantDecl (Type:" + type() + " Name:" + var() + ")";
     }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitConstantDecl(this);
 	}
 }

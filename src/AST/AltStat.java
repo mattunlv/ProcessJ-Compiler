@@ -15,7 +15,7 @@ public class AltStat extends Statement {
 	public boolean isPri()  { return pri; }
 	public Sequence<AltCase> body()  { return (Sequence<AltCase>)children[0];  }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitAltStat(this);
 	}
 }

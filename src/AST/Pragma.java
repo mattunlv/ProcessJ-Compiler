@@ -15,7 +15,7 @@ public class Pragma extends AST {
 	public Name pname()      { return (Name)children[0]; }
 	public String value()    { return value; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitPragma(this);
 	}
 }

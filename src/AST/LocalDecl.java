@@ -28,7 +28,7 @@ public class LocalDecl extends Statement implements VarDecl  {
 		return "LocalDecl (Type:" + type() + " " + "Name:" + var() + ")";
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitLocalDecl(this);
 	}
 }

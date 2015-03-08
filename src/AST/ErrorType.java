@@ -20,7 +20,7 @@ public class ErrorType extends Type {
 		return "<Error>";
 	}
 	
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitErrorType(this);
 	}
 }

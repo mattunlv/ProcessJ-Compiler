@@ -148,9 +148,9 @@ import CodeGeneratorJava.*;
 				
 				////////////////////////////////////////////////////////////////////////////////
 				// CODE GENERATOR
-
+                                
 				if (Settings.targetLanguage.equals("c"))
-				    c.visit(new CodeGeneratorC<AST>());
+				    c.visit(new CodeGeneratorC<Object>());
 				else if (Settings.targetLanguage.equals("JVM"))
 				    c.visit(new CodeGeneratorJava<AST>());
 				else {

@@ -28,7 +28,7 @@ public class ParamDecl extends AST implements VarDecl  {
 		return "ParamDecl (Type:" + type() + " " + "Name:" + name() + ")";
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitParamDecl(this);
 	}
 }

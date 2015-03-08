@@ -10,11 +10,11 @@ public class ArrayType extends Type {
 		super(baseType);
 		nchildren = 1;
 		this.depth = depth;
-		children = new AST[] { baseType };		
+		children = new AST[] { baseType };
 	}
 
-	public Type baseType() { 
-		return (Type) children[0]; 
+	public Type baseType() {
+		return (Type) children[0];
 	}
 
     public void setBaseType(Type t) {
@@ -23,8 +23,8 @@ public class ArrayType extends Type {
     }
 
 
-	public int getDepth() { 
-		return depth; 
+	public int getDepth() {
+		return depth;
 	}
 
 	public String toString() {
@@ -47,15 +47,7 @@ public class ArrayType extends Type {
 	}
 
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitArrayType(this);
 	}
-}             
-
-
-
-
-
-
-
-
+}

@@ -37,7 +37,7 @@ public class ChannelType extends Type {
 	// TODO: add sharing stuff
 	public String typeName() { return "chan<" + baseType() + ">"; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitChannelType(this);
 	}
 }

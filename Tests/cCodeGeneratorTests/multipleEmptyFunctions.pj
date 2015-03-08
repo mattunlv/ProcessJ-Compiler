@@ -1,0 +1,16 @@
+/**
+ * Simple program!
+ */
+proc void main(){
+
+  return;
+}
+
+proc void main2(){
+
+  return;
+}
+
+proc int getMeaningOfLife(){
+     return 42;
+}

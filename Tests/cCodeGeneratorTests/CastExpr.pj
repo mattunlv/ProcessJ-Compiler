@@ -1,0 +1,12 @@
+/**
+ * CastExpr program!
+ */
+proc void main(){
+  int x = 0;
+  double y = 1;
+  double z = 4.5;
+
+  x = (double)x + y;
+  y = (int)((int)z + (double)x);
+  return;
+}
