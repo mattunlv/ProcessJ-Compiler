@@ -7,7 +7,7 @@ public class Invocation extends Expression {
 	public ProcTypeDecl targetProc = null;
 	public SymbolTable candidateMethods = null; // TODO: needs to be filled recursively backwards ..  I think? or perhaps not!
 
-	public Invocation(Expression target,
+public Invocation(Expression target,
 			Name name, 
 			Sequence<Expression> params) {
 		super(name);

@@ -157,8 +157,4 @@ public abstract class Type extends AST {
 	public boolean isNamedType() {
 		return (this instanceof NamedType);
 	}
-}             
-
-
-
-
+}

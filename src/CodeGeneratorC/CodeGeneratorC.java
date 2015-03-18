@@ -5,6 +5,7 @@ import Utilities.*;
 import Utilities.Error;
 import org.stringtemplate.v4.*;
 import java.io.*;
+import java.util.*;
 
 /**
  * Code Geneartor turns processJ code to equivalent C code using using
@@ -17,6 +18,7 @@ import java.io.*;
  *    will have a <X;separator = " S"> where S is a string. Therefore the sequence
  *    be delimited by say newlines or commas depending on the proper context.
  * 2) Optional parameters are implemented using <if(X)> <endif> blocks in the ST.
+
  */
 public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
@@ -24,7 +26,10 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     /** Relative location of our group string template file.*/
     private final String grammarStFile = "src/StringTemplates/grammarTemplates.stg";
-
+    /** Name of the parameter of type Workspace that all function needs*/
+    private final String globalWorkspace = "WP";
+    /** To figure out in more detail and perhaps chose best value at runtime?*/
+    private final int stackSize = 256;
     /** Object containing a group of  string templates. */
     private STGroup group;
     //====================================================================================
@@ -127,17 +132,33 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //====================================================================================
     // Compilation
     public T visitCompilation(Compilation c) {
-      //TODO This can return null, should we add runtime checks for if null? It makes
-      //the code look ugly and should not really happen? But better to be on the safe
-      //side? Idk.. Only happens if someone goes in the stg file and messes stuff
-      //up >:p
       ST template = group.getInstanceOf("Compilation");
+      LinkedList<String> prototypes = new LinkedList<String>();
+      String lastFunction = "";
+      //We add our function prototypes here as the C program will need them.
+      Sequence<Type> typeDecls = c.typeDecls();
 
       //TODO add the pragmas, packageName and imports later!
       //Recurse to all children getting strings needed for this Class' Template.
-      String[] typeDecls = (String[]) c.typeDecls().visit(this);
+      String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
 
-      template.add("typeDecls", typeDecls);
+      //Iterate over the sequence only collecting the procType arguments.
+      for (int i = 0; i < typeDecls.size(); i++) //TODO: Null pointer exception if program is empty?
+        if (typeDecls.child(i) instanceof ProcTypeDecl){
+          ProcTypeDecl current = (ProcTypeDecl)typeDecls.child(i);
+          String prototypeName = getPrototypeString(current);
+
+          prototypes.add(prototypeName);
+          //Update name!
+          lastFunction = current.name().getname();
+        }
+
+      //This is where functions are created as they are procedure type.
+      template.add("prototypes", prototypes);
+      template.add("typeDecls", typeDeclsStr);
+      //ProcessJ is set so the last function in the file is called as the main,
+      //we do that here by specifiying which function to call.
+      template.add("functionToCall", lastFunction);
 
       //Final complete program!
       System.out.println(template.render());
@@ -247,7 +268,62 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //====================================================================================
     // Import
     //====================================================================================
-    // Invocation
+    /**
+     * Method invocations have to be treated special by the compiler, when generating the
+     * C equivalent it is not enough to simply call the function. The way that CCSP
+     * requires the function call is as follows:
+
+
+     * //Running a proc requires a barrier:
+     * LightProcBarrier barrier;
+
+     * //Initialize barrier by giving it the number of processes that will run with it,
+     * //in this case just 1 as well as the barrier's address.
+     * LightProcBarrierInit (wordPointer, &barrier, 1);
+
+     * //Process for source function.
+     * word workspace1 = WORKSPACE_SIZE(0, STACKSIZE); //Zero is the number of arguments.
+     * Workspace ws1 = MAlloc (wordPointer, sizeof (word) * workspace1);
+     * //Initialize process by giving it the number of parameters it will take in as well
+     * //as it's workspace.
+     * ws1 = LightProcInit(wordPointer, ws1, 0, STACKSIZE);
+     * //Argument calls are made here if any in the form of:
+     *  ProcParam(wordPointer, ws1, 0, &a); //Where 0 refers to the ith parameter you want
+     * set and &a refers to the pointer to the parameter that should be passed in.
+
+     * //Run process!
+     * LightProcStart(wordPointer, &barrier, ws1, source);
+
+
+     * Notice that there is no error checking done by the C code but that's okay as we
+     * have done the type checking through the ProcessJ compiler.
+     */
+    public T visitInvocation(Invocation in) {
+      String functionName = in.procedureName().getname();
+      //Until I figure out which is the right way, I will have a special case for print
+      //Statements, this is just for testing!
+      if(functionName.equals("println"))
+         return (T) "printf(\"Hello World\\n\")";
+
+      //This is the simplest case where a function is called once.
+      ST template = group.getInstanceOf("Invocation");
+
+      String barrierName = "barrier" + functionName;
+      String wordName = "word" + functionName;
+      String workspaceName = "ws" + functionName;
+      Sequence<Expression> params = in.params();
+
+      //Add all parameters to our template!
+      template.add("barrierName", barrierName);
+      template.add("wordName", wordName);
+      template.add("workspaceName", workspaceName);
+      template.add("paramNumber", params.nchildren);
+      template.add("functionName", functionName);
+      template.add("stackSize", stackSize);
+      template.add("paramWorkspaceName", globalWorkspace);
+
+      return (T) template.render();
+    }
     //====================================================================================
     // LocalDecl
     public T visitLocalDecl(LocalDecl ld) {
@@ -317,7 +393,10 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       String returnType = pd.returnType().typeName();
       String name = (String) pd.name().visit(this);
       String[] block = (String[]) pd.body().visit(this);
-      String[] formals = (String[]) pd.formalParams().visit(this);
+      //Remember that CCSP expects no arguments in the actual prototype, they are passed
+      //by function calls from their API.
+      //String[] formals = (String[]) pd.formalParams().visit(this);
+      String[] formals = {"Workspace " + globalWorkspace};
 
       template.add("returnType", returnType);
       template.add("name", name);
@@ -490,5 +569,19 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
       return (T) template.render();
     }
+    //====================================================================================
+     /**
+      * Auxillary function, given a protocol it will create the appropriate protoype needed
+      * by the equivalent c program. This is used to create all the function protoypes
+      * that need to be declared at the top.
+      */
+     String getPrototypeString(ProcTypeDecl procedure){
+       ST template = group.getInstanceOf("prototype");
+       String name = procedure.name().getname();
+       template.add("name", name);
+       template.add("workspaceName", globalWorkspace);
+
+       return template.render();
+     }
     //====================================================================================
 }

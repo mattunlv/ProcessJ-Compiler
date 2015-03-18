@@ -1,29 +1,28 @@
-info() ::= << 
+info() ::= <<
  This file contains all templates for the ProcessJ compiler based on the grammar of
  ProcessJ. The CodeGeneratorC.java file then uses these rules as well as a visitor
  to generate our C equivalent code.
 >>
 
 
-Compilation(pragmas, packageName, imports, typeDecls) ::= <<
+Compilation(pragmas, packageName, imports, typeDecls, prototypes, functionToCall) ::= <<
 <! TODO pragmas !>
 <! TODO packageName !>
 <! TODO imports !>
-#include \<iostream.h>
+#include \<stdio.h>
 #include \<cif.h>
 <! ADD other C headers here?? !>
 <commentBar()>
-static void procMain(Workspace workspace);
-<! TODO function prototypes should go here! !>
+<prototypes; separator = ";\n"><if(prototypes)>;<endif>
 <commentBar()>
-<cMainFunction()>
+<cMainFunction(functionToCall)>
 <commentBar()>
 <typeDecls; separator = "\n\n">
 >>
 
 
 Assignment(left, right, op) ::= <<
-<left> <op> <right>
+(<left> <op> <right>)
 >>
 
 
@@ -52,6 +51,29 @@ if( <expr> ) {
 }<if(elsePart)> else {
   <elsePart; separator = ";\n">;
 }<endif>
+>>
+
+
+Invocation(barrierName, wordName, workspaceName, paramNumber, functionName, stackSize,
+           paramWorkspaceName) ::= <<
+<! We need a special name for the barrier, word, and workspace as if we have multiple
+   functions these will need to be unique for each !>
+  /* Running a proc requires a barrier. */
+  LightProcBarrier <barrierName>;
+
+  /*Initialize barrier by giving it the number of processes that will run with it, in this
+    case just 1 as well as the barrier's address. */
+  LightProcBarrierInit (<paramWorkspaceName>, &<barrierName>, 1);
+
+  /*Process for source function.*/
+  word <wordName> = WORKSPACE_SIZE(0, <stackSize>); /*Zero is the number of arguments. */
+  Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
+  /*Initialize process by giving it the number of parameters it will take in as well
+    as it's workspace. */
+  <workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
+
+  /*Run process! */
+  LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>);
 >>
 
 
@@ -113,10 +135,10 @@ Var(name, init) ::= "<name><if(init)> = <init><endif>"
 commentBar() ::= "/*======================================================================================*/"
 
 
-cMainFunction() ::= <<
+cMainFunction(functionToCall) ::= <<
 int main(int argc, char** argv){
-  int cccspResults;
-  Workspace workspace;
+  int ccspResults;
+  Workspace ws;
 
   /*Initialize CCSP*/
   ccspResults = ccsp_init();
@@ -126,7 +148,9 @@ int main(int argc, char** argv){
   }
 
   ws = ProcAllocInitial(0, 1024 * 1024);
-  ProcStartInitial(ws, procMain);
+  ProcStartInitial(ws, <functionToCall>);
   return 0;
 }
 >>
+
+prototype(name, workspaceName) ::= "void <name>(Workspace <workspaceName>)"
