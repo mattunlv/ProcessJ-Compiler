@@ -57,23 +57,24 @@ if( <expr> ) {
 Invocation(barrierName, wordName, workspaceName, paramNumber, functionName, stackSize,
            paramWorkspaceName) ::= <<
 <! We need a special name for the barrier, word, and workspace as if we have multiple
-   functions these will need to be unique for each !>
-  /* Running a proc requires a barrier. */
-  LightProcBarrier <barrierName>;
+ functions these will need to be unique for each !>
+/* Running a proc requires a barrier. */
+LightProcBarrier <barrierName>;
 
-  /*Initialize barrier by giving it the number of processes that will run with it, in this
-    case just 1 as well as the barrier's address. */
-  LightProcBarrierInit (<paramWorkspaceName>, &<barrierName>, 1);
+/*Initialize barrier by giving it the number of processes that will run with it, in this
+  case just 1 as well as the barrier's address. */
+LightProcBarrierInit (<paramWorkspaceName>, &<barrierName>, 1);
 
-  /*Process for source function.*/
-  word <wordName> = WORKSPACE_SIZE(0, <stackSize>); /*Zero is the number of arguments. */
-  Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
-  /*Initialize process by giving it the number of parameters it will take in as well
-    as it's workspace. */
-  <workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
+/*Process for source function.*/
+word <wordName> = WORKSPACE_SIZE(0, <stackSize>); /*Zero is the number of arguments. */
+Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
+/*Initialize process by giving it the number of parameters it will take in as well
+  as it's workspace. */
+<workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
 
-  /*Run process! */
-  LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>);
+/*Run process! */
+LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>);
+Shutdown(<paramWorkspaceName>)
 >>
 
 
@@ -154,3 +155,9 @@ int main(int argc, char** argv){
 >>
 
 prototype(name, workspaceName) ::= "void <name>(Workspace <workspaceName>)"
+
+printfNoArgs(string) ::= "printf(\"<string>\")"
+
+printf(string, argumentList) ::= <<
+printf("<string>", <argumentList; separator = ", ">)
+>>
