@@ -26,6 +26,7 @@ public class NameChecker<T extends AST> extends Visitor<T> {
 	}
 
 	private Object resolveName(Name na) {
+	    Log.log("resolveName: resolving name: "+ na);
 		if (!na.isSimple()) {
 			return na.resolvedPackageAccess;
 		} else {
@@ -37,6 +38,7 @@ public class NameChecker<T extends AST> extends Visitor<T> {
 				return o;
 			// if not found look in topScope
 			o = topScope.getIncludeImports(name);
+			System.out.println("Found : " + o);
 			if (o != null)
 				return o;
 			return null;
@@ -159,25 +161,33 @@ public class NameChecker<T extends AST> extends Visitor<T> {
 
 	// NamedType - TODO: Should probably be looked up in the scope chain and result in one of Procedure, Constant, ExternType, Record or Protocol
 	public 	T visitNamedType(NamedType nt) {
-		Object o;
-		o = resolveName(nt.name());
-		if (o == null)
-			Error.error(nt,"Symbol '" + nt.name().getname() + "' not found.", false, 2203);	
-		if (o instanceof ConstantDecl) {
-			Error.error(nt,"Symbol '" + nt.name().getname() + "' is not a type.");
-		}
-		// TODO: consider the import hierarchy back for similiarly named procs
-		/*if (o instanceof SymbolTable) { // we found a procedure so there can only be one and it must be mobile!
-			SymbolTable st = (SymbolTable)o;
-			if (st.entries.size() > 1)
-				Error.error(nt,"Procedure type parameters cannot be used if more than one implementation of the procedure exists!");
-			ProcTypeDecl pd = (ProcTypeDecl)(new ArrayList<Object>(st.entries.values()).get(0));
-			nt.setType(pd);
-		} else */				
-		nt.setResolvedTopLevelDecl((TopLevelDecl)o);
-		return null;
-	}	
+	    Log.log(nt.line + ": Visiting NamedType " + nt);
+	    Object o;
+	    o = resolveName(nt.name());
+	    if (o == null)
+		Error.error(nt,"Symbol '" + nt.name().getname() + "' not found.", false, 2203);	
+	    if (o instanceof ConstantDecl) {
+		Error.error(nt,"Symbol '" + nt.name().getname() + "' is not a type.");
+	    }
+	    Log.log("NamedType: o = " + o);
+	    // TODO: consider the import hierarchy back for similiarly named procs
+	    /*if (o instanceof SymbolTable) { // we found a procedure so there can only be one and it must be mobile!
+	      SymbolTable st = (SymbolTable)o;
+	      if (st.entries.size() > 1)
+	      Error.error(nt,"Procedure type parameters cannot be used if more than one implementation of the procedure exists!");
+	      ProcTypeDecl pd = (ProcTypeDecl)(new ArrayList<Object>(st.entries.values()).get(0));
+	      nt.setType(pd);
+	      } else */	
+	    // TODO: if :: types like a record contain types that aren't in the hierarchy it will fail to find them....
 
+	    Log.log("Before");
+	    if (o != null)
+		((AST)o).visit(this);
+	    Log.log("After");
+	    nt.setResolvedTopLevelDecl((TopLevelDecl)o);
+	    return null;
+	}	
+	
 	public T visitNameExpr(NameExpr ne) {
 		Log.log(ne.line + ": Visiting NameExpr (" + ne.name().getname() + ")");
 
@@ -314,7 +324,8 @@ public class NameChecker<T extends AST> extends Visitor<T> {
 				Error.error(rt,"'" + name.getname() + "' repeated in extends clause of record type '" +rt.name().getname() + "'.");
 			hs.add(name.getname());
 		}
-
+		rt.body().visit(this);
+		
 		// TODO: also check for name clashes (in theory the same record could be imported twice:
 		// import T;
 		// type record Foo extends T::Bar, Bar { ... }

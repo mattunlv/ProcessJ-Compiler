@@ -228,15 +228,15 @@ proc void main() {
     long seed;
     seed = tim.read();
     seed = (seed >> 2) + 42;
-    
+
     barrier just_reindeer, santa_reindeer;
-    
+
     shared write chan<boolean> elves_a, elves_b;
     chan<boolean> knock;
     shared write chan<boolean> santa_elves_a, santa_elves_b;
     shared write chan<int> reindeer_santa, elf_santa;
     shared write chan<Message> report;
-    
+
     par {
 	par enroll (santa_reindeer) {
 	    santa (seed + (N_REINDEER + N_ELVES), knock.read,

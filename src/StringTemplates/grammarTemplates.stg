@@ -73,14 +73,13 @@ Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordN
 <workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
 
 /*Run process! */
-LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>);
-Shutdown(<paramWorkspaceName>)
+LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>)
 >>
 
 
 ForStat(init, expr, incr, barriers, stats) ::= <<
 for(<init; separator = ",">; <expr>; <incr>){
-  <stats; separator = ";\n">
+  <stats; separator = ";\n">;
 }
 >>
 
@@ -91,9 +90,10 @@ ReturnStat(expr) ::= "return<if(expr)> <expr><endif>;"
 ParamDecl(type, name, constant) ::= "<if(constant)>const <endif><type> <name>"
 
 
-ProcTypeDecl(modifiers, returnType, name, formals, implement, body) ::= <<
+ProcTypeDecl(modifiers, returnType, name, formals, implement, body, paramWorkspaceName) ::= <<
 <modifiers><returnType> <name> (<formals; separator = ", ">) <implement> {
-  <body; separator = ";\n">
+  <body; separator = ";\n"><\\>
+  <if(paramWorkspaceName)>;<\n>  Shutdown(<paramWorkspaceName>);<endif>
 }
 >>
 

@@ -18,7 +18,6 @@ import java.util.*;
  *    will have a <X;separator = " S"> where S is a string. Therefore the sequence
  *    be delimited by say newlines or commas depending on the proper context.
  * 2) Optional parameters are implemented using <if(X)> <endif> blocks in the ST.
-
  */
 public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
@@ -32,6 +31,17 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   private final int stackSize = 256;
   /** Object containing a group of  string templates. */
   private STGroup group;
+  /** We must know the name of the last function of the program as this is
+   * the function that will be called by the CCSP runtime to start running
+   * the program, this is the last function on the file. */
+  private String lastFunction = "";
+  /**We need to create a: barrier, word, and Worspace variable for each invocation.
+   * We do this by appending the S := "barrier" | "word" | "ws" to the function name
+   * S ++ functionName, this works except when the same function is called multiple
+   * times in the same scope. Therefore this hashtable keeps track of the proper number
+   * to append to the end of the functionName to avoid this as an issue. */
+  private Hashtable<String, Integer> functionCounts;
+
   //====================================================================================
   public CodeGeneratorC() {
     Log.log("======================================");
@@ -40,6 +50,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     //Load our string templates from specified directory.
     group = new STGroupFile(grammarStFile);
+    //Create hashtable!
+    functionCounts = new Hashtable<String, Integer>();
   }
   //====================================================================================
   // AltCase
@@ -64,7 +76,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     template.add("right",right);
     template.add("op",op);
 
-    println(template.render());
     return (T) template.render();
   }
   //====================================================================================
@@ -75,6 +86,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     String left = (String) be.left().visit(this);
     String right = (String) be.right().visit(this);
     String op = (String) be.opString();
+
+    //TODO: Add suport for string concatanation here.
 
     template.add("left",left);
     template.add("right",right);
@@ -134,13 +147,9 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   public T visitCompilation(Compilation c) {
     ST template = group.getInstanceOf("Compilation");
     LinkedList<String> prototypes = new LinkedList<String>();
-    String lastFunction = "";
+
     //We add our function prototypes here as the C program will need them.
     Sequence<Type> typeDecls = c.typeDecls();
-
-    //TODO add the pragmas, packageName and imports later!
-    //Recurse to all children getting strings needed for this Class' Template.
-    String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
 
     //Iterate over the sequence only collecting the procType arguments.
     for (int i = 0; i < typeDecls.size(); i++) //TODO: Null pointer exception if program is empty?
@@ -153,6 +162,10 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         lastFunction = current.name().getname();
       }
 
+    //TODO add the pragmas, packageName and imports later!
+    //Recurse to all children getting strings needed for this Class' Template.
+    String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
+
     //This is where functions are created as they are procedure type.
     template.add("prototypes", prototypes);
     template.add("typeDecls", typeDeclsStr);
@@ -160,9 +173,12 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //we do that here by specifiying which function to call.
     template.add("functionToCall", lastFunction);
 
-    //Final complete program!
-    System.out.println(template.render());
-    return (T) template.render();
+    //Finally write the output to a file
+    String finalOutput = template.render();
+    writeToFile(finalOutput);
+    System.out.println("Output written to file codeGenerated.c");
+
+    return (T) finalOutput;
   }
   //====================================================================================
   // ConstantDecl
@@ -301,16 +317,20 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   public T visitInvocation(Invocation in) {
     String functionName = in.procedureName().getname();
 
-    //Print statements are treated differently.
+    //We hit an invocation add to our hashtable and get the proper number to append
+    //as our counter, see functionCounts for explanataion.
+    int fCount = incrementEntry(functionCounts, functionName);
+    System.out.println(String.format("Function: %s has a cound of %d", functionName, fCount));
+    //Print statements are treated differently. TODO: In the future this will change.
     if(functionName.equals("println"))
       return (T) createPrintFunction(in);
 
-    //This is the simplest case where a function is called once.
     ST template = group.getInstanceOf("Invocation");
-
-    String barrierName = "barrier" + functionName;
-    String wordName = "word" + functionName;
-    String workspaceName = "ws" + functionName;
+    //Create proper names for variables to avoid name variable already declared.
+    String postFix = functionName + fCount;
+    String barrierName = "barrier" + postFix;
+    String wordName = "word" + postFix;
+    String workspaceName = "ws" + postFix;
     Sequence<Expression> params = in.params();
 
     //Add all parameters to our template!
@@ -389,7 +409,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   // ProcTypeDecl //TODO: change parameters as they need to be passed differently through
   // the ccsp api not through the actual parameter slots.
-  public T visitProcTypeDecl(ProcTypeDecl pd) {
+  public T visitProcTypeDecl(ProcTypeDecl pd){
     ST template = group.getInstanceOf("ProcTypeDecl");
 
     Sequence<Modifier> modifiers = pd.modifiers();
@@ -406,6 +426,18 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     template.add("name", name);
     template.add("formals", formals);
     template.add("body", block);
+
+    //The CCSP runtime requires a Worspace shutdown after the main function to have run
+    //has finished : Shutdown(<paramWorkspaceName>);
+    //Therefore we need to make sure we append Shutdowns to returns. TODO
+    //The easiest and probably best way to get this acomplished is to change all
+    //these "return;" statements into goto LABEL: where label then properly
+    //shutdowns the workspace: TODO
+
+    //This is the last function of the program make sure to shutdown Worspace!
+    if(name.equals(lastFunction))
+      template.add("paramWorkspaceName", globalWorkspace);
+
 
     return (T) template.render();
   }
@@ -642,11 +674,19 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       Error.error("Type for this name expression in println() not implemented yet...");
       return null;
     }
-
+    //Return our primitive literal as text!
     if(expr instanceof PrimitiveLiteral){
-      String content = ((PrimitiveLiteral)expr).getText();
-      return content.substring(1, content.length() - 1);
+      PrimitiveLiteral pl = (PrimitiveLiteral)expr;
+      String content = pl.getText();
+
+      //If it's a string then we get rid of the " " on the literal.
+      if(pl.getKind() == PrimitiveLiteral.StringKind)
+        return content.substring(1, content.length() - 1);
+
+      //Otherwise we just return it as is :)
+      return content;
     }
+
     //Else it's a binary expression recurse down.
     if(expr instanceof BinaryExpr){
       BinaryExpr be = (BinaryExpr)expr;
@@ -654,8 +694,48 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     }
 
     //Else error for now...
-    Error.error("Expression type for  println() function not implemented yet...");
+    Error.error("Expression type %s println() function not implemented yet...");
     return null;
   }
   //====================================================================================
+  /**
+   * Given a string it will write to the file as the final output of the compiler.
+   * TODO: Should probably figure out a way to let user specify name of output file.
+   * as of now it always writes to "codeGenerated.c"
+   */
+  void writeToFile(String finalOutput){
+    Writer writer = null;
+
+    try{
+      FileOutputStream fos = new FileOutputStream("codeGenerated.c");
+      writer = new BufferedWriter(new OutputStreamWriter(fos, "utf-8"));
+      writer.write(finalOutput);
+    } catch (IOException ex) {
+      println("IOException: Could not write to file for some reason :/");
+    } finally {
+      try {writer.close();} catch(Exception ex) {println("Could not close file handle!");}
+    }
+
+    return;
+  }
+  //====================================================================================
+  /**
+   * Given a hashtable of and the function name it will increment the counter that is the
+   * value of that hashtable at for that function name and returns the value of the entry.
+   * if the entry was empty it will add it to our table with a value of 1. */
+  int incrementEntry(Hashtable<String, Integer> table, String functionName){
+    int returnInt;
+    //If we have the key increment the value at that spot.
+    if(table.containsKey(functionName) == true){
+      Integer integer = table.get(functionName) + 1;
+      table.put(functionName, integer);
+      returnInt = integer;
+    }
+    else{
+      table.put(functionName, 1);
+      returnInt = 1;
+    }
+
+    return returnInt;
+  }
 }
