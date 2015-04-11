@@ -30,5 +30,6 @@ proc void source2() {
 proc void procMain() {
   source1();
   source1();
+  source1();
 }
 

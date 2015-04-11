@@ -61,7 +61,7 @@ public abstract class Visitor<T extends Object> {
 	}
 	public T visitChannelEndType(ChannelEndType ct) {
 		return ct.visitChildren(this);
-	} 
+	}
 	public T visitChannelReadExpr(ChannelReadExpr cr) {
 		return cr.visitChildren(this);
 	}

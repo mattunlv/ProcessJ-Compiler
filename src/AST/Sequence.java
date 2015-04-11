@@ -15,6 +15,7 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 	public Sequence(T element) {
 		super(element);
 		children.add(element);
+                nchildren = 1;
 	}
 
 	public T child(int i) {
@@ -23,12 +24,15 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 
 	public Sequence<T> append(T element) {
 		children.add(element);
+                nchildren += 1;
 		return this;
 	}
 
 	public <S extends T> Sequence<T> merge(Sequence<S> others) {
-		for (T e : others)
-			children.add(e);
+               for (T e : others){
+                 children.add(e);
+                 nchildren += 1;
+               }
 		return this;
 	}
 
@@ -38,6 +42,7 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 
 	public <S extends T> Sequence<T> merge(S other) {
 		children.add(other);
+                nchildren += 1;
 		return this;
 	}
 
@@ -49,5 +54,13 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 	public <W extends Object> W visit(Visitor<W> v) {
 		return v.visitSequence(this);
 	}
+        /**
+         * Given an index it will return the element at that index.
+         * added by Omar
+         */
+        public T getElementN(int n){
+          return children.get(n);
+
+        }
 }
 

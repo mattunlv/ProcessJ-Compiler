@@ -8,15 +8,26 @@ import std.io;
 proc void source(chan<int>.write chanW) {
   int x = 2;
 
-  while (true)
+  while (true){
     chanW.write(x);
-
+    x++;
+  }
   return;
+}
+
+proc void writer(chan<int>.read chanR){
+  while(true){
+    int x = chanR.read();
+    println("Reader read: " + x);
+  }
 }
 
 proc void procMain() {
   chan<int> intChan;
-  source(intChan);
+  par{
+    source(intChan);
+    writer(intChan);
+  }
   return;
 }
 
