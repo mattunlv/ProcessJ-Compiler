@@ -21,17 +21,17 @@ public abstract class Type extends AST {
 
 	/*
 	 * public boolean identical(Type other) {
-                // TODO this was changed 3/29/12 from typename() to signature()
-                if (signature().equals(other.signature()))          
-                        return true;
-                else if ((this instanceof ClassType) && (other instanceof NullType))
-                        return true;
-                else if ((this instanceof NullType) && (other instanceof ClassType))
-                        return true;
-                else
-                        return false;
-        }
-	 */
+   // TODO this was changed 3/29/12 from typename() to signature()
+   if (signature().equals(other.signature()))
+   return true;
+   else if ((this instanceof ClassType) && (other instanceof NullType))
+   return true;
+   else if ((this instanceof NullType) && (other instanceof ClassType))
+   return true;
+   else
+   return false;
+   }
+  */
 
 	public boolean identical(Type other) {
 		System.out.println("Type.identical: " + signature() + " <-> " + other.signature());
@@ -60,14 +60,14 @@ public abstract class Type extends AST {
 				return false; // do not allow assignment of numeric values to chars
 			if (pval.getKind() == PrimitiveType.CharKind)
 				return (pvar.getKind() != PrimitiveType.ByteKind &&
-				pvar.getKind() != PrimitiveType.ShortKind);
+                pvar.getKind() != PrimitiveType.ShortKind);
 			return (pvar.getKind() >= pval.getKind()); // ok to assign char value to none byte/short var
 		} 
 		return false;
 	}
 
 	public boolean isIntegerType() {
-	    return (this instanceof PrimitiveType && ((PrimitiveType)this).getKind() == PrimitiveType.IntKind);
+    return (this instanceof PrimitiveType && ((PrimitiveType)this).getKind() == PrimitiveType.IntKind);
 
 	}
 
@@ -114,9 +114,9 @@ public abstract class Type extends AST {
 	public boolean isRecordType() {
 		return (this instanceof RecordTypeDecl);
 	}
-        public boolean isProtocolType() {
-                return (this instanceof ProtocolTypeDecl) ;
-        }
+  public boolean isProtocolType() {
+    return (this instanceof ProtocolTypeDecl) ;
+  }
 	public boolean isVoidType() {
 		return (this instanceof PrimitiveType && ((PrimitiveType)this).getKind() == PrimitiveType.VoidKind);
 	}
@@ -131,7 +131,7 @@ public abstract class Type extends AST {
 	}
 
 	public boolean isStringType() {
-	    return (this instanceof PrimitiveType && ((PrimitiveType)this).getKind() == PrimitiveType.StringKind);
+    return (this instanceof PrimitiveType && ((PrimitiveType)this).getKind() == PrimitiveType.StringKind);
 	}
 
 	public boolean isFloatType() {

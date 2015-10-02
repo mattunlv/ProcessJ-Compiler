@@ -38,11 +38,21 @@ ChanOutInt(<globalWsName>, <channel>, <expr>)
 >>
 
 
-ChannelReadExpr(globalWsName, channel) ::= <<
+ChannelReadExprInt(globalWsName, channel) ::= <<
 ({ int tempReadVar;
    ChanInInt(<globalWsName>, <channel>, &tempReadVar);
    tempReadVar;
 })
+>>
+
+
+ChannelReadExprTimer(globalWsName, channel) ::= <<
+TimerRead(<globalWsName>)
+>>
+
+
+TimeoutStat(globalWsName, delay) ::= <<
+TimerDelay(<globalWsName>, <delay>)
 >>
 
 
@@ -69,25 +79,28 @@ if( <expr> ) {
 
 
 Invocation(barrierName, wordName, workspaceName, paramNumber, functionName, stackSize,
-           paramWorkspaceName, procParams) ::= <<
-/* Running a proc requires a barrier. */
-LightProcBarrier <barrierName>;
+           paramWorkspaceName, procParams, returnType) ::= <<
+({
+  <if(returnType)><returnType> returnValue;<endif>
+  /* Running a proc requires a barrier. */
+  LightProcBarrier <barrierName>;
 
-/*Initialize barrier by giving it the number of processes that will run with it, in this
-  case just 1 as well as the barrier's address. */
-LightProcBarrierInit (<paramWorkspaceName>, &<barrierName>, 1);
+  /*Initialize barrier by giving it the number of processes that will run with it, in this
+    case just 1 as well as the barrier's address. */
+  LightProcBarrierInit (<paramWorkspaceName>, &<barrierName>, 1);
 
-/*Process for <functionName> function.*/
-word <wordName> = WORKSPACE_SIZE(<paramNumber>, <stackSize>); /*paramCount and stackSize. */
-Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
-/*Initialize process by giving it the number of parameters it will take in as well
-  as it's workspace. */
-<workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
-<!Add parameters if any here !>
-<if(procParams)><procParams; separator = ";\n">;<endif>
+  /*Process for <functionName> function.*/
+  word <wordName> = WORKSPACE_SIZE(<paramNumber>, <stackSize>); /*paramCount and stackSize. */
+  Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
+  /*Initialize process needs: (<globalWorkspace>, ownWorkspace>, paramNumber, stackSize>) */
+  <workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
+  <!Add parameters if any here !>
+  <if(procParams)><procParams; separator = ";\n">;<endif>
 
-/*Run process! */
-LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>)
+  /*Run process! */
+  LightProcStart(<paramWorkspaceName>, &<barrierName>, <workspaceName>, <functionName>);
+  <if(returnType)>returnValue;<else>0;<endif>
+})
 >>
 
 
@@ -95,13 +108,12 @@ InvocationPar(wordName, workspaceName, paramNumber, functionName, stackSize,
            paramWorkspaceName, procParams) ::= <<
 <! Similar to above but used to create par blocks instead and only sets up needed calls
    separate method (below) actually does the calling to the ProcPar. !>
-/*Process for source function.*/
+/*Process for <functionName> function.*/
 word <wordName> = WORKSPACE_SIZE(<paramNumber>, <stackSize>); /*paramCount and stackSize. */
 Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
-/*Initialize process by giving it the number of parameters it will take in as well
-  as it's workspace. */
 <workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
 <!Add parameters if any here !><\\>
+<if(procParams)>/*Our Parameters*/<endif>
 <if(procParams)><procParams; separator = ";\n">;<endif>
 >>
 
@@ -109,7 +121,10 @@ Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordN
 ProcPar(paramWorkspaceName, processNumber, list) ::= <<
 <! list is a list of strings alternating between the workspace form process n and the
    name of process n. Ex: { "ws1", "source", "ws2", "writer", "ws3", "doubleValue",... !>
+
+/*Run all processes here in parallel! */
 ProcPar(<paramWorkspaceName>, <processNumber>, <list; separator = ", ">);
+/*TODO free all memory allocated! */
 >>
 
 
@@ -204,20 +219,98 @@ int main(int argc, char** argv){
 }
 >>
 
+
 prototype(name, workspaceName) ::= "void <name>(Workspace <workspaceName>)"
 
+
 printfNoArgs(string) ::= "printf(\"<string>\")"
+
 
 printf(string, argumentList) ::= <<
 printf("<string>", <argumentList; separator = ", ">)
 >>
 
+
 procParam(globalWsName, wsName, number, param) ::= <<
 ProcParam(<globalWsName>, <wsName>, <number>, <param>)
 >>
+
 
 procGetParam(type, name, number, globalWsName) ::= <<
 <type> <name> = ProcGetParam(<globalWsName>, <number>, <type>)
 >>
 
+
 ChanInit(globalWsName, channelName) ::= "ChanInit(<globalWsName>, &<channelName>)"
+
+
+CompoundStatement(param) ::= "<param>"
+
+
+AltStat(altType, enableChannelList, waitType, disableChannelList,
+        switchStatement) ::= <<
+<! This is the main statement to create our AltCase, we have auxillary functions
+   to fill the rest of it in... !>
+/*Start of Alternative!*/
+<altType>;
+
+<enableChannelList; separator = ";\n">;
+
+/*Do waiting here! */
+<waitType>;
+
+<disableChannelList; separator = ";\n">;
+
+<switchStatement>
+
+/*End of Alternative!*/
+>>
+
+NormalAltType(globalWsName) ::= "Alt(<globalWsName>)"
+TimerAltType(globalWsName) ::= "TimerAlt(<globalWsName>)"
+
+
+NormalWaitType(globalWsName) ::= "AltWait(<globalWsName>)"
+TimerWaitType(globalWsName) ::= "TimerAltWait(<globalWsName>)"
+
+
+AltEnableTimeout(globalWsName, number, time, name) ::= <<
+<! This statement is funny as we actually need a variable to hold our time. !>
+Time <name> = TimerRead(<globalWsName>) + <time>;
+AltEnableTimer(<globalWsName>, <number>, <name>)
+>>
+
+
+AltEnableSkip(globalWsName, number) ::= "AltEnableSkip(<globalWsName>, <number>)"
+AltEnableChannel(globalWsName, number, name) ::= "AltEnableChannel(<globalWsName>, <number>, <name>)"
+
+
+AltDisableTimeout(globalWsName, number, name) ::= <<
+AltDisableTimer(<globalWsName>, <number>, <name>)
+>>
+
+
+AltDisableChannel(globalWsName, number, name) ::= "AltDisableChannel(<globalWsName>, <number>, <name>)"
+AltDisableSkip(globalWsName, number) ::= "AltDisableSkip(<globalWsName>, <number>)"
+
+
+AltSwitch(altEnd, caseList) ::= <<
+<! Our Switch Statement is a list of cases separated by breaks. !>
+switch( <altEnd> ){
+  <caseList; separator ="\n">
+  default:
+    printf("Reached default case of switch statement from Alt\n");
+    printf("This should never happen... dying now X(\n");
+    exit(1);
+}
+>>
+
+AltCase(number, guardToDo, statementList) ::= <<
+case <number>:
+  <guardToDo>;
+  <statementList; separator = ";\n">;
+  break;
+>>
+
+
+AltEnd(globalWsName) ::= "AltEnd( <globalWsName> )"

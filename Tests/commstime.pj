@@ -1,8 +1,6 @@
 import std.io;
 
-public proc void Prefix(int init, 
-                        chan<int>.read in,
-                        chan<int>.write out) {
+public proc void Prefix(int init, chan<int>.read in, chan<int>.write out) {
   int val;
   out.write (init);
   while (true) {
@@ -11,9 +9,7 @@ public proc void Prefix(int init,
   }
 }
 
-public proc void Delta(chan<int>.read in,
-                       chan<int>.write out1,
-                       chan<int>.write out2) {
+public proc void Delta(chan<int>.read in, chan<int>.write out1, chan<int>.write out2) {
   while (true) {
     int val;
     val = in.read();
@@ -22,8 +18,7 @@ public proc void Delta(chan<int>.read in,
   }
 }
 
-public proc void Succ(chan<int>.read in, 
-                      chan<int>.write out) {
+public proc void Succ(chan<int>.read in, chan<int>.write out) {
   while (true) {
     int val;
     val = in.read();
@@ -49,4 +44,3 @@ public proc void Main() {
     Consumer(d.read);
   }
 }
- 

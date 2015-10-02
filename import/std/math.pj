@@ -1,28 +1,10 @@
-#LIBRARY;
-#LANGUAGE "C";
-#INCLUDE "...."
+#pragma LIBRARY;
+#pragma LANGUAGE "C";
+#pragma NATIVELIB "math.h";
+#pragma FILE "math";
 
 package std;
-
-// include/C/std/math.pj
-// lib/C/obj/std_math.o
-
-// non-mapped procedures and constants - constants must be initialized
-// procedures cannot have any body so use just ;
-
-public const double M_E = 2.56;
-// will generate a C constant
-
-public int factorial (int n) ;
-// will generate: int factorial (int c) { }
-
-//
-// These will be mapped using #define
- 
 public native const double M_PI;        /* pi */
-
-//
-
 public native const double M_PI_2;      /* pi/2 */
 public native const double M_PI_4;      /* pi/4 */
 public native const double M_1_PI;      /* 1/pi */ 

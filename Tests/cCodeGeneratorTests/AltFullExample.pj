@@ -1,0 +1,66 @@
+import std.io;
+/**
+ * Testing alternatives! That is, ALT :)
+ */
+//Source that writes the integer 2 with some delay.
+proc void source(chan<int>.write chanW){
+  int x = 2;
+  timer myTimer;
+  int second = 1000000;
+
+  while (true){
+    chanW.write(x);
+    myTimer.timeout(2 * second);
+  }
+
+  return;
+}
+
+//Source that writes the integer 4 with twice the delay.
+proc void source2(chan<int>.write chanW){
+  int x = 4;
+  timer myTimer;
+  int second = 1000000;
+
+  while (true){
+    chanW.write(x);
+    myTimer.timeout(4 * second);
+  }
+
+  return;
+}
+
+//Takes the two channel read ends and alts between them.
+proc void writer(chan<int>.read chan1, chan<int>.read chan2){
+  timer t;
+  int x = 0;
+
+  while(true){
+    alt{
+      x = chan1.read() : {
+        println("Read: " + x + " from channel 1");
+      }
+      x = chan2.read() : {
+        println("Read: " + x + " from channel 2");
+      }
+      t.timeout(1000000) :{
+        println("Timed out...");
+      }
+    }
+  }
+  return;
+}
+
+//Run our processes!
+proc void myMain(){
+  chan<int> chan1;
+  chan<int> chan2;
+
+  par{
+    source(chan1.write);
+    source2(chan2.write);
+    writer(chan1.read, chan2.read);
+  }
+
+  return;
+}

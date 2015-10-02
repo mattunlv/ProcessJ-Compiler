@@ -1,0 +1,15 @@
+import std.io;
+
+proc void myTime(){
+    int second = 1000000;
+    timer myTimer;
+    int i = 0;
+
+    while(true){
+        println(i + " seconds");
+        myTimer.timeout(second);
+        i++;
+    }
+
+    return;
+}

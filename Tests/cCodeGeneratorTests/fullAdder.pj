@@ -1,0 +1,23 @@
+/**
+ * This program simulates the Full Adder as described in the Visual Occam: High Level
+ * Visualization and Design of Process by Mikola Michal Slomka.
+*/
+import std.io;
+
+/**
+ * And Gate.
+ * @param a: first signal.
+ * @param b: second signal.
+ * @return: out channel with result.
+ */
+
+proc andGate(chan<boolean>.read a, chan<boolean>.read b, chan<boole>.write out){
+  boolean x, y;
+  par{
+    x = a.read();
+    y = b.read();
+  }
+
+  out.write(x && y);
+  return;
+}

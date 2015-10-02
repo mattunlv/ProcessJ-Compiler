@@ -1,0 +1,21 @@
+import std.io;
+
+//Source that writes 2 forever.
+proc void source1() {
+
+  for(int i = 0; i < 10; i ++){
+    println("Source1()");
+  }
+
+  return;
+}
+
+proc void procMain() {
+  par{
+    source1();
+    int x = 5;
+    x++;
+  }
+  return;
+}
+

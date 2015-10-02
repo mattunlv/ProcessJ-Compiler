@@ -19,7 +19,7 @@ public class LocalDecl extends Statement implements VarDecl  {
 	public void setType(Type t) {
 		children[0] = t;
 	}
-	
+
 	public String name() {
 		return var().name().getname();
 	}
