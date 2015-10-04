@@ -36,12 +36,12 @@ proc void doubler(chan<int>.read toDoubler, chan<int>.write toWriter){
 proc void procMain() {
   chan<int> toDoubler;
   chan<int> toWriter;
-
   par{
     source(toDoubler);
     writer(toWriter);
     doubler(toDoubler, toWriter);
   }
+
   return;
 }
 

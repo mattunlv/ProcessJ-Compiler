@@ -1,7 +1,7 @@
 package AST;
 import Utilities.Visitor;
 
-public class NameExpr extends Expression {
+public class NameExpr extends Expression{
 
   public boolean rewriteToRecordAccess = false;
   // this variable is set in NameChecker.visitNameExpr if the leading name of
