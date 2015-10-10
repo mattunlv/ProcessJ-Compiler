@@ -40,13 +40,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   private String lastFunction = null;
   private Boolean inLastFunction = false;
   /**
-   * We need to create a: barrier, word, and Worspace variable for each invocation.
-   * We do this by appending the S := "barrier" | "word" | "ws" to the function name
-   * S ++ functionName, this works except when the same function is called multiple
-   * times in the same scope. Therefore this hashtable keeps track of the proper number
-   * to append to the end of the functionName to avoid this as an issue. */
-  private Hashtable<String, Integer> functionCounts;
-  /**
    * This Hash Table is used to create temporary functions with unique names. Everytime
    * we hit a ProcDecl we know we have a new function and are looking at a new scope,
    * hence we might have a ParBlock{...} so we create a new entry in this function and
@@ -89,7 +82,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Load our string templates from specified directory.
     this.group = new STGroupFile(grammarStFile);
     //Create hashtables!
-    this.functionCounts = new Hashtable();
     this.parBlockStmtCounts = new Hashtable();
 
     this.parBlockPrototypes = new LinkedList();
@@ -625,30 +617,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   // Import
   //====================================================================================
   /**
-   * Method invocations have to be treated special by the compiler, when generating the
-   * C equivalent it is not enough to simply call the function. The way that CCSP
-   * requires the function call is as follows:
-
-   * //Running a proc requires a barrier:
-   * LightProcBarrier barrier;
-
-   * //Initialize barrier by giving it the number of processes that will run with it,
-   * //in this case just 1 as well as the barrier's address.
-   * LightProcBarrierInit (wordPointer, &barrier, 1);
-
-   * //Process for source function.
-   * word workspace1 = WORKSPACE_SIZE(0, STACKSIZE); //Zero is the number of arguments.
-   * Workspace ws1 = MAlloc (wordPointer, sizeof (word) * workspace1);
-   * //Initialize process by giving it the number of parameters it will take in as well
-   * //as it's workspace.
-   * ws1 = LightProcInit(wordPointer, ws1, 0, STACKSIZE);
-   * //Argument calls are made here if any in the form of:
-   *  ProcParam(wordPointer, ws1, 0, &a); //Where 0 refers to the ith parameter you want
-   * set and &a refers to the pointer to the parameter that should be passed in.
-
-   * //Run process!
-   * LightProcStart(wordPointer, &barrier, ws1, source);
-
+   * After a conversation with Dr. Fred Barnes and seeing how the nocc compiler does it
+   * it turns out we can call functions normally and we just have to pass in the workspace
+   * as a parameter to our function. For simplicity it will be the first. We then just
+   * have to account for the size of the function as it must fit in the allocated stack
+   * of the process that called it.
 
    * Notice that there is no error checking done by the C code but that's okay as we
    * have done the type checking through the ProcessJ compiler.
@@ -658,12 +631,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * this won't class with other variables as it is inside a new scope. We then pass it by
    * reference where the value will be changed inside the function and the function will
    * return nothing!
-
-   * TODO: In the future we want to only create this type of function through the CCSP if
-   * there is concurrent structure that needs the CCSP API to work e.g. channels, pars
-   * etc. Else we want to just call it through C as it is guranteed no to have any
-   * synchonization points and would have ran all the way anyways. This is done for
-   * efficiency and should be considered a optimization i.e. not a priority.
    */
   public T visitInvocation(Invocation in){ //TODO free allocated memory.
     //TODO: things go horribly wrong when doing something like f(g())...
@@ -672,22 +639,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     String functionName = in.procedureName().getname();
 
-    //Add this invocation to our hashtable and get the proper number to append
-    //as our counter, see functionCounts for explanataion.
-    int fCount = incrementEntry(functionCounts, functionName);
-
     //Print statements are treated differently. TODO: In the future this will change.
     if(functionName.equals("println"))
       return (T) createPrintFunction(in);
 
-    ST template = group.getInstanceOf("Invocation");
-    //Create proper names for variables to avoid name variable already declared.
-    String postFix = functionName + fCount;
-    String barrierName = "barrier" + postFix;
-    String wordName = "word" + postFix;
-    String workspaceName = "ws" + postFix;
     Sequence<Expression> params = in.params();
-    int paramNumber = params.size();
 
     //Get out the type belonging to this function so we know if there is a return value!
     //TODO This causes NPE.
@@ -696,27 +652,22 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //TODO: Finish implemeting type returning. Really tough right now since the type checker
     //doesn't select the proper function.
     Boolean hasReturn = false;
+    String correctTemplate = (!hasReturn) ? "InvocationNoReturn" : "InvocationWihReturn";
 
     //Array list for ProcParams for this invocation.
-    ArrayList<String> procParams = createParameters(params, workspaceName, hasReturn,
-                                                    false);
+    String[] paramArray = (String[]) params.visit(this);
+    ST template = group.getInstanceOf(correctTemplate);
+
+    //Add all our fields to our template!
+    template.add("functionName", functionName);
+    template.add("workspace", globalWorkspace);
+    template.add("procParams", paramArray);
 
     //Handle case with return.
     if(hasReturn == true){
       //TODO once Typechecker works change to comemented out line.
-      //template.add("returnType", returnType);
-      template.add("returnType", "int");
-      paramNumber++;
+      ;//template.add("returnType", returnType);
     }
-    //Add all our fields to our template!
-    template.add("barrierName", barrierName);
-    template.add("wordName", wordName);
-    template.add("workspaceName", workspaceName);
-    template.add("paramNumber", paramNumber);
-    template.add("functionName", functionName);
-    template.add("stackSize", stackSize);
-    template.add("paramWorkspaceName", globalWorkspace);
-    template.add("procParams", procParams);
 
     return (T) template.render();
   }
@@ -769,8 +720,17 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   // ParamDecl
   public T visitParamDecl(ParamDecl pd){
-    //Not used, instead we use createProcGetParams.
-    return null;
+    //TODO: is constant?
+    Log.log(pd.line + ": Visiting a ParamDecl!");
+
+    ST template = group.getInstanceOf("ParamDecl");
+    String name = pd.name();
+    String type = (String) pd.type().visit(this);
+
+    template.add("name", name);
+    template.add("type", type);
+
+    return (T) template.render();
   }
   //====================================================================================
   // ParBlock
@@ -858,35 +818,34 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   // ProcTypeDecl
   public T visitProcTypeDecl(ProcTypeDecl pd){
-    Log.log(pd.line + ": Visiting a Proc Type Decl");
+    String name = (String) pd.name().visit(this);
+    Log.log(pd.line + ": Visiting a Proc Type Decl: " + name);
 
     ST template = group.getInstanceOf("ProcTypeDecl");
-
+    //TODO: Modifiers?
     Sequence<Modifier> modifiers = pd.modifiers();
-    String name = (String) pd.name().visit(this);
     //Set our current function.
     this.currentFunction = name;
+    //All functions are declared void and their return value is returned through
+    //a function parameter. TODO: Why should it be done this way??
     String returnType = "void";
 
     //This is the last function of the program make sure to shutdown Worskpace!
     if(name.equals(lastFunction)){
-      template.add("paramWorkspaceName", globalWorkspace);
+      template.add("last", "");
       inLastFunction = true;
     }
 
     String[] block = (String[]) pd.body().visit(this);
-    //Remember that CCSP expects no arguments in the actual prototype, they are passed
-    //by function calls from their API.
-    //String[] formals = (String[]) pd.formalParams().visit(this);
-    String[] formals = {"Workspace " + globalWorkspace};
-    //Instead parameters are gotten throught the CCSP API:
-    ArrayList<String> getParameters = createProcGetParams(pd.formalParams(), false);
+    String[] formals = (String[]) pd.formalParams().visit(this);
 
-    template.add("getParameters", getParameters);
     template.add("returnType", returnType);
     template.add("name", name);
-    template.add("formals", formals);
+    //We need to check for this to avoid an extra comma...
+    if(formals.length != 0)
+      template.add("formals", formals);
     template.add("body", block);
+    template.add("workspace", globalWorkspace);
 
     inLastFunction = false;
     return (T) template.render();
@@ -1097,9 +1056,12 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   private String getPrototypeString(ProcTypeDecl procedure){
     ST template = group.getInstanceOf("prototype");
     String name = procedure.name().getname();
+    String[] formals = (String[]) procedure.formalParams().visit(this);
 
     template.add("name", name);
-    template.add("workspaceName", globalWorkspace);
+    template.add("workspace", globalWorkspace);
+    if(formals.length != 0)
+      template.add("formals", formals);
 
     return template.render();
   }
@@ -1116,7 +1078,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     ST template = group.getInstanceOf("prototype");
 
     template.add("name", name);
-    template.add("workspaceName", this.globalWorkspace);
+    template.add("workspace", this.globalWorkspace);
 
     return template.render();
   }
@@ -1125,6 +1087,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * We treat the printing function a bit different since we will be calling printf from
    * it. So we need to create the appropriate final string to pass to it.
    * This function is only called from visitInvocation().
+   * TODO this is nor a permanent solution, at some point we plan to do an external call
+   * like nocc does.
    */
   private String createPrintFunction(Invocation in){
     ST template;
