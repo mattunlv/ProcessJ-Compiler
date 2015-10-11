@@ -680,11 +680,15 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     String var = (String) ld.var().visit(this);
     String typeString= (String) ld.type().visit(this);
 
-    //Channels require an initialization.
-    if(ld.type().isChannelType() == true)
+    //Channels require an initialization and we treat the type different when we are
+    //inside a local declr.
+    if(ld.type().isChannelType() == true){
           template.add("channelPart", createChannelInit(var));
-
-    template.add("type", typeString);
+          template.add("type", "Channel");
+    }
+    else
+      template.add("type", typeString);
+    
     template.add("var", var);
     Log.log(template.render());
     return (T) template.render();

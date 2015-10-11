@@ -113,9 +113,8 @@ InvocationPar(wordName, workspaceName, paramNumber, functionName, stackSize,
 word <wordName> = WORKSPACE_SIZE(<paramNumber>, <stackSize>); /*paramCount and stackSize. */
 Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
 <workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
-<!Add parameters if any here !><\\>
-<if(procParams)>/*Our Parameters*/
-<procParams; separator = ";\n">;<endif>
+
+<if(procParams)><procParams; separator = ";\n">;<endif>
 >>
 
 
@@ -124,9 +123,7 @@ ProcPar(paramWorkspaceName, processNumber, list) ::= <<
    name of process n. Ex: { "ws1", "source", "ws2", "writer", "ws3", "doubleValue",... !>
 
 
-/*Run all processes here in parallel! */
 ProcPar(<paramWorkspaceName>, <processNumber>, <list; separator = ", ">);
-/*TODO free all memory allocated! */
 >>
 
 
@@ -140,7 +137,7 @@ for(<init; separator = ",">; <expr>; <incr>){
 ReturnStat(expr) ::= "return<if(expr)> <expr><endif>"
 
 ParBlock(stringStats, procPar ) ::= <<
-{
+{ /*This is our Par Block. Run in parallel. */
   <stringStats; separator = "\n\n">
   <procPar>
 }
@@ -174,8 +171,7 @@ void <name>(Workspace <paramWorkspaceName>){
 
 LocalDecl(type, var, constant, channelPart) ::= <<
 <! If this is channel it must be initialized! !>
-<type> <var><if(channelPart)> = (Channel*)malloc( sizeof(Channel));
-<channelPart><endif>
+<type> <var><if(channelPart)>MyChannel, *<var> = &<var>MyChannel; <channelPart><endif>
 >>
 
 
