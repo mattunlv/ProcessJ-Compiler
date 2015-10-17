@@ -1,4 +1,4 @@
 #! /bin/bash
 
 echo compiling!
-gcc -O3 -std=c99 -fstack-usage -L CCSP/bin/  -I CCSP/include -fomit-frame-pointer -fno-defer-pop -m32 -DKROC_USES_PTHREADS codeGenerated.c -o codeGenerated -lpthread -lccsp -Wl,-rpath,CCSP/bin/
+gcc -O3 -g -std=c99 -fstack-usage -L CCSP/bin/  -I CCSP/include -fomit-frame-pointer -fno-defer-pop -m32 -DKROC_USES_PTHREADS codeGenerated.c -o codeGenerated -lpthread -lccsp -Wl,-rpath,CCSP/bin/

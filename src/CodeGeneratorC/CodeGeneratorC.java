@@ -22,9 +22,6 @@ import NameCollector.*;
  */
 public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
-  /** TODO figure out if this is even needed?? */
-  public static SymbolTable symtab = new SymbolTable();
-
   /** Relative location of our group string template file.*/
   private final String grammarStFile = "src/StringTemplates/grammarTemplates.stg";
   /** Name of the parameter of type Workspace that all function needs*/
@@ -52,13 +49,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * with pointers to NameExpr instead of actual variales.
    */
   private Boolean inParBlock = false;
-  // /**
-  //  * Similar to above, except if we are in the createParameters function we don't
-  //  * want this behavior when we recurse to visitNameExpr().
-  //  */
-  // private Boolean inCreateParameters = false;
-  /** I belive a second in their time units is defined as this value (one million): */
-  private final int second = 1000000;
   /**
    * Keeps track of the current function we are inside of. This is done for ParBlock
    * uses this to generate the name of our <...>ParBlockStmt<...> function name. see
@@ -73,6 +63,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    */
   private LinkedList<String> parBlockPrototypes = null;
   private LinkedList<String> parBlockProcs = null;
+
+  private final String parWsName = "parWs";
   //====================================================================================
   public CodeGeneratorC(){
     Log.log("======================================");
@@ -630,9 +622,9 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * in this compound block we declare a new varaible called returnValue, we are guaranteed
    * this won't class with other variables as it is inside a new scope. We then pass it by
    * reference where the value will be changed inside the function and the function will
-   * return nothing!
+   * return nothing! TODO: Why don't we return the argument normally?
    */
-  public T visitInvocation(Invocation in){ //TODO free allocated memory.
+  public T visitInvocation(Invocation in){
     //TODO: things go horribly wrong when doing something like f(g())...
     //This could probably be fixed by using a temporary variable.
     Log.log(in.line + ": Visiting Invocation (" + in.procedureName().getname() + ")");
@@ -688,7 +680,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     }
     else
       template.add("type", typeString);
-    
+
     template.add("var", var);
     Log.log(template.render());
     return (T) template.render();
@@ -741,8 +733,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   /**
    * This par block wraps every statement inside of it in a function with the right
    * parameters. This is needed as the Par API function can only take in functions.
-   * From here we generate the code inside of the function, which must include a *x
-   * for any type of side effect that happens inside the statement.
+   * From here we generate the code inside of the function, all variables are passed
+   * as pointers to make sure we capture all side effects.
    */
   public T visitParBlock(ParBlock pb){ //TODO: Expressions, f(g());
     Log.log(pb.line + ": Visiting a ParBlock");
@@ -762,6 +754,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     ST procParTemplate = group.getInstanceOf("ProcPar");
     //Template holding the actual block like syntax.
     ST parBlockTemplate = group.getInstanceOf("ParBlock");
+    //Every function will need to know it's index number for since they share an array.
+    int i = 0;
 
     for(Statement myStat : stats){
       //This set contains all the NameExpr for this statement.
@@ -773,19 +767,21 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       int functionNumber = incrementEntry(this.parBlockStmtCounts, currentFunction);
       String functionName = currentFunction + "ParBlockStmt" + functionNumber;
       //Create invocations statements.
-      statList.add( createInvocationPar(functionName, myNames, procParList) );
+      statList.add( createInvocationPar(functionName, myNames, procParList, i) );
       //Now create actual function body!
       parBlockProcs.add( createParBlockProc(functionName, myStat, myNames) );
 
       //Add this to our ParBlockPrototypes.
       parBlockPrototypes.add( getSimplePrototypeString(functionName) );
+      i++;
     }
-
     //By now procParList is populated so we may add it to our template.
     procParTemplate.add("paramWorkspaceName", globalWorkspace);
     procParTemplate.add("processNumber", stats.size());
     procParTemplate.add("list", procParList);
 
+    parBlockTemplate.add("wsArrayName", parWsName);
+    parBlockTemplate.add("wsArraySize", stats.size());
     parBlockTemplate.add("stringStats", statList);
     parBlockTemplate.add("procPar", procParTemplate.render());
 
@@ -1217,69 +1213,38 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   }
   //====================================================================================
   /**
+   * This is only used for paramater passing to functions inside ParBlocks.
    * Given a Sequence<Expression> holding the parameters for a function and the name of
-   * the workspace, it will return the parameters as strings.
-   * Handle invocation paremeters these always look something like:
-   * ProcParam(wordPointer, ws3, 0, &a);
-   * ProcParam(wordPointer, ws3, 1, &b);
+   * our word, it will return the parameters as strings in the following format:
+   * ProcParam(globalWsName, parWs[i], 0, &a);
+   * ProcParam(globalWsName, parWs[i], 1, &b);
    * Where a and b are the paramters that are acutally needed, wordPointer is the name
-   * of the "global" Workspace, ws3 is the name of that function's workspace and the
-   * 0 and 1 are parameter number. */
-  private ArrayList<String> createParameters(Sequence<Expression> params, String wsName,
-                                             boolean hasReturn, Boolean forParBlock){
-    if(forParBlock == true)
-      Log.log("Creating parameters for ParBlock Statement!");
-    else
-      Log.log("Creating parameters for Invocation!");
-
+   * of the "global" Workspace, parWsis the name of that function's workspace and the
+   * 0 and 1 are parameter number.
+   * @param params: Our Parameters to pass in.
+   * @param index: for our wsName.
+   * @return list of our ProcParam statements.
+   */
+  private ArrayList<String> createParametersPar(Sequence<Expression> params, int index){
+    Log.log("Creating parameters for ParBlock Statement!");
     ArrayList<String> paramList = new ArrayList();
-    ST template;
-
-    //this.inCreateParameters = true;
 
     for(int i = 0; i < params.size(); i++){
-      //This assignment is in here since we want template reset for every call.
-      template = group.getInstanceOf("procParam");
+      ST template = group.getInstanceOf("procParam");
       template.add("globalWsName", globalWorkspace);
-      template.add("wsName", wsName);
-      template.add("number", i);
+      template.add("parWsName", parWsName);
+      template.add("index", index);
+      template.add("paramNumber", i);
 
       //Visit the ith parameters and turn into into an appropriate string.
       Expression paramExpr = params.getElementN(i);
       String paramAsString = (String) paramExpr.visit(this);
 
       //For ParBlocks we always want to pass the arguments as pointers.
-      if(forParBlock == true)
-        template.add("param", "&" + paramAsString);
-      else{
-        //Certain types of expressions need an ampersand as it is the adress that should
-        //be passed. TODO: Figure out which other ones to add and add them!
-        //TODO: delete this once the type checker has been done, otherwise this has not been
-        //set and will cause NPE.
-        if(paramExpr.type == null)
-          template.add("param", paramAsString);
-        //else if(paramExpr.type.isChannelType() == true)
-        //  template.add("param", "&" + paramAsString);
-        else
-          template.add("param", paramAsString);
-      }
+      template.add("param", "&" + paramAsString);
       //Create string and add to our list.
       paramList.add(template.render());
     }
-
-    //Add a temp return parameters if there is one.
-    if(hasReturn == true){
-      //In here since we want template reset for every call.
-      template = group.getInstanceOf("procParam");
-      template.add("globalWsName", globalWorkspace);
-      template.add("wsName", wsName);
-      template.add("number", params.size());
-      template.add("param", "&returnValue");
-      //Create string and add to our list.
-      paramList.add(template.render());
-    }
-
-    //this.inCreateParameters = false;
 
     return paramList;
   }
@@ -1326,32 +1291,27 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   }
   //====================================================================================
   /**
-   * Almost just like the visitInvocation method except it only works for statements
-   * inside a ParBlock. The ArrayList<String> procPar is needed as the ParBlock call is
-   * implemented doing a ProcPar(...) call where the parameters must look something like
-   * this:
-
-   * ProcPar(wordPointer, 3, ws1, source, ws2, writer, ws3, doubleValue);
-
-   * Where 3 is the number of functions enrolled in the ProcPar, after that the workspace
-   * and the function corresponding to that function are listed as ProcPar is a variadic
-   * functions. So everytime a new Invocation is added we add these at the end of our list.
-   * The myNames list holds the names of all the NameExpressions in our statement that must
-   * be converted to parameters.
-   * @param functionName: function to call and this name is used for the name of the barrier
-   * as well as the worskpace.
-   * @param myNames: Set of NameExpressions.
+   * This function creates the necessary workspace sizes and passes the parameters to
+   * the CCSP API so we can eventually run ProcPar(...) and run our stuff in parallel.
+   * See InvocationPar in grammarTemplates.stg for information of what it looks like.
+   * @param functionName: The function to be called in parallel.
+   * @param myNames: Array of Expressions representing the parameters to our function.
+   * @param procParList: The final like looks like ProcPar(...) so this list holds
+   * what's insdie the function. So everytime this function is called we append
+   * the workspace and the function call to this list.
+   * @param index: Our ParBlock uses a array of workspaces ws[i] so this is the index
+   * for this statement in the par block.
+   * @return: The setup and parameter passing for this specific statement, and
+   * we append necessary information to procParList.
    */
   String createInvocationPar(String functionName, LinkedList<NameExpr> myNames,
-                             ArrayList<String> procParList){
+                             ArrayList<String> procParList, int index){
     //This template sets up the main code needed for any invocation to run.
     ST template = group.getInstanceOf("InvocationPar");
 
     //No need for fcounts here as we know every name is guarandteed to be unique, since
     //multiple statements will each get their own number.
-    String barrierName = "barrier" + functionName;
     String wordName = "word" + functionName;
-    String workspaceName = "ws" + functionName;
 
     //Turn our set into a Sequece so we can pass it to our createParameters function!
     Sequence<Expression> params = new Sequence();
@@ -1363,20 +1323,21 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //appending a "*" to our statements. So we tell it not to.
     this.inParBlock = false;
     //Array list for ProcParams for this invocation.
-    ArrayList<String> procParams = createParameters(params, workspaceName, false, true);
+    ArrayList<String> procParams = createParametersPar(params, index);
     this.inParBlock = true;
 
     //Add all our fields to our template!
     template.add("wordName", wordName);
-    template.add("workspaceName", workspaceName);
     template.add("paramNumber", myNames.size());
-    template.add("functionName", functionName);
+    template.add("paramSize", stackSize / myNames.size());
     template.add("stackSize", stackSize);
-    template.add("paramWorkspaceName", globalWorkspace);
+    template.add("parWs", parWsName);
+    template.add("index", index);
+    template.add("globalWsName", globalWorkspace);
     template.add("procParams", procParams);
 
     //Update our ProcPar
-    procParList.add(workspaceName);
+    procParList.add(String.format("%s[%d]", parWsName, index));
     procParList.add(functionName);
 
     return template.render();

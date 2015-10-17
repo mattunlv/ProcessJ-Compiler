@@ -105,15 +105,9 @@ InvocationNoReturn(functionName, paramNumber, workspace, procParams) ::= <<
 >>
 
 
-InvocationPar(wordName, workspaceName, paramNumber, functionName, stackSize,
-           paramWorkspaceName, procParams) ::= <<
-<! Similar to above but used to create par blocks instead and only sets up needed calls
-   separate method (below) actually does the calling to the ProcPar. !>
-/*Process for <functionName> function.*/
-word <wordName> = WORKSPACE_SIZE(<paramNumber>, <stackSize>); /*paramCount and stackSize. */
-Workspace <workspaceName> = MAlloc (<paramWorkspaceName>, sizeof (word) * <wordName>);
-<workspaceName> = LightProcInit(<paramWorkspaceName>, <workspaceName>, <paramNumber>, <stackSize>);
-
+InvocationPar(wordName, paramNumber, paramSize, stackSize, parWs, index, globalWsName, procParams) ::= <<
+word <wordName>[WORKSPACE_SIZE(1, 1)];
+<parWs>[<index>] = LightProcInit(<globalWsName>, <wordName>, <paramNumber>, <stackSize>);
 <if(procParams)><procParams; separator = ";\n">;<endif>
 >>
 
@@ -136,8 +130,10 @@ for(<init; separator = ",">; <expr>; <incr>){
 
 ReturnStat(expr) ::= "return<if(expr)> <expr><endif>"
 
-ParBlock(stringStats, procPar ) ::= <<
-{ /*This is our Par Block. Run in parallel. */
+ParBlock(stringStats, procPar, wsArrayName, wsArraySize) ::= <<
+/*Parallel Block*/
+{
+  Workspace <wsArrayName>[<wsArraySize>];
   <stringStats; separator = "\n\n">
   <procPar>
 }
@@ -242,8 +238,8 @@ printf("<string>", <argumentList; separator = ", ">)
 >>
 
 
-procParam(globalWsName, wsName, number, param) ::= <<
-ProcParam(<globalWsName>, <wsName>, <number>, <param>)
+procParam(globalWsName, parWsName, index, paramNumber, param) ::= <<
+ProcParam(<globalWsName>, <parWsName>[<index>], <paramNumber>, <param>)
 >>
 
 
