@@ -14,7 +14,12 @@ import java.math.BigDecimal;
 
 
 /**
- * @author matt
+ * Change Log:
+ *
+ */
+
+/**
+ * @author Matt Pedersen
  *
  */
 public class TypeChecker extends Visitor<Type> {
@@ -33,9 +38,6 @@ public class TypeChecker extends Visitor<Type> {
 	// All visit calls must call resolve	
 	public Type resolve(Type t) {
 		System.out.println("  > Resolve: " + t);
-
-		
-			
 		
 		if (t.isErrorType())
 			return t;
@@ -51,34 +53,32 @@ public class TypeChecker extends Visitor<Type> {
 	}
 	
 	
-	/** ALT CASE */ // ERROR TYPE OK
+	/** ALT CASE */ // ERROR TYPE OK // addError OK
 	public Type visitAltCase(AltCase ac) {
 		println(ac.line + ": Visiting an alt case.");
 		
-		// Check the pre-condition is there is one.
+		// Check the pre-condition if there is one.
 		if (ac.precondition() != null) {
 			Type t = ac.precondition().visit(this);
 			t = resolve(t.visit(this));
 			if (!t.isBooleanType())
-				Error.error(ac.precondition(), "Boolean type expected in precondition of alt case, found: " + t);
+			    Error.addError(ac.precondition(), "Boolean type expected in precondition of alt case, found: " + t, 3035); // test ok
 		}
 		ac.guard().visit(this);
 		ac.stat().visit(this);
 		return null;
 	}
 	
-    // AltStat
+	// AltStat -- Nothing to do
 	
-	/** ArrayAccessExpr */ // ERROR TYPE OK
+	/** ArrayAccessExpr */ // ERROR TYPE OK // addError OK
 	public Type visitArrayAccessExpr(ArrayAccessExpr ae) {
 		println(ae.line + ": Visiting ArrayAccessExpr");
 		Type t = resolve(ae.target().visit(this));
 		if (!t.isArrayType()) {
-			Error.error(ae,"Array type required, but found type " + t.typeName() + ".", false, 3000);
-			ae.type = new ErrorType();
+		    ae.type = Error.addError(ae,"Array type required, but found type " + t.typeName() + ".", 3000); // test ok
 		} else {
 			ArrayType at = (ArrayType)t;
-
 			if (at.getDepth() == 1)
 				ae.type = at.baseType();
 			else
@@ -88,7 +88,7 @@ public class TypeChecker extends Visitor<Type> {
 			// This error does not create an error type cause the baseType is still the 
 			// array expression's type
 			if (!indexType.isIntegerType()) 
-				Error.error(ae,"Array access index must be of integral type.", false, 3001);
+			    Error.addError(ae,"Array access index must be of integral type.", 3001); // test ok
 		}
 		return ae.type;
 	}
@@ -97,11 +97,11 @@ public class TypeChecker extends Visitor<Type> {
     /** ARRAY LITERAL */ // ERROR TYPE OK
 	public Type visitArrayLiteral(ArrayLiteral al) {
 		println(al.line + ": visiting an array literal.");
-		Error.error(al,"Array literal with the keyword 'new'.", false, 3002);
+		Error.error(al,"Array literal with the keyword 'new'.", false, 3002); // TODO: not sure what this is and what it means
 		return null;
 	}
 
-	/** ArrayType */ // ERROR TYPE OK
+	/** ArrayType */ // ERROR TYPE OK // addError OK
 	public Type visitArrayType(ArrayType at) {
 		println(at.line + ": Visiting an ArrayType");
 		println(at.line + ": ArrayType type is " + at);
@@ -123,7 +123,7 @@ public class TypeChecker extends Visitor<Type> {
 			return as.type;
 		}
 		
-		as.right().type = eType; // TODO: wouldn't this have been set in the visit call already?
+		//as.right().type = eType; // TODO: wouldn't this have been set in the visit call already?
 				
 		/** Note: as.left() should be of NameExpr or RecordAccess or ArrayAccessExpr class! */
 
@@ -133,7 +133,8 @@ public class TypeChecker extends Visitor<Type> {
 		switch (as.op()) {
 		case Assignment.EQ : {
 			if (!Type.assignmentCompatible(vType,eType))
-				Error.error(as,"Cannot assign value of type " + eType.typeName() + " to variable of type " + vType.typeName() + ".", false, 3003);
+			    as.type = Error.addError(as,"Cannot assign value of type " + eType.typeName() + 
+						     " to variable of type " + vType.typeName() + ".", 3003); // test OK
 			break;
 		}
 		case Assignment.MULTEQ :
@@ -142,12 +143,17 @@ public class TypeChecker extends Visitor<Type> {
 		case Assignment.PLUSEQ :
 		case Assignment.MINUSEQ : 
 			if (!Type.assignmentCompatible(vType,eType))
-				as.type = Error.addError(as,"Cannot assign value of type " + eType.typeName() + " to variable of type " + vType.typeName() + ".", 3004);
-			if (!eType.isNumericType())
-				as.type = Error.addError(as,"Right hand side operand of operator '" + as.opString() + "' must be of numeric type.", 3005);
-			// No can do !
-			if (!vType.isNumericType())
-				as.type = Error.addError(as,"Left hand side operand of operator '" + as.opString() + "' must be of numeric type.", 3006);
+				as.type = Error.addError(as,"Cannot assign value of type " + eType.typeName() + 
+							 " to variable of type " + vType.typeName() + ".", 3004); // test OK
+			else if (!eType.isNumericType())
+				as.type = Error.addError(as,"Right hand side operand of operator '" + as.opString() +
+							 "' must be of numeric type.", 3005); // test OK
+			else if (!vType.isNumericType() && as.op() != Assignment.PLUSEQ)
+				as.type = Error.addError(as,"Left hand side operand of operator '" + as.opString() + 
+							 "' must be of numeric type.", 3006);
+			else if (as.op() == Assignment.PLUSEQ && !(vType.isNumericType() || vType.isStringType()))
+			    as.type = Error.addError(as,"Left hand side operand of operator '" + as.opString() +
+						     "' must be of numeric or string type.",3036);	
 			break;
 		case Assignment.LSHIFTEQ :
 		case Assignment.RSHIFTEQ :
@@ -368,7 +374,7 @@ public class TypeChecker extends Visitor<Type> {
 		
 		// TODO: targetType MAY be a channelType:
 		// chan<int> c;
-		// c.read();
+		// c.read();   <-------- this does not give the right type
 		
 		Type targetType = resolve(cr.channel().visit(this));
 		if (!(targetType.isChannelEndType() || targetType.isTimerType() || targetType.isChannelType())) {
@@ -376,8 +382,10 @@ public class TypeChecker extends Visitor<Type> {
 			return cr.type;
 		}
 		if (targetType.isChannelEndType()) {
-			 ChannelEndType cet = (ChannelEndType)targetType;
-			 cr.type = cet.baseType();
+		    ChannelEndType cet = (ChannelEndType)targetType;
+		    cr.type = cet.baseType();
+		} else if (targetType.isChannelType()) {
+		    cr.type = ((ChannelType)targetType).baseType();
 		} else {
 			// must be a tiemr type, and timer read() returns values of type long.
 			cr.type = new PrimitiveType(PrimitiveType.LongKind);
@@ -484,10 +492,49 @@ public class TypeChecker extends Visitor<Type> {
 	public Type visitInvocation(Invocation in) {
 		println(in.line + ": visiting invocation (" + in.procedureName() + ")");
 
-                
+		in.params().visit(this);
+
+		// TODO: this should be redone!!!
+		boolean firstTable = true;
+		SymbolTable st = topLevelDecls;
+		Sequence<ProcTypeDecl> candidateProcs = new Sequence<ProcTypeDecl>();
+		while (st != null) {
+		    
+		    SymbolTable procs = (SymbolTable)st.getShallow(in.procedureName().getname());
+		    if (procs != null)
+			for (Object pd : procs.entries.values().toArray())  {
+			    ProcTypeDecl ptd = (ProcTypeDecl)pd;
+			    if (ptd.formalParams().size() == in.params().size()) {
+				// TODO: this should store this somwhere 
+				boolean candidate = true;
+				for (int i=0; i<in.params().size(); i++) {
+				    candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
+				}
+				if (candidate) {
+				    candidateProcs.append(ptd);
+				    Log.log("Possible proc: " + ptd.typeName() + " " + ptd.formalParams());
+				}
+			    }
+			}
+		
+		    if (firstTable) 
+			st = st.getImportParent();
+		    else
+			st = st.getParent();
+		    firstTable = false;
+		}
+
+		// TODO: DO the weeding out of procs here!
+
+		
+		if (candidateProcs.size() == 0)
+		    Error.error(in,"No proc found",false,0000);
+		else if (candidateProcs.size() > 1)
+		    Error.error(in,"more than 1 proc found",false,0000);
+	       
 
 
-        in.params().visit(this);
+
 		// TODO: remember to set in.targetProc;
 		// TODO: remember to set in.type;	
 		
@@ -512,9 +559,17 @@ public class TypeChecker extends Visitor<Type> {
 		// TODO: not sure how to handle error type here 
 		if (nt.type() == null) {
 			// go look up the type and set the type field of nt.
-			Type t = (Type)topLevelDecls.get(nt.name().getname());
+			Type t = (Type)topLevelDecls.getIncludeImports(nt.name().getname());
 			if (t == null) {
-				Error.error(nt,"Undefined named type '" + nt.name().getname() + "'.", false, 3028);
+			    // check if it was a external packaged type (i.e., something with ::)
+			    if (nt.name().resolvedPackageAccess != null) {
+				Log.log("FOUND IT. It was a package type accessed with ::");
+				t = (Type)nt.name().resolvedPackageAccess;
+				// TODO: the file should probably be inserted somewhere .....
+				// TODO: what about anything that types imported with :: refers to ? 
+				//       how should that be handled?
+			    } else
+				Error.error(nt,"Undefined named type '" + nt.name().getname() + "'.", false, 3028);			
 			}
 			nt.setType(t);
 		}
@@ -594,6 +649,10 @@ public class TypeChecker extends Visitor<Type> {
 	// TODO: you can only 'new' stuff that is a mobile -- perhaps this check from the NameChecker should be here!
 	
     // ParamDecl - nothing to do
+	
+	// TODO: Cannot be whole channels.
+
+
     // ParBlock - nothing to do
     // Pragma - nothing to do
 	
@@ -606,8 +665,10 @@ public class TypeChecker extends Visitor<Type> {
 
 		if (pl.getKind() == PrimitiveLiteral.NullKind)
 			pl.type = null; // new NullType(li); TODO: Perhaps we need a null type and a null value too ??
-		else
-			pl.type = new PrimitiveType(pl.getKind());
+		else {
+		    System.out.println("Setting Primitive Literal Type");
+		    pl.type = new PrimitiveType(pl.getKind());
+		}
 	                                                                                                                       
 
 		println(pl.line + ": Primitive literal has type: " + pl.type);

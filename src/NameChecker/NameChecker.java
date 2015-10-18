@@ -223,7 +223,14 @@ public class NameChecker<T extends AST> extends Visitor<T> {
 
   // both Protocol and Record Decls can extend . make sure they only extend the right things
 
-  // ParBlock - nothing to do
+  public T visitParBlock(ParBlock bl) {
+    Log.log(bl.line + ": Visting ParBlock (Opening new scope)");
+    currentScope = currentScope.openScope();
+    super.visitParBlock(bl);
+    currentScope = currentScope.closeScope();
+    Log.log(bl.line + ": Closing scope (end of ParBlock)");
+    return null;
+  }
   // Pragma - nothing to do
   // PrimitiveLiteral - nothing to do
   // PrimitiveType - nothing to do
