@@ -768,7 +768,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       String functionName = currentFunction + "ParBlockStmt" + functionNumber;
       //Create invocations statements.
       statList.add( createInvocationPar(functionName, myNames, procParList, i) );
-      //Now create actual function body!
+      //Now create actual function!
       parBlockProcs.add( createParBlockProc(functionName, myStat, myNames) );
 
       //Add this to our ParBlockPrototypes.
@@ -1054,7 +1054,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * that need to be declared at the top.
    */
   private String getPrototypeString(ProcTypeDecl procedure){
-    ST template = group.getInstanceOf("prototype");
+    ST template = group.getInstanceOf("Prototype");
     String name = procedure.name().getname();
     String[] formals = (String[]) procedure.formalParams().visit(this);
 
@@ -1075,7 +1075,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * @return string of our function.
    */
   private String getSimplePrototypeString(String name){
-    ST template = group.getInstanceOf("prototype");
+    ST template = group.getInstanceOf("Prototype");
 
     template.add("name", name);
     template.add("workspace", this.globalWorkspace);
@@ -1104,9 +1104,9 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Use different string template depending on whether we have any arguments for
     //our printf besides the string literal.
     if(names.size() == 0)
-      template = group.getInstanceOf("printfNoArgs");
+      template = group.getInstanceOf("PrintfNoArgs");
     else{
-      template = group.getInstanceOf("printf");
+      template = group.getInstanceOf("Printf");
       template.add("argumentList", names);
     }
     //Escape character the escape character ;)
@@ -1230,7 +1230,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     ArrayList<String> paramList = new ArrayList();
 
     for(int i = 0; i < params.size(); i++){
-      ST template = group.getInstanceOf("procParam");
+      ST template = group.getInstanceOf("ProcParam");
       template.add("globalWsName", globalWorkspace);
       template.add("parWsName", parWsName);
       template.add("index", index);
@@ -1268,7 +1268,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     for(int i = 0; i < formalParams.size(); i++){
       //In here since we want template reset for every ParmDecl.
-      ST template = group.getInstanceOf("procGetParam");
+      ST template = group.getInstanceOf("ProcGetParam");
       template.add("globalWsName", globalWorkspace);
       template.add("number", i);
 
@@ -1496,5 +1496,4 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     return template.render();
   }
   //====================================================================================
-
 }
