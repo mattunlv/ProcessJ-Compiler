@@ -1,0 +1,10 @@
+import std.io;
+
+proc void myMain(){
+  par{
+    println("Hello World!");
+    println("Hello Program!");
+  }
+
+  return;
+}

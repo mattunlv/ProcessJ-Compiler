@@ -6,7 +6,7 @@ Info() ::= <<
 
 
 Compilation(pragmas, packageName, imports, typeDecls, prototypes, parBlockPrototypes,
-  parBlockProcs, functionToCall) ::= <<
+  parBlockProcs, functionToCall, stackSize) ::= <<
 <! TODO pragmas, packageName, imports !>
 #include \<stdio.h>
 #include \<cif.h>
@@ -20,7 +20,7 @@ Compilation(pragmas, packageName, imports, typeDecls, prototypes, parBlockProtot
 <parBlockPrototypes; separator = ";\n">;
 <endif>
 <CommentBar()>
-<CMainFunction(functionToCall)>
+<CMainFunction(functionToCall, stackSize)>
 <CommentBar()>
 <typeDecls;
  separator ="\n/*========================================================================================*/\n">
@@ -95,17 +95,17 @@ if( <expr> ) {
 InvocationWithReturn(functionName, paramNumber, globalWorkspace, procParams, returnType) ::= <<
 ({
   <returnType> returnValue;
-  functionName(<globalWorkspace>, <procParams; separator =", ">, &returnType);
+  functionName(<globalWorkspace><if(procParams)>, <procParams; separator =", "><endif>, &returnType);
   returnValue;
 })
 >>
 
 InvocationNoReturn(functionName, paramNumber, workspace, procParams) ::= <<
-<functionName>(<workspace>, <procParams; separator =", ">)
+<functionName>(<workspace><if(procParams)>, <procParams; separator =", "><endif>)
 >>
 
 
-InvocationPar(wordName, paramNumber, paramSize, stackSize, parWs, index, globalWsName, procParams) ::= <<
+InvocationPar(wordName, paramNumber, stackSize, parWs, index, globalWsName, procParams) ::= <<
 word <wordName>[WORKSPACE_SIZE(1, 1)];
 <parWs>[<index>] = LightProcInit(<globalWsName>, <wordName>, <paramNumber>, <stackSize>);
 <if(procParams)><procParams; separator = ";\n">;<endif>
@@ -206,7 +206,7 @@ Var(name, init) ::= "<name><if(init)> = <init><endif>"
 CommentBar() ::= "/*======================================================================================*/"
 
 
-CMainFunction(functionToCall) ::= <<
+CMainFunction(functionToCall, stackSize) ::= <<
 int main(int argc, char** argv){
   int ccspResults;
   Workspace ws;
@@ -218,7 +218,7 @@ int main(int argc, char** argv){
     return 1;
   }
 
-  ws = ProcAllocInitial(0, 1024 * 1024);
+  ws = ProcAllocInitial(0, <stackSize>);
   ProcStartInitial(ws, <functionToCall>);
   return 0;
 }
@@ -230,11 +230,8 @@ void <name>(Workspace <workspace><if(formals)>, <formals; separator = ", "><endi
 >>
 
 
-PrintfNoArgs(string) ::= "printf(\"<string>\")"
-
-
-Printf(string, argumentList) ::= <<
-printf("<string>", <argumentList; separator = ", ">)
+ExternPrint(string, argumentList, argumentCount) ::= <<
+ExternalCallN(printf, <argumentCount>, "<string>"<if(argumentList)>, <argumentList; separator = ", "><endif>)
 >>
 
 
@@ -324,3 +321,38 @@ AltEnd(globalWsName) ::= "AltEnd( <globalWsName> )"
 
 
 ParamDecl(type, name) ::= "<type> <name>"
+
+
+WriteChannelMacro() ::= <<
+#define WRITECHANNEL(functionName, type, expr, size) \\
+void functionName(Workspace WP){ \\
+  Channel** c = ProcGetParam(WP, 0, Channel**); \\
+  type temp = (expr); \\
+  ChanOut(WP, *c, &temp, size); \\
+  return; \\
+}
+>>
+
+
+ReadChannelMacro() ::= <<
+#define READCHANNEL(functionName, type, size) \\
+void functionName(Workspace WP){ \\
+  type* x = ProcGetParam(WP, 0, type*); \\
+  Channel** c = ProcGetParam(WP, 1, Channel**); \\
+  ((*x) = ({ type tempX; \\
+     ChanIn(WP, (*c), &tempX, size); \\
+     tempX; \\
+  })); \\
+  return; \\
+}
+>>
+
+
+writeChannel(functionName, type, expr, size) ::= <<
+WRITECHANNEL(<functionName>, <type>, <expr>, <size>)
+>>
+
+
+readChannel(functionName, type, size) ::= <<
+READCHANNEL(<functionName>, <type>, <size>)
+>>

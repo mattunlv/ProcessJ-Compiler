@@ -1,0 +1,3 @@
+proc void myMain(){
+  int x = 5;
+}

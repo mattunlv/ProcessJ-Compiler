@@ -1,0 +1,15 @@
+/**
+ *This is the first attempt to allocate the size of the stack for
+ * a simple program.
+*/
+proc void f(chan<int>.write c, int x){
+  c.write(x);
+  return;
+}
+
+proc void myMain(){
+  chan<int> c;
+  f(c.write, 5);
+
+  return;
+}

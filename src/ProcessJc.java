@@ -2,6 +2,7 @@ import Utilities.Error;
 import Utilities.Visitor;
 import Utilities.Settings;
 import Utilities.SymbolTable;
+import Utilities.Log;
 import Printers.*;
 import Scanner.*;
 import Parser.*;
@@ -10,8 +11,13 @@ import CodeGeneratorC.*;
 import java.io.*;
 import CodeGeneratorJava.*;
 import Library.*;
+import java.util.Hashtable;
+import AllocateStackSize.*;
+import java.util.Set;
+import java.lang.Process;
 
 public class ProcessJc {
+  //========================================================================================
   public static void usage() {
     System.out.println("ProcessJ Version 1.0");
     System.out.println("usage: pjc [-I dir] [-pp language] [-t language] input");
@@ -28,7 +34,7 @@ public class ProcessJc {
     System.out.println("  -sts\tDumps the global symbole table structure.");
     System.out.println("  -help\tPrints this message.");
   }
-
+  //========================================================================================
   static boolean sts = false;
 
 
@@ -45,8 +51,7 @@ public class ProcessJc {
         }
         }
   */
-
-
+  //========================================================================================
   public static void main(String argv[]) {
     AST root = null;
 
@@ -149,8 +154,10 @@ public class ProcessJc {
       ////////////////////////////////////////////////////////////////////////////////
       // CODE GENERATOR
 
-      if (Settings.targetLanguage.equals("c"))
-        c.visit(new CodeGeneratorC<Object>());
+      if (Settings.targetLanguage.equals("c")){
+        //There is a bit of things to do here separate into function below.
+        generateCodeC(c);
+      }
       else if (Settings.targetLanguage.equals("JVM"))
         c.visit(new CodeGeneratorJava<AST>());
       else {
@@ -160,7 +167,7 @@ public class ProcessJc {
       System.out.println("============= S = U = C = C = E = S = S =================");
     }
   }
-
+  //========================================================================================
   public static void displayFile(String name) {
     try {
       BufferedReader br = new BufferedReader(new FileReader(name));
@@ -176,5 +183,106 @@ public class ProcessJc {
       e.printStackTrace();
     }
   }
+  //========================================================================================
+  /**
+   * Given our Compilations, i.e. our abstract syntax tree we will generate the code for
+   * C. We have a few extra steps for we have to generate code, then run gcc with
+   * -fstack-usage flag to get the size required by each function frame. This information
+   * is needed since CCSP requires the stack size necessary. This procedure was taken from
+   * Fred Barnes from his nocc compiler. See  Guppy: Process-Oriented Programming on
+   * Embedded Devices. Frederick R.M. BARNES, School of Computing, University of Kent, UK.
+   * For information on the procedure.
+   */
+  private static void generateCodeC(Compilation c){
+    //Generate code with incorrect stack sizes.
+    c.visit(new CodeGeneratorC<Object>());
 
+    //Now we compile the code with gcc using the -fstack-usage flag to create a su file
+    //that we can read in.
+    try{
+      Log.log("Creating .su file for stack sizes...");
+      Process p = Runtime.getRuntime().exec("./makeSu");
+      p.waitFor();
+    }
+    catch (Exception e){
+      Error.error("Failed to run command \"./makeSu\" to compile with gcc.");
+    }
+
+    //Read in .su file into our hash table.
+    Log.log("\nReading in .su file:");
+    Hashtable<String, Integer> suTable = readSuFile("codeGenerated.su");
+    printTable(suTable);
+
+    //Compute the stack sizes for all functions.
+    Hashtable<String, Integer> sizePerFunction = new Hashtable();
+    c.visit( new AllocateStackSize(sizePerFunction, suTable) );
+
+    //Print final sizes for the user to see:
+    Log.log("Total Size for functions:");
+    printTable(sizePerFunction);
+
+    //Call CodeGeneratorC, in the previous pass the correct stacksizes where set.
+    c.visit(new CodeGeneratorC<Object>(sizePerFunction));
+
+    return;
+  }
+  //========================================================================================
+  /**
+   * given the name of a .su file created by gcc it will read the file and return a hash
+   * table with the entries in our hashtable. Maybe place this function as a static public
+   * under the AllocateStackSize/ folder?? TODO.
+   * @param fileName: name of *.su file to read.
+   * @param suTable: HashTable of values to read.
+   */
+  public static Hashtable<String, Integer> readSuFile(String fileName){
+    Hashtable<String, Integer> suTable = new Hashtable();
+
+    try (BufferedReader br = new BufferedReader(new FileReader(fileName))){
+      String currentLine;
+
+      while( (currentLine = br.readLine()) != null ){
+        String[] columns = currentLine.split("\\t");
+        String extendedName = columns[0];
+        Integer size = Integer.parseInt(columns[1]);
+
+        //extendedName contains something that looks like this:
+        //ccsp_cif.h:136:20:ChanInit
+        //We only want the name, i.e. the last part.
+        String[] extendedSplit = extendedName.split(":");
+        int k = extendedSplit.length;
+        String name = extendedSplit[k - 1];
+
+        suTable.put(name, size);
+      }
+
+    }
+    catch (IOException e){
+      Error.error("Failed to read in .su file!");
+    }
+
+    return suTable;
+  }
+  //========================================================================================
+  /**
+   * Pretty prints a hash table with fancy formatting.
+   * @param table: HashTable of values to print.
+   * @return void.
+   */
+  public static void printTable(Hashtable<String, Integer> table){
+    String dashLine = "---------------------------------------------------------";
+    Log.log(dashLine);
+    Log.log(String.format("|%-25s\t|\t%15s\t|", "functionName", "Size"));
+    Log.log(dashLine);
+    Set<String> myKeys = table.keySet();
+
+    for(String name: myKeys){
+      int size = table.get(name);
+      String msg = String.format("|%-25s\t|\t%15d\t|", name, size);
+      Log.log(msg);
+    }
+    Log.log(dashLine);
+
+    return;
+  }
+  //========================================================================================
 }

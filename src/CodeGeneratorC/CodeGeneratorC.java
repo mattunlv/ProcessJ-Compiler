@@ -26,8 +26,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   private final String grammarStFile = "src/StringTemplates/grammarTemplates.stg";
   /** Name of the parameter of type Workspace that all function needs*/
   private final String globalWorkspace = "WP";
-  /** To figure out in more detail and perhaps chose best value at runtime?*/
-  private final int stackSize = 2000;
   /** Object containing a group of  string templates. */
   private STGroup group;
   /**
@@ -59,16 +57,24 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * These two variables are responsible for holding the auto generated functions
    * created by ParBlocks, one holds the prototypes for the top of the program while the
    * other holds the actual declaration. Then at VisitCompilation they are added to our
-    * template.
+   * template.
    */
   private LinkedList<String> parBlockPrototypes = null;
   private LinkedList<String> parBlockProcs = null;
 
   private final String parWsName = "parWs";
+
+  /** This table is used to allocate the stack size needed per function. */
+  Hashtable<String, Integer> sizePerFunction;
   //====================================================================================
+  /**
+   * This is the constructor to be called the first time around to create the initial
+   * code hence it requires no table of sizes.
+   */
   public CodeGeneratorC(){
     Log.log("======================================");
     Log.log("* C O D E   G E N E R A T O R  ( C )  *");
+    Log.log("*        F I R S T  P A S S           *");
     Log.log("======================================");
 
     //Load our string templates from specified directory.
@@ -78,6 +84,30 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     this.parBlockPrototypes = new LinkedList();
     this.parBlockProcs = new LinkedList();
+    sizePerFunction = null;
+
+    return;
+  }
+  //====================================================================================
+  /**
+   * This constructor is called for the second pass. It is used to allocate the final size
+   * of the each stack.
+   * @param sizePerFunction: The size of the stack required by each function called.
+   */
+  public CodeGeneratorC(Hashtable<String, Integer> sizePerFunction){
+    Log.log("======================================");
+    Log.log("* C O D E   G E N E R A T O R  ( C )  *");
+    Log.log("*       S E C O N D  P A S S          *");
+    Log.log("======================================");
+
+    //Load our string templates from specified directory.
+    this.group = new STGroupFile(grammarStFile);
+    //Create hashtables!
+    this.parBlockStmtCounts = new Hashtable();
+
+    this.parBlockPrototypes = new LinkedList();
+    this.parBlockProcs = new LinkedList();
+    this.sizePerFunction = sizePerFunction;
 
     return;
   }
@@ -419,10 +449,10 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     Sequence<Type> typeDecls = c.typeDecls();
 
     //Iterate over the sequence only collecting the procType arguments. This is needed
-    //to know the name of the last functions as well as populate our parBlockStmtCounts.
-    for (int i = 0; i < typeDecls.size(); i++) //TODO: Null pointer exception if program is empty?
-      if (typeDecls.child(i) instanceof ProcTypeDecl){
-        ProcTypeDecl current = (ProcTypeDecl)typeDecls.child(i);
+    //to know the name of the last functions.
+    for(Type type : typeDecls)
+      if (type instanceof ProcTypeDecl){
+        ProcTypeDecl current = (ProcTypeDecl)type;
         String prototypeName = getPrototypeString(current);
 
         prototypes.add(prototypeName);
@@ -434,6 +464,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //TODO add the pragmas, packageName and imports later!
     //Recurse to all children getting strings needed for this Class' Template.
     String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
+    int stackSize = getSizeOfFunction(sizePerFunction, lastFunction);
 
     //This is where functions are created as they are procedure type.
     template.add("prototypes", prototypes);
@@ -442,6 +473,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //we do that here by specifiying which function to call.
     template.add("functionToCall", lastFunction);
     template.add("parBlockPrototypes", parBlockPrototypes);
+    template.add("stackSize", stackSize);
     template.add("parBlockProcs", parBlockProcs);
 
     //Finally write the output to a file
@@ -653,7 +685,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Add all our fields to our template!
     template.add("functionName", functionName);
     template.add("workspace", globalWorkspace);
-    template.add("procParams", paramArray);
+    if(paramArray.length != 0)
+      template.add("procParams", paramArray);
 
     //Handle case with return.
     if(hasReturn == true){
@@ -682,7 +715,6 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       template.add("type", typeString);
 
     template.add("var", var);
-    Log.log(template.render());
     return (T) template.render();
   }
   //====================================================================================
@@ -1085,34 +1117,28 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   /**
    * We treat the printing function a bit different since we will be calling printf from
-   * it. So we need to create the appropriate final string to pass to it.
+   * an externCall. So we need to create the appropriate final string to pass to it.
    * This function is only called from visitInvocation().
-   * TODO this is nor a permanent solution, at some point we plan to do an external call
-   * like nocc does.
+   * The string we create should look something like this:
+   * ExternalCallN(fprintf, 4, stderr, "GuppyStringAssign: src=%p *dst=%p\n", src, *dst);
    */
   private String createPrintFunction(Invocation in){
-    ST template;
-    //For some reason we need to flush we want input to actually print. TODO?
-    String fflush = ";\nfflush(NULL)";
+    ST template = group.getInstanceOf("ExternPrint");
     //println() is a function of only one argument.
     Expression expr = in.params().child(0);
     //The overall type of  expr is a string but may have other types that are
     //concatenated.
     LinkedList<String> names = new LinkedList();
     String printfStr = makePrintfStr(expr, names);
+    int size = names.size();
 
-    //Use different string template depending on whether we have any arguments for
-    //our printf besides the string literal.
-    if(names.size() == 0)
-      template = group.getInstanceOf("PrintfNoArgs");
-    else{
-      template = group.getInstanceOf("Printf");
+    if(names.size() != 0)
       template.add("argumentList", names);
-    }
+    template.add("argumentCount", size + 1);
     //Escape character the escape character ;)
     template.add("string", printfStr + "\\n");
 
-    return template.render() + fflush;
+    return template.render();
   }
   //====================================================================================
   /**
@@ -1325,11 +1351,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Array list for ProcParams for this invocation.
     ArrayList<String> procParams = createParametersPar(params, index);
     this.inParBlock = true;
+    int stackSize = getSizeOfFunction(sizePerFunction, functionName);
 
     //Add all our fields to our template!
     template.add("wordName", wordName);
     template.add("paramNumber", myNames.size());
-    template.add("paramSize", stackSize / myNames.size());
     template.add("stackSize", stackSize);
     template.add("parWs", parWsName);
     template.add("index", index);
@@ -1494,6 +1520,23 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     template.add("getParameters", getParameters);
 
     return template.render();
+  }
+  //====================================================================================
+  /**
+   * Given a hashtable it will look up function name. If the table is null (as it would
+   * be on the first pass, or the entry is not there return -1. Else return the size for
+   * this function.
+   * @param table: table of function to size mappings.
+   * @functionName: name to look up.
+   */
+  int getSizeOfFunction(Hashtable<String, Integer> table, String functionName){
+    if(table == null)
+      return -1;
+
+    if(table.containsKey(functionName) == false)
+      Error.error("Function: " + functionName + " not in the sizePerFunction table!");
+
+    return table.get(functionName);
   }
   //====================================================================================
 }

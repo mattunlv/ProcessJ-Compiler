@@ -253,17 +253,19 @@ public class TypeChecker extends Visitor<Type> {
     case BinaryExpr.MINUS:
     case BinaryExpr.MULT:
     case BinaryExpr.DIV:
-    case BinaryExpr.MOD: {
+    case BinaryExpr.MOD:
       if (lType.isNumericType() && rType.isNumericType()) {
         be.type = new PrimitiveType(PrimitiveType.ceiling((PrimitiveType)lType, (PrimitiveType)rType));
 
         if (be.type.isByteType() || be.type.isShortType() || be.type.isCharType())
           be.type = new PrimitiveType(PrimitiveType.IntKind);
       }
+      else if ((lType.isStringType() && (rType.isNumericType() || rType.isBooleanType() || rType.isStringType())) ||
+               (rType.isStringType() && (lType.isNumericType() || lType.isBooleanType() || lType.isStringType())))
+        be.type = new PrimitiveType(PrimitiveType.StringKind);
       else
         be.type = Error.addError(be,"Operator '" + op + "' requires operands of numeric type.", 3015);
       break;
-    }
       // << >> >>>:
     case BinaryExpr.LSHIFT:
     case BinaryExpr.RSHIFT:
@@ -536,6 +538,9 @@ public class TypeChecker extends Visitor<Type> {
 
 
     // TODO: remember to set in.targetProc;
+    /*This will not always work, but for now we need this to test the allocator. Once the type
+     *checker is completely this will alway work.*/
+    in.targetProc = candidateProcs.getElementN(0);
     // TODO: remember to set in.type;
 
     // mobile procedures are special ....... all the interfaces of a mobile should be considered

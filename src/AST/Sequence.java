@@ -56,7 +56,8 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 	}
         /**
          * Given an index it will return the element at that index.
-         * added by Omar
+         * added by Omar. This is repeat of child function at some point I will get rid of
+         * this and use only child(). TODO.
          */
         public T getElementN(int n){
           return children.get(n);
