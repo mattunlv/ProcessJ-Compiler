@@ -91,7 +91,9 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   /**
    * This constructor is called for the second pass. It is used to allocate the final size
-   * of the each stack.
+   * of the each stack. The functions that require manual stack allocation know who they are
+   * they will look up their name in the sizePerFunction Hashtable and allocate the proper
+   * size. These values were created by the AllocateStackSize class.
    * @param sizePerFunction: The size of the stack required by each function called.
    */
   public CodeGeneratorC(Hashtable<String, Integer> sizePerFunction){
@@ -465,6 +467,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Recurse to all children getting strings needed for this Class' Template.
     String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
     int stackSize = getSizeOfFunction(sizePerFunction, lastFunction);
+    //Divide by four as we want the size in words not bytes.
+    stackSize = (int) Math.ceil(stackSize / 4.0);
 
     //This is where functions are created as they are procedure type.
     template.add("prototypes", prototypes);
@@ -1252,7 +1256,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * @return list of our ProcParam statements.
    */
   private ArrayList<String> createParametersPar(Sequence<Expression> params, int index){
-    Log.log("Creating parameters for ParBlock Statement!");
+    Log.log("   Creating parameters for ParBlock Statement!");
     ArrayList<String> paramList = new ArrayList();
 
     for(int i = 0; i < params.size(); i++){
@@ -1289,7 +1293,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    */
   private ArrayList<String> createProcGetParams(Sequence<ParamDecl> formalParams,
                                                 Boolean forParBlock){
-    Log.log("Creating PrcGetParams(...) for Invocation.");
+    Log.log("   Creating ProcGetParams(...) for Invocation.");
     ArrayList<String> paramList = new ArrayList();
 
     for(int i = 0; i < formalParams.size(); i++){
@@ -1352,6 +1356,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     ArrayList<String> procParams = createParametersPar(params, index);
     this.inParBlock = true;
     int stackSize = getSizeOfFunction(sizePerFunction, functionName);
+    //Divide by four as we want the size in words not bytes.
+    stackSize = (int) Math.ceil(stackSize / 4.0);
 
     //Add all our fields to our template!
     template.add("wordName", wordName);
@@ -1501,7 +1507,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    */
   String createParBlockProc(String functionName, Statement myStat,
                             LinkedList<NameExpr> myNames){
-    Log.log("Creating Par Block Proc for Statement named: " + functionName);
+    Log.log("   Creating Par Block Proc for Statement named: " + functionName);
     ST template = group.getInstanceOf("ParBlockProc");
     //We will create a sequence of ParamDecl so we can use our already existing
     //createProcGetParams() function.
@@ -1523,18 +1529,22 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   }
   //====================================================================================
   /**
-   * Given a hashtable it will look up function name. If the table is null (as it would
-   * be on the first pass, or the entry is not there return -1. Else return the size for
-   * this function.
+   * Given the hashtable containing the size of each function in bytes, it will look up
+   * function name. If the table is null (as it would be on the first pass) return 0, this
+   * needs to be zero as the su table takes this numer into account as it is used as the
+   * size of a stack allocated array. Else return the size for this function.
    * @param table: table of function to size mappings.
    * @functionName: name to look up.
    */
   int getSizeOfFunction(Hashtable<String, Integer> table, String functionName){
     if(table == null)
-      return -1;
+      return 0;
 
-    if(table.containsKey(functionName) == false)
-      Error.error("Function: " + functionName + " not in the sizePerFunction table!");
+    if(table.containsKey(functionName) == false){
+      String error = "Function: " + functionName + " not in the sizePerFunction table!"
+        +  " This is a bug in the compiler, this should not happen.";
+      Error.error(error);
+    }
 
     return table.get(functionName);
   }

@@ -2,8 +2,8 @@ import std.io;
 
 proc void myMain(){
   par{
-    int x = 5 + 5;
-    int y = 5 - 5;
+    int x = 5;
+    int y = 6;
   }
 
   return;

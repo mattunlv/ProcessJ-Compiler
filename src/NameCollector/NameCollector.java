@@ -27,7 +27,7 @@ public class NameCollector extends Visitor<Object>{
    @param myNames: Java LinkedList to fill with NameExpr's.
    */
   public NameCollector(LinkedList<NameExpr> myNames){
-    Log.log("Created NameCollector for statement");
+    Log.log("   Created NameCollector for statement");
     if(myNames == null)
       Error.error("Null list passed to NameCollector Visitor!");
 

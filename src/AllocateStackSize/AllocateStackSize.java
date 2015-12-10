@@ -15,6 +15,8 @@ import NameCollector.*;
  * bytes needed by that function This includes the size for all functions that this function
  * may call. This way when the CodeGeneratorC is ran again that compiler pass will look at
  * the hashtable and input the correct values. TODO: Will die horribly with recursion.
+ * Notice all sizes are measured in bytes but the CCSP API wants the final results in words.
+ * This is handled by the code generator.
  */
 //========================================================================================
 public class AllocateStackSize extends Visitor<Void>{
@@ -46,6 +48,7 @@ public class AllocateStackSize extends Visitor<Void>{
   private final int ccspKernelCallSize = 32;
   private final int printfSize = 64; //ExternalCallN = 32 + 32 kernell call.
   private final int wsSize = 4;
+  private final int wordSize = 4;
 //========================================================================================
   /**
    * Constructor for our visitor, given a HashTable it will populate it with mappings of
@@ -201,7 +204,7 @@ public class AllocateStackSize extends Visitor<Void>{
     nodesPerFunction.addNode(currentFunction, vt);
 
     int value = suTable.get("ChanInInt");
-    tag = "Channel ReadExpr (ChanInInit) at: " + cr.line + ".";
+    tag = "Channel ReadExpr (ChanInInt) at: " + cr.line + ".";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
 
     //Call chain specifies we must call ChanIn.
@@ -212,6 +215,38 @@ public class AllocateStackSize extends Visitor<Void>{
     //ChannelIn calls the ccsp kernel.
     value = suTable.get("ccsp_kernel_call");
     tag = "Channel ReadExpr (ccsp_kerner_call) at: " + cr.line + ".";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
+
+    //Call chain specifies we must call ChanInWord.
+    value = suTable.get("ChanInWord");
+    tag = "Channel ReadExpr (ChanInWord) at: " + cr.line + ".";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
+
+    return null;
+  }
+  //========================================================================================
+  /**
+   * TODO: As of now it calls ChanOutInt but this needs to be generalized for all types
+   * using a different function.
+   */
+  public Void visitChannelWriteStat(ChannelWriteStat cw){
+    Log.log(cw.line + ": Visiting a ChannelWriteStat.");
+    /*TODO: This needs to be changed to allocate as much memory as we need for this
+      specific type.*/
+    int typeSize = 4;
+
+    int value = suTable.get("ChanOutInt");
+    String tag = "ChannelWriteStat (ChanOutInt) at: " + cw.line + ".";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
+
+    //Call chain specifies we must call ChanIn.
+    value = suTable.get("ChanOutWord");
+    tag = "ChannelWriteStat (ChanOutWord) at: " + cw.line + ".";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
+
+    //ChannelIn calls the ccsp kernel.
+    value = suTable.get("ccsp_kernel_call");
+    tag = "ChannelWriteStat (ccsp_kerner_call) at: " + cw.line + ".";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
 
     return null;
@@ -241,20 +276,23 @@ public class AllocateStackSize extends Visitor<Void>{
       //entry in our hash table and get the name.
       incrementEntry(parBlockStmtCounts, callerFunction, 1);
       int nameNumber = parBlockStmtCounts.get(callerFunction);
+      //This must be set to the class variable current function as the .visit(this) will
+      //expect it to be! So don't change :b
       currentFunction = callerFunction + "ParBlockStmt" + nameNumber;
       String tag;
 
       //Count the variables used as these will be passed as in as pointers.
       LinkedList<NameExpr> myNames = new LinkedList();
       myStat.visit(new NameCollector(myNames));
+      int argumentCount = myNames.size();
 
-      //Every argument that is passed in will be passed in through a ProcPar() call.
-      //We account for that size here.
-      int argumentSize = myNames.size() * pointerSize;
-      tag = "Size of arguments for function. Count: " + myNames.size();
+      //Every arg will be passed through a ProcPar() call, we account for that size here.
+      //ProcGetParam is not needed as it's actually a macro.
+      int argumentSize = argumentCount * pointerSize;
+      tag = "Size of arguments for function. Count: " + argumentCount;
       nodesPerFunction.addNode(currentFunction, new ValueAndTag(argumentSize, tag));
 
-      tag = "Workspace size as extra parameter to function";
+      tag = "Workspace size as extra parameter to function.";
       nodesPerFunction.addNode(currentFunction, new ValueAndTag(wsSize, tag));
 
       int size = suTable.get(currentFunction);
@@ -264,46 +302,56 @@ public class AllocateStackSize extends Visitor<Void>{
       //Recurse on all our children and add their values.
       myStat.visit(this);
 
-      int totalSum = argumentSize + nodesPerFunction.sumEntries(currentFunction);
-      //Add this value to the function which contain this ParBlock.
-      tag = "ParBlock call for: " + currentFunction;
-      nodesPerFunction.addNode(callerFunction, new ValueAndTag(totalSum, tag));
+      /*Workspace allocated for this function. based from the WORKSPACE_SIZE:
+        #define WORKSPACE_SIZE(args, stack)                             \
+	((args) + (stack) + CIF_PROCESS_WORDS + 2 + CIF_STACK_LINKAGE + (CIF_STACK_ALIGN - 1))
+
+        After the  preprocessor:
+        ((args) + (stack) + 8 + 2 + 1 + (4 - 1))
+
+        The 14 and the arguments are not taken into account, as these are static values
+        which can be computed before AllocateStackSize is called, hence they are counted
+        in the su table entry for the function which contains this Par block. Only thing
+        we have to worry about is the stack argument which is exactly what this class
+        attempts to allocate.
+      */
+
+      //Add value to the function which contain this ParBlock.
+      int parStatmentSize = nodesPerFunction.sumEntries(currentFunction);
+      tag = String.format("Function %s call in parallel.", currentFunction);
+      nodesPerFunction.addNode(callerFunction, new ValueAndTag(parStatmentSize, tag));
     }
 
+    //This line is super important! We are back to allocating for our caller function.
     currentFunction = callerFunction;
+
     int size; String tag;
 
     size = suTable.get("ProcPar");
-    tag = "SuTable entry for ProcPar";
+    tag = "SuTable entry for ProcPar.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
 
-    //We created a Workspace parWs[n]; where n is the number of statement in the ParBlock.
-    size = pointerSize * pb.nchildren;
-    tag = "Workspace parWs[n] size. n = " + pb.nchildren;
-    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
-
-    //This is based from the WORKSPACE_SIZE macro which I'm not sure how it works. TODO.
-    size = pointerSize * pb.nchildren;
-    tag = "word array[TODO] This happens " + pb.nchildren + " times.";
-    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+    //Note we created a Workspace parWs[n]; yet this is determinded statically based on
+    //the number of statments in our parBlock so it is accounted for in the size of the
+    //su table since it's a stack allocated array.
 
     //Light Proc init size.
     size = suTable.get("LightProcInit");
-    tag = "LightProcInit size.";
+    tag = "Parblocks call: LightProcInit; LightProcInit size.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
 
     //ProcPar calls the following:
     //LightProcBarrierInit.
     size = suTable.get("LightProcBarrierInit");
-    tag = "LightProcBarrierInit size.";
+    tag = "Procar calls LightProcBarrierInit: LightProcBarrierInit size.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
     //LightProcStart.
     size = suTable.get("LightProcStart");
-    tag = "LightProcStart size.";
+    tag = "ProcPar calls LightProcStart: LightProcStart size.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
     //LightProcBarrierWait.
     size = suTable.get("LightProcBarrierWait");
-    tag = "LightProcBarrierWait size.";
+    tag = "ProcPar calls LightProcBarrierWait: LightProcBarrierWait size.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
 
     return null;
