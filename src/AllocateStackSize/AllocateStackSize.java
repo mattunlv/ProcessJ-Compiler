@@ -428,6 +428,8 @@ class LocalsAndParamsSize extends Visitor<Void>{
       byteSize = ((PrimitiveType) type).byteSizeC();
     else if(type instanceof ChannelType)
       byteSize = ((ChannelType) type).byteSizeC();
+    else if(type instanceof ArrayType)
+      byteSize = ((ArrayType) type).byteSizeC();
     else
       Error.error(ld, "Could not figure out byte size of Local Variable.");
 
@@ -451,6 +453,8 @@ class LocalsAndParamsSize extends Visitor<Void>{
       byteSize = ((ChannelType) type).byteSizeC();
     else if(type instanceof ChannelEndType)
       byteSize = ((ChannelEndType) type).byteSizeC();
+    else if (type instanceof ArrayType)
+      byteSize = ((ArrayType) type).byteSizeC();
     else
       Error.error(pd, "Could not figure out byte size of Local Variable.");
 

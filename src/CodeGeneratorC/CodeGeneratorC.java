@@ -239,10 +239,26 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   }
   //====================================================================================
   // ArrayAccessExpr
+
+  public T visitArrayAccessExpr(ArrayAccessExpr ae) {
+    Log.log(ae.line + ": Visiting an ArrayAccessExpr!");
+    String myArrayTarget = (String)ae.target().visit(this);
+    String myIndex = (String)ae.index().visit(this);
+
+    return (T) ("(" + myArrayTarget + "[" + myIndex + "])");
+  }
+
   //====================================================================================
   // ArrayLiteral
   //====================================================================================
   // ArrayType
+
+  public T visitArrayType(ArrayType at) {
+    Log.log(at.line + ": Visiting an ArrayType!");
+    String baseType = (String)at.baseType().visit(this);
+    return (T) (baseType + "*");
+  }
+
   //====================================================================================
   // Assignment
   public T visitAssignment(Assignment as){
@@ -747,6 +763,23 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   }
   //====================================================================================
   // NewArray
+
+  public T visitNewArray(NewArray ne) {
+    Log.log(ne.line + ": Visiting a NewArray!");
+
+    ST template = group.getInstanceOf("NewArray");
+    String myType = (String)ne.baseType().visit(this);
+    Sequence<Expression> sizeExp = ne.dimsExpr();
+    // TODO: Expand to n-dimensional arrays
+    String[] sizeString = (String[])sizeExp.visit(this);
+
+    template.add("globalWsName", globalWorkspace);
+    template.add("type", myType);
+    template.add("size", sizeString[0]);
+
+    return (T) template.render();
+  }
+
   //====================================================================================
   // NewMobile
   //====================================================================================

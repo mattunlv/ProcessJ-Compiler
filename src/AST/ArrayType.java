@@ -4,6 +4,8 @@ import Utilities.Visitor;
 
 public class ArrayType extends Type {
 
+  public static final int byteSizeC = 4;
+
 	private int depth = 0; // How many set of [ ] were there?
 
 	public ArrayType(Type baseType, int depth) {
@@ -22,6 +24,9 @@ public class ArrayType extends Type {
         // TODO: be careful about depth .... should it be set back to 0 or should it reflect the correct value.
     }
 
+  public int byteSizeC() {
+    return byteSizeC;
+  }
 
 	public int getDepth() {
 		return depth;

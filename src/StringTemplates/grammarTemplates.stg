@@ -12,6 +12,8 @@ Compilation(pragmas, packageName, imports, typeDecls, prototypes, parBlockProtot
 #include \<cif.h>
 #include \<stdbool.h>
 
+#define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+
 <CommentBar()>
 <if(prototypes)><prototypes; separator = ";\n">;<endif>
 <if(parBlockPrototypes)><\\>
@@ -319,6 +321,7 @@ case <number>:
 
 AltEnd(globalWsName) ::= "AltEnd( <globalWsName> )"
 
+NewArray(globalWsName, type, size) ::= "(<type>*) MAlloc(<globalWsName>, MAX((sizeof(<type>) * <size>) / 4, 1))"
 
 ParamDecl(type, name) ::= "<type> <name>"
 
