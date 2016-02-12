@@ -8,9 +8,9 @@ import java.util.*;
 //========================================================================================
 /**
  * This Class implementes a visitor that will take in expressions and collect only the
- * unique NameExpr, this is needed by our ParBlock. The ParBlock can have arbitrary
- * statements in it. All these statementes must be wrapped in functions, hence all the
- * NamesExpr used by these statements need to be passed into our function through the
+ * unique NameExpr, this is needed by our ParBlock and ParFor. Both of these can have
+ arbitrary statements in it. All these statementes must be wrapped in functions, hence all
+ * the NamesExpr used by these statements need to be passed into our function through the
  * parameters. Notice we don't really use the <Object> type... but it's required.
  */
 public class NameCollector extends Visitor<Object>{

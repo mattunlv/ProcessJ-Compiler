@@ -194,6 +194,9 @@ public class ProcessJc {
    * For information on the procedure.
    */
   private static void generateCodeC(Compilation c){
+    //Return value of ./makeSu call.
+    int returnValue = -1;
+
     //Generate code with incorrect stack sizes.
     c.visit(new CodeGeneratorC<Object>());
 
@@ -203,10 +206,19 @@ public class ProcessJc {
       Log.log("Creating .su file for stack sizes...");
       Process p = Runtime.getRuntime().exec("./makeSu");
       p.waitFor();
+      returnValue = p.exitValue();
     }
     catch (Exception e){
       Error.error("Failed to run command \"./makeSu\" to compile with gcc.");
     }
+
+    //Check return value. If it's non zero compilation failed for some reason...
+    if(returnValue != 0)
+      Error.error("\n\nError: Failed to create .su file, this is caused by:\n" +
+		  "  1) Failure to compile the malformed generated C code.\n" +
+		  "  2) gcc could not find a library needed for compilation.\n" +
+		  "Manually run ./makeSu to see actual error.\n" +
+		  "If this is case 1 please report the error.");
 
     //Read in .su file into our hash table.
     Log.log("\nReading in .su file:");
@@ -219,6 +231,7 @@ public class ProcessJc {
 
     //Print final sizes for the user to see:
     Log.log("Total Size for functions:");
+    Log.log("(Remember only the max function call is picked at the top level.)");
     printTable(sizePerFunction);
 
     //Call CodeGeneratorC, in the previous pass the correct stacksizes where set.

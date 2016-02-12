@@ -282,7 +282,7 @@ TimerWaitType(globalWsName) ::= "TimerAltWait(<globalWsName>)"
 
 AltEnableTimeout(globalWsName, number, time, name) ::= <<
 <! This statement is funny as we actually need a variable to hold our time. !>
-Time <name> = TimerRead(<globalWsName>) + <time>;
+<name> = TimerRead(<globalWsName>) + <time>;
 AltEnableTimer(<globalWsName>, <number>, <name>)
 >>
 
@@ -358,4 +358,10 @@ WRITECHANNEL(<functionName>, <type>, <expr>, <size>)
 
 readChannel(functionName, type, size) ::= <<
 READCHANNEL(<functionName>, <type>, <size>)
+>>
+
+nestedBlock(array) ::= <<
+{
+  <array; separator = ";\n">;
+}
 >>

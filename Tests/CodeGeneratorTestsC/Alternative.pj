@@ -1,6 +1,7 @@
 import std.io;
 /**
  * Testing alternatives! That is, ALT :)
+ * This program does not actually run as there is no main.
  */
 proc void alternative(chan<int>.read intChan, chan<int>.read intChan2){
   int x;

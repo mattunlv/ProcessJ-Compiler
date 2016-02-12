@@ -90,6 +90,40 @@ public class TableList{
     return sum;
   }
   //========================================================================================
+  /**
+   * Extra "sum entries" function that only keeps the procedure invocation with the highest
+   * number. Only should be called when summing up memory size procedure declarations.
+   * For a given key add all the entries of that key's list together.
+   * @param key: key's value to add.
+   * @param int: sum at that key.
+   */
+  public int sumEntriesMaxInvocationOnly(String key){
+    if(table.containsKey(key) == false)
+      Error.error("Error! This TableList does not contain the key: " + key);
+
+    LinkedList<ValueAndTag> list = table.get(key);
+    int sum = 0;
+
+    //Handle non-invocation cases:
+    for(ValueAndTag node : list)
+      if(node.isInvocation() == false)
+	sum += node.getValue();
+
+    //Hanle invocation case:
+    int max = 0;
+    for(ValueAndTag node : list)
+      if(node.isInvocation() == true){
+	int currentValue = node.getValue();
+	if(max < currentValue)
+	  max = currentValue;
+      }
+    
+    //Add biggest function.
+    sum += max;
+    
+    return sum;
+  }
+  //========================================================================================
   public Set<String> getKeys(){
     return table.keySet();
   }

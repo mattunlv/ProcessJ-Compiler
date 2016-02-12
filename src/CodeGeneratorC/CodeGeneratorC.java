@@ -43,6 +43,14 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    */
   private Hashtable<String, Integer> parBlockStmtCounts;
   /**
+   * Very similar to the table above. A parallel for must exist inside of a function.
+   * The inside of the parallel for must be wrapped in a function as it will run in
+   * parallel throug a call to CCSP. Therefore we guarantee this wrapper function will
+   * have a unique name in case of multiple par fors in a function. The names will always
+   * be of the form: <NameOfFunction>ParForStmt<counterValue>.
+   */
+  private Hashtable<String, Integer> parForStmtCounts;
+  /**
    * We must know when we are inside a ParBlock as this means we have to do eveything
    * with pointers to NameExpr instead of actual variales.
    */
@@ -50,7 +58,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   /**
    * Keeps track of the current function we are inside of. This is done for ParBlock
    * uses this to generate the name of our <...>ParBlockStmt<...> function name. see
-   * @parBlockstmtCounts for more info.
+   * @parBlockStmtCounts and @parForStmtCounts for more info.
    */
   private String currentFunction = null;
   /**
@@ -81,6 +89,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     this.group = new STGroupFile(grammarStFile);
     //Create hashtables!
     this.parBlockStmtCounts = new Hashtable();
+    this.parForStmtCounts = new Hashtable();
 
     this.parBlockPrototypes = new LinkedList();
     this.parBlockProcs = new LinkedList();
@@ -106,6 +115,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     this.group = new STGroupFile(grammarStFile);
     //Create hashtables!
     this.parBlockStmtCounts = new Hashtable();
+    this.parForStmtCounts = new Hashtable();
 
     this.parBlockPrototypes = new LinkedList();
     this.parBlockProcs = new LinkedList();
@@ -153,8 +163,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   // AltStat
   /**
-   * Alt cases are also nontrivial. Granted, they are not hard. The main layout of any
-   * alt case in CCSP looks like:
+   * Alt cases are also nontrivial. The main layout of any alt case in CCSP looks like:
    * <timerAlt(..) | Alt(..)> //Initialization for Alternate statement.
    * <AltEnableChannel(..) | AltEnableTimer(..) | AltEnableSkip(..)> //Initialization
    *   of all cases that will partake in the alt statement.
@@ -180,10 +189,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //If the alt uses timeout we must use a different function to invoke the alt.
     for(int i = 0; i < count; i++){
       AltCase altCase = altCaseList.getElementN(i);
-      hasTimeout = caseIsTimeout(altCase);
 
-      if(hasTimeout == true)
-        break;
+      if(caseIsTimeout(altCase)){
+	 hasTimeout = true;
+	 break;
+	}
     }
 
     //Create the Alt() and AltWait().
@@ -551,17 +561,56 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   // ExternType
   //====================================================================================
   // ForStat
-  public T visitForStat(ForStat fs){
+  /**
+   * ForStat have two cases:
+   * 1) Normal for loop, this is trivial and exactly like C counterpart.
+   * 2) Par for loop, every statement is excuted in parallel for all possible loop
+   *    iterations.
+   * For the second case we use code similar to the implementation of the ParProc using
+   * a loop as we cannot statically know the iterations of the loop. The logic for
+   * ParBlock is very similar but to avoid overly complicated code we will keep it
+   * separate!
+   */
+  public T visitForStat(ForStat fs){ //TODO: Nested parallel loops??
     Log.log(fs.line + ": Visiting a ForStat");
-    ST template = group.getInstanceOf("ForStat");
+    boolean isParFor = fs.isPar();
+    //TODO:
+    if(isParFor)
+      Error.error("Error: Par for not implemented yet...");
+    
+    //Pick right template based on whether it is parallel or not.
+    ST template = isParFor ? group.getInstanceOf("ParForStat"):
+      group.getInstanceOf("ForStat");
 
     String expr = (String) fs.expr().visit(this);
     Sequence<Statement> init = fs.init();
     Sequence<ExprStat> incr = fs.incr();
+    
     String[] initStr = null;
     String[] incrStr = null;
+    
+    //Use in case of parallel for! This set contains all the NameExpr for this statement.
+    LinkedList<NameExpr> myNames = null;
+    
     //TODO: Barriers
 
+    //If this is a parallel for statement a lot of extra work should be done!
+    if(isParFor == true){
+      //Visit our NameCollector for our current statement to get all the NameExpr's!
+      myNames = new LinkedList();
+      fs.stats().visit(new NameCollector(myNames));
+
+      //Create a new function to wrap this ParFor Statement!
+      //int functionNumber = incrementEntry(this.parForStmtCounts, currentFunction);
+      //String functionName = currentFunction + "ParForStmt" + functionNumber;
+      
+      //Create invocations statements.
+      //statList.add( createInvocationPar(functionName, myNames, procParList, i) );
+      //Now create actual function!
+      //parBlockProcs.add( createParBlockProc(functionName, myStat, myNames) );
+    }
+
+    
     //Depending whether there is curly brackets it may return an array, or maybe just
     //a single object. So we must check what it actually is!
     Object stats = fs.stats().visit(this);
@@ -844,6 +893,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       parBlockPrototypes.add( getSimplePrototypeString(functionName) );
       i++;
     }
+    
     //By now procParList is populated so we may add it to our template.
     procParTemplate.add("paramWorkspaceName", globalWorkspace);
     procParTemplate.add("processNumber", stats.size());
@@ -965,9 +1015,24 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     String[] returnArray = new String[se.size()];
 
     //Iterate through all children placing results in array.
-    for (int i = 0; i<se.size(); i++)
-      if (se.child(i) != null)
-        returnArray[i] = (String) se.child(i).visit(this);
+    for (int i = 0; i < se.size(); i++)
+      if (se.child(i) != null){
+	T returnValue = se.child(i).visit(this);
+
+	// There is a special case here where we may have a {...} with code in this
+	// sequence. Then it will return a String[] instead of String. If this happens we
+	// convert the String[] into a single String. So far only the visitBlock causes
+	// this... So we take care of this here.
+	if(returnValue instanceof String[]){
+	  String[] stringArray = (String[]) returnValue;
+	  ST template = group.getInstanceOf("nestedBlock");
+
+	  template.add("array", stringArray);
+	  returnArray[i] = template.render();
+	}
+	else
+	  returnArray[i] = (String) returnValue;
+      }
       else
         returnArray[i] = null;
 
@@ -1425,7 +1490,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * @param altCase: AltCase to check.
    * @return was this AltCase a timer?
    */
-  boolean caseIsTimeout(AltCase altCase){
+  public static boolean caseIsTimeout(AltCase altCase){
     Statement stmt = altCase.guard().guard();
 
     if(stmt instanceof TimeoutStat)
@@ -1439,7 +1504,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * @param altCase: AltCase to check.
    * @return was this AltCase a Skip?
    */
-  boolean caseIsSkip(AltCase altCase){
+  public static boolean caseIsSkip(AltCase altCase){
     Statement stmt = altCase.guard().guard();
 
     if(stmt instanceof SkipStat)
@@ -1453,7 +1518,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * @param altCase: AltCase to check.
    * @return was this AltCase a Skip?
    */
-  boolean caseIsChannel(AltCase altCase){
+  public static boolean caseIsChannel(AltCase altCase){
     Statement stmt = altCase.guard().guard();
 
     if(stmt instanceof ExprStat)

@@ -6,6 +6,7 @@ import Utilities.Error;
 import java.io.*;
 import java.util.*;
 import NameCollector.*;
+import CodeGeneratorC.*;
 //========================================================================================
 /**
  * This is the compiler pass to allocate the correct stack sizes for the compiler. This
@@ -41,7 +42,8 @@ public class AllocateStackSize extends Visitor<Void>{
   /**
    * We must know the name of the last function of the program as this is
    * the function that will be called by the CCSP runtime to start running
-   * the program, this is the last function on the file. */
+   * the program, this is the last function on the file.
+   */
   private String lastFunction = null;
 
   /** Size for various function and miscellanous things. */
@@ -72,7 +74,7 @@ public class AllocateStackSize extends Visitor<Void>{
 
     //Certain functions are built in and we define their size here: TODO: In the future
     //this should be done in a separate file and the values should be read in??
-    nodesPerFunction.addNode("println", new ValueAndTag(64, "Size of println."));
+    nodesPerFunction.addNode("println", new ValueAndTag(64, "Size of println.", true));
     suTable.put("ccsp_kernel_call", ccspKernelCallSize);
 
     return;
@@ -100,7 +102,7 @@ public class AllocateStackSize extends Visitor<Void>{
     Set<String> keys = nodesPerFunction.getKeys();
 
     for(String functionName : keys){
-      int sum = nodesPerFunction.sumEntries(functionName);
+      int sum = nodesPerFunction.sumEntriesMaxInvocationOnly(functionName);
       sizePerFunction.put(functionName, sum);
     }
 
@@ -146,11 +148,11 @@ public class AllocateStackSize extends Visitor<Void>{
       //Shutdow()
       value = suTable.get("Shutdown");
       tag = "Size of ShutDown function.";
-      nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag, true));
       //Shutdown() calls the CCSP Kernel.
       value = suTable.get("ccsp_kernel_call");
       tag = "Shutdown() calls ccsp_kernel_call.";
-      nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag));
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(value, tag, true));
     }
 
     currentFunction = prevCurrentFunction;
@@ -183,7 +185,7 @@ public class AllocateStackSize extends Visitor<Void>{
     String tag =
       String.format("Invocation call to function %s at line: %d.", functionName, in.line);
 
-    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
 
     return null;
   }
@@ -338,7 +340,7 @@ public class AllocateStackSize extends Visitor<Void>{
     //Light Proc init size.
     size = suTable.get("LightProcInit");
     tag = "Parblocks call: LightProcInit; LightProcInit size.";
-    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
 
     //ProcPar calls the following:
     //LightProcBarrierInit.
@@ -355,6 +357,86 @@ public class AllocateStackSize extends Visitor<Void>{
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
 
     return null;
+  }
+  //========================================================================================
+  /**
+   * The AltStat create several extra variables nedeed for CCSP. We need to accout for their
+   * memory here!
+   */
+  public Void visitAltStat(AltStat as) {
+    Log.log(as.line + ": Visiting an AltStat!");
+    Sequence<AltCase> altCaseList = as.body();
+    int count = altCaseList.size();
+    boolean hasTimeout = false;
+
+    int size = 0;
+    String tag = null;
+    
+    //If the alt uses timeout we must use a different function to invoke the alt.
+    for(int i = 0; i < count; i++){
+      AltCase altCase = altCaseList.getElementN(i);
+      if(CodeGeneratorC.caseIsTimeout(altCase)){
+	 hasTimeout = true;
+	 break;
+	}
+    }
+
+    //Calls to CCSP functions!
+    if(hasTimeout == true){
+      size = suTable.get("TimerAlt");
+      tag = "AltStat call: TimerAlt()";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+      //We have an alt timeout case so we know it must be intialized.
+      size = suTable.get("AltEnableTimer");
+      tag = "AltStat call: AltEnableTimer";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+      //If did an AltEnableTimer we must also do an AltDisableTimer...
+      size = suTable.get("AltDisableTimer");
+      tag = "AltStat call: AltDisableTimer";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+      //A timer read automatically happens:
+      size = suTable.get("TimerRead");
+      tag = "AltStat call: TimerRead";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+      
+    }else{
+      size = suTable.get("Alt");
+      tag = "AltStat call: Alt";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+    }
+
+    //The entire switch statement works based of AltEnd()
+    size = suTable.get("AltEnd");
+    tag = "AltStat call: AltEnd";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+    boolean hasChannelCase = false;
+    
+    //If we have any Channel alt cases we make this:
+    for(AltCase altCase : altCaseList)
+      if(CodeGeneratorC.caseIsChannel(altCase) == true)
+	hasChannelCase = true;
+
+    //Now add this memory if needed...
+    if(hasChannelCase == true){
+      size = suTable.get("AltEnableChannel");
+      tag = "AltStat call: AltEnableChannel";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+      
+      size = suTable.get("AltDisableChannel");
+      tag = "AltStat call: AltDisableChannel";
+      nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+    }
+
+    //Now visit our children:
+    altCaseList.visit(this);
+    
+    //TODO: finish implementing!!!
+    return null;
+    
   }
   //========================================================================================
   /**
