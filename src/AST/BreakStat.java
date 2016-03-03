@@ -12,7 +12,7 @@ public class BreakStat extends Statement {
 	public Name target() { return (Name)children[0]; }
 
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitBreakStat(this);
 	}
 

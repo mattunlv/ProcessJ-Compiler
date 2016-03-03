@@ -27,7 +27,7 @@ public class NameExpr extends Expression {
 
 	public Name name() { return (Name)children[0]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitNameExpr(this);
 	}
 }

@@ -14,7 +14,7 @@ public class RecordLiteral extends Literal {
 	public Name name()        { return (Name)children[0]; }
 	public Sequence<Expression> members() { return (Sequence<Expression>)children[1]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitRecordLiteral(this);
 	}
 }

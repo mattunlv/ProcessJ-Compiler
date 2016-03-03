@@ -36,7 +36,7 @@ public class RecordTypeDecl extends Type implements TopLevelDecl {
 
 	public String typeName() { return "Record: " + name(); }
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitRecordTypeDecl(this);
 	}
 }

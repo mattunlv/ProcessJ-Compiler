@@ -37,7 +37,7 @@ public class Assignment extends Expression {
 
 	public String opString() { return opSyms[kind]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitAssignment(this);
 	}    
 }

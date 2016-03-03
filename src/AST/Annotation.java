@@ -13,7 +13,7 @@ public class Annotation extends AST {
     public String getName() { return name; }
     public String getValue() { return value; }
     
-    public <S extends AST> S visit(Visitor<S> v) {
+    public <S extends Object> S visit(Visitor<S> v) {
 	return v.visitAnnotation(this);
     }
 }

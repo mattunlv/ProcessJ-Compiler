@@ -17,7 +17,7 @@ public class ExternType extends Type {
 		return "E" + name().getname() + ";";
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitExternType(this);
 	}
 }

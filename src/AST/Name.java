@@ -91,7 +91,7 @@ public class Name extends AST {
 		this.arrayDepth = d;
 	}
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitName(this);
 	}
 }

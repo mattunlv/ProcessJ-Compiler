@@ -40,7 +40,7 @@ public class Import extends AST {
 		return compilations;
 	}
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitImport(this);
 	}
 }

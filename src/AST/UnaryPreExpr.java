@@ -53,7 +53,7 @@ public class UnaryPreExpr extends Expression {
 		return null;
 	}
 
-    public <S extends AST> S visit(Visitor<S> v) {
+    public <S extends Object> S visit(Visitor<S> v) {
 	return v.visitUnaryPreExpr(this);
     }
     

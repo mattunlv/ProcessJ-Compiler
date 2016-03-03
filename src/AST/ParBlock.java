@@ -11,7 +11,7 @@ public class ParBlock extends Statement {
 	public Sequence<Statement> stats()    { return (Sequence<Statement>)children[0]; }
 	public Sequence<Expression> barriers() { return (Sequence<Expression>)children[1]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitParBlock(this);
 	}
 }

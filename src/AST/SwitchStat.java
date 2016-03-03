@@ -13,7 +13,7 @@ public class SwitchStat extends Statement {
 	public Expression expr()                    { return (Expression)children[0]; }
 	public Sequence<SwitchGroup> switchBlocks() { return (Sequence<SwitchGroup>)children[1]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitSwitchStat(this);
 	}
 }

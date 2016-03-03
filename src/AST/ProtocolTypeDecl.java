@@ -29,7 +29,7 @@ public class ProtocolTypeDecl extends Type implements TopLevelDecl {
 
 	public String typeName() { return "Protocol: " + name(); }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitProtocolTypeDecl(this);
 	}
 }

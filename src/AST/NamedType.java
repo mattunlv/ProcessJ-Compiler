@@ -43,7 +43,7 @@ public class NamedType extends Type {
 		return "L" + name().getname() + ";";
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitNamedType(this);
 	}
 }

@@ -19,7 +19,7 @@ public class SuspendStat extends Statement {
 		return s;
 	}
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitSuspendStat(this);
 	}
 }

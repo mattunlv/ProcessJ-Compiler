@@ -7,7 +7,7 @@ import AST.*;
  * @author Matt Pedersen
  *
  */
-public abstract class Visitor<T extends AST> {
+public abstract class Visitor<T extends Object> {
 
 	// The 'debug' field should be set in the constructor of the 
 	// extending class.

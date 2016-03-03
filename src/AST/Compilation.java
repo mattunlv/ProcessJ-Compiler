@@ -19,7 +19,7 @@ public class Compilation extends AST {
 	public Sequence<Import> imports()   { return (Sequence<Import>)children[2]; }
 	public Sequence<Type> typeDecls()   { return (Sequence<Type>)children[3]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitCompilation(this);
 	}
 }

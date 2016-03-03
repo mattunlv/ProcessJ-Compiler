@@ -20,7 +20,7 @@ public class NewArray extends Expression {
 		return "" + baseType() + " " + dimsExpr() + " " + dims();
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitNewArray(this);
 	}
 }

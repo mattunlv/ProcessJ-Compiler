@@ -10,7 +10,7 @@ public class Block extends Statement {
 
 	public Sequence<Statement> stats() { return (Sequence<Statement>)children[0]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitBlock(this);
 	}
 }

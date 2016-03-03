@@ -17,7 +17,7 @@ public class ArrayAccessExpr extends Expression {
 		return target() + " [" + index() + "]";
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitArrayAccessExpr(this);
 	}
 }

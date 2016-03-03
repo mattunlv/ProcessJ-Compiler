@@ -19,7 +19,7 @@ public class ArrayLiteral extends Expression {
 		return "{.,.,.,.,.}";
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitArrayLiteral(this);
 	}
 }

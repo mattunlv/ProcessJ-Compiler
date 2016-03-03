@@ -15,7 +15,7 @@ public class IfStat extends Statement {
 	public Statement  thenpart() { return (Statement)children[1];  }
 	public Statement  elsepart() { return (Statement)children[2];  }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitIfStat(this);
 	}
 }

@@ -12,7 +12,7 @@ public class RecordMember extends AST {
 	public Type type() { return (Type)children[0]; }
 	public Name name() { return (Name)children[1]; }
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitRecordMember(this);
 	}
 }

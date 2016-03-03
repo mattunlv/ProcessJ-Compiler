@@ -25,7 +25,7 @@ public class Var extends AST {
 		return name().toString();
 	}
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitVar(this);
 	}
 

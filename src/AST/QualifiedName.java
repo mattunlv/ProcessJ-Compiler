@@ -19,7 +19,7 @@ public class QualifiedName extends AST {
 	public Name name()        { return (Name)children[2]; } 
 	
 	@Override
-	public <T extends AST> T visit(Visitor<T> v) {
+	public <T extends Object> T visit(Visitor<T> v) {
 		v.visitQualifiedName(this);
 		return null;
 	}

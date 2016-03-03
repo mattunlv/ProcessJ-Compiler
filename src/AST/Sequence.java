@@ -50,7 +50,7 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 	}
 
 
-	public <W extends AST> W visit(Visitor<W> v) {
+	public <W extends Object> W visit(Visitor<W> v) {
 		return v.visitSequence(this);
 	}
 }

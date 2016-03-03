@@ -23,7 +23,7 @@ public class Invocation extends Expression {
 	public Name procedureName() { return (Name)children[1];       }
 	public Sequence<Expression>   params()     { return (Sequence<Expression>)children[2];   }
 
-	public <S extends AST> S visit(Visitor<S> v) {
+	public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitInvocation(this);
 	}
 }

@@ -16,7 +16,7 @@ public class ProtocolLiteral extends Literal {
 	public Name tag()         { return (Name)children[1]; }
 	public Sequence<Expression> expressions() { return (Sequence<Expression>)children[2]; }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitProtocolLiteral(this);
 	}
 }

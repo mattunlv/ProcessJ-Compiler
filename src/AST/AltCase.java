@@ -15,7 +15,7 @@ public class AltCase extends AST {
 	public Guard guard()     { return (Guard)children[1]; }
 	public Statement  stat() { return (Statement)children[2];  }
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitAltCase(this);
 	}
 }

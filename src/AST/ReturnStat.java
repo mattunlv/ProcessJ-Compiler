@@ -22,7 +22,7 @@ public class ReturnStat extends Statement {
 		return this.type;
 	}
 
-        public <S extends AST> S visit(Visitor<S> v) {
+        public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitReturnStat(this);
 	}
 }
