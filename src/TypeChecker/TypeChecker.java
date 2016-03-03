@@ -963,7 +963,7 @@ public class TypeChecker extends Visitor<Type> {
 			int val = ((BigDecimal)sl.expr().constantValue()).intValue();
 			String strval = Integer.toString(val);
 			if (ht.contains(strval))
-			    Error.error(sl,"Duplicate case label.", false, 0000);
+			    Error.error(sl,"Duplicate case label.", false, 0);
 			else {
 			    ht.add(strval);
 			}
