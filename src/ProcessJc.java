@@ -151,7 +151,7 @@ import CodeGeneratorJava.*;
 				
 				if (Error.errorCount != 0) {
 					System.out.println("---------- Error Report ----------");
-					System.out.println(Error.errorCount + " errors in symbol resolution - fix these before code generation.");
+					System.out.println(Error.errorCount + " errors in type checking - fix these before code generation.");
 					System.out.println(Error.errors);
 					System.exit(1);
 				}
