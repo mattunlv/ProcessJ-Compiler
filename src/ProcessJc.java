@@ -149,6 +149,13 @@ import CodeGeneratorJava.*;
 				// TYPE CHECKER
 				c.visit(new TypeChecker.TypeChecker(globalTypeTable));
 				
+				if (Error.errorCount != 0) {
+					System.out.println("---------- Error Report ----------");
+					System.out.println(Error.errorCount + " errors in symbol resolution - fix these before code generation.");
+					System.out.println(Error.errors);
+					System.exit(1);
+				}
+
 				////////////////////////////////////////////////////////////////////////////////
 				// CODE GENERATOR
 

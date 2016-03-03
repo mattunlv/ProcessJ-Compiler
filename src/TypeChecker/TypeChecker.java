@@ -719,9 +719,9 @@ public class TypeChecker extends Visitor<Type> {
 			}
 			return b;
 		} else if (t instanceof ArrayType && !(e instanceof ArrayLiteral)) 
-		    Error.error(t, "Cannot assign non array to array type `" + t.typeName() + "'", 3039);
+		    Error.error(t, "Cannot assign non array to array type `" + t.typeName() + "'", false, 3039);
 		else if (!(t instanceof ArrayType) && (e instanceof ArrayLiteral)) 
-			Error.error(t, "Cannot assign value `" + ((ArrayLiteral)e).toString() + "' to type `" + t.typeName()"'.", false, 3030);
+			Error.error(t, "Cannot assign value `" + ((ArrayLiteral)e).toString() + "' to type `" + t.typeName() + "'.", false, 3030);
 		return Type.assignmentCompatible(t,e.visit(this));
 	}
 
