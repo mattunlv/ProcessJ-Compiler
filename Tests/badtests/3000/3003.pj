@@ -1,0 +1,10 @@
+//(2)
+//7: Cannot assign value of type string to variable of type int.
+//Error number: 3003
+//
+// source:TypeChecker/visitAssignment()
+//
+proc void test () {
+  int i;
+  i = "Hello";
+}

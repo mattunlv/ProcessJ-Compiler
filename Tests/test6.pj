@@ -1,0 +1,4 @@
+
+proc void foo() {
+  A4::b b;
+}

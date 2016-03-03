@@ -1,0 +1,70 @@
+src/AST/AST.java			
+src/AST/AltCase.java									
+src/AST/AltStat.java													        
+src/AST/ArrayAccessExpr.java													           
+src/AST/ArrayLiteral.java     ----- The name should be found, but we might as well wait until type checking
+src/AST/ArrayType.java
+src/AST/Assignment.java
+src/AST/BinaryExpr.java
+src/AST/Block.java            ----- Open a new scope, visit, close the scope
+src/AST/BreakStat.java
+src/AST/CastExpr.java
+src/AST/ChannelEndExpr.java
+src/AST/ChannelEndType.java
+src/AST/ChannelReadExpr.java
+src/AST/ChannelType.java
+src/AST/ChannelWriteStat.java
+src/AST/ClaimStat.java        ----- check 
+src/AST/Compilation.java
+src/AST/ConstantDecl.java     ----- insert into import hierarchy
+src/AST/ContinueStat.java
+src/AST/DoStat.java
+src/AST/ExprStat.java			
+src/AST/Expression.java
+src/AST/ExternType.java
+src/AST/ForStat.java
+src/AST/Guard.java
+src/AST/IfStat.java
+src/AST/Import.java
+src/AST/Invocation.java       ----- is there a name in the hierarcy of procedure type with this name?
+src/AST/Literal.java 
+src/AST/LocalDecl.java
+src/AST/Modifier.java
+src/AST/Name.java
+src/AST/NameExpr.java         ----- this should exist in the hierarchy
+src/AST/NamedType.java        ----- ??
+src/AST/NewArray.java
+src/AST/NewMobile.java        ------ name of procedure should exist
+src/AST/ParBlock.java         ----- Open scope, visit, close scope
+src/AST/ParamDecl.java
+src/AST/Pragma.java
+src/AST/PrimitiveLiteral.java
+src/AST/PrimitiveType.java
+src/AST/ProcTypeDecl.java     
+src/AST/ProtocolCase.java
+src/AST/ProtocolLiteral.java  ---- wait until type checking
+src/AST/ProtocolTypeDecl.java
+src/AST/RecordAccess.java    
+src/AST/RecordLiteral.java    --- wait until type checking
+src/AST/RecordMember.java     
+src/AST/RecordTypeDecl.java
+src/AST/ReturnStat.java
+src/AST/Sequence.java
+src/AST/SkipStat.java
+src/AST/Statement.java
+src/AST/StopStat.java
+src/AST/SuspendStat.java
+src/AST/SwitchGroup.java
+src/AST/SwitchLabel.java
+src/AST/SwitchStat.java
+src/AST/SyncStat.java
+src/AST/Ternary.java
+src/AST/TimeoutStat.java
+src/AST/Token.java
+src/AST/Type.java
+src/AST/UnaryPostExpr.java
+src/AST/UnaryPreExpr.java
+src/AST/Var.java
+src/AST/VarDecl.java
+src/AST/WhileStat.java
+

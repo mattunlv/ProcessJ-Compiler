@@ -1,0 +1,2 @@
+perhaps all Array types need to be changed to always have a base type and just one set of []?
+

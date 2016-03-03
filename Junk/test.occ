@@ -1,0 +1,46 @@
+PROC TYPE blah IS ():
+
+MOBILE PROC goo () IMPLEMENTS blah
+  SEQ
+
+:
+
+PROC bar (CHAN INT myChan!) 
+  SEQ
+    MOBILE blah mymobile:
+    VAL INT aa IS 900:
+    INITIAL INT a IS 98:
+    INT c:
+    INITIAL INT b IS 1 + 2:
+    SEQ
+      c := 9
+      INITIAL INT qwerty IS 900:
+      SEQ
+        a := a + 10
+        INITIAL INT a IS 80:
+        a := 90
+:
+
+PROC baz (CHAN INT myChan) 
+  SEQ
+
+:
+
+PROC foo (INT aaa) 
+  SEQ
+    SHARED CHAN INT c1:
+    SHARED ! CHAN INT c2:
+    SHARED ? CHAN INT c3:
+    CHAN INT c4:
+    SHARED ? CHAN INT c5:
+    SHARED ! CHAN INT c6:
+    CHAN INT c7:
+    CHAN INT c8:
+    [100]CHAN INT c9:
+    SEQ
+      bar (c9[0])
+      bar (c4)
+      bar (c4!)
+      baz (c4?)
+      baz (c4)
+:

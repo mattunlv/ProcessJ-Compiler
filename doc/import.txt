@@ -1,0 +1,119 @@
+
+
+
+
+A symbol table contains two `parent' reference:
+
+- an import parent, and
+- a parent.
+
+The parent link is a reference that points to another symbol table
+that represents either:
+
+- the closest enclosing scope, or
+- the top level symbol table for an imported file.
+
+
+Consider the following code:
+
+import B
+import C
+...
+D::f()
+
+
+Let us assume that this code is saved in a file called A.pj
+
+There will be a top-level symbol table associated with A, and its
+parent link will be null. Its import parent will be C, and C's parent
+will be B, and B's parent will be null. The chain will be in reverse 
+order of the lexicographical order of the actual import statements.
+
+If C for example looks like this:
+
+import E
+...
+
+then C's import parent reference will point to a symbol table
+for E, while its parent still points to the table for the import
+appearing immediately before it in the A.pj file, namely that of B.
+
+
+========================================================================
+
+TopLevelDecls.java:
+
+VisitCompilation():
+
+When visiting a compilation, before we enter the top-level declarations
+(procedure types, protocol types, record types, and constants) into
+the symbol table, we save the current symbol table, and visit the 
+import statements. If there are any import statements this will 
+result the `symtab' field holding a reference to a chain of 
+symbol tables (accessible thorugh the `parent' reference) to all the
+imported files. This reference is placed in the saved symbol table's
+`importParent' field. Once this is all done, the `symtab' field is 
+re-established and we proceed to visit the type declarations to have
+them inserted into the symbol table.
+
+
+
+
+
+
+========================================================================
+
+========================================================================
+Looking up names in the symbol table structure.
+
+Normally, when a name usage needs to be resolved, it is 
+done by traversing the chain of symbol tables (called 
+the scope chain) until we get to a table whose parent is 
+null. In such a search a null-parent table will not be reached
+until we get to the top-level table, but from there we need to follow the 
+import parent and perform the same search along the parent chain. So a 
+search algorithm for a deep look up may look like this:
+
+
+// performs a lookup through the scope chain 
+// along the parent chain of symbol tables
+// until we reach a null parent.
+
+Object lookup(Name name) {
+  Object o = entries.get(name.getName());
+  if (o != null)
+    return o;
+  else
+    if (parent != null) 
+      return parent.lookup(name);
+    else
+      return null;
+}
+
+
+// performs a lookup through the scope chain
+// along the parent chain of symbol tables
+// until we reach a null parent at which time 
+// we follow the import parent _once_ and 
+// continue the lookup through the regular
+// parent link
+
+Object lookupInclImports_helper(Name name, boolean followImportParent) {
+  Object o = entries.get(name.getName());
+  if (o != null)
+    return o;
+  else 
+    if (parent != null)
+      return parent.lookupInclImports_helper(name, followImportParent);
+    else if (followImportParent & importParent != null)
+      // only follow the import parent link once - from there on
+      // it is the parent link again!
+      return importParent.lookupInclImports_helper(name, false);
+    else
+      return null;
+}        
+
+
+Object lookupInclImports(Name name) {
+  lookupInclImports_helper(name, true);
+}

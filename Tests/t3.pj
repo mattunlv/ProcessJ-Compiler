@@ -1,0 +1,22 @@
+import t4;
+
+public const int a = 89;
+
+public proc void foo() {
+  t4::myRecord mr;
+  t4::foo();
+  //  x = t4::x.y.z;
+  double y = std.math::M_PI;
+  double x;
+  double z = y + x + std.math::M_PI;
+  //f();
+  bar();
+  x.f();
+  x.y.f();
+  F::f();
+  f::x.f();
+  P.F::f();
+  P.F::x.f();
+  P.F::x.y.f();
+  
+}

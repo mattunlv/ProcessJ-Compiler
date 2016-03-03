@@ -1,0 +1,10 @@
+09/20/2013
+	Added support for #pragma compiler directives
+	Files changes:
+	      Parser/ProcessJ.cup: added tokens, non terminals and rules for pragma support; changed instantiation for new Compilation to include pragmas
+	      Scanner/ProcessJ.flex: added the token "#pragma"
+	      AST/ : added the Pragma.java parse tree node file
+	      AST/Compilation.java: Added pragmas
+	      Utilities/Visitor.java: added visitPragma()
+	      Printers/PrettyPrinter.java: added visitPragma()
+	   

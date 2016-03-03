@@ -1,0 +1,51 @@
+//import t2.*;
+
+//public record X extends std.test.myX {
+//  int a;
+//  string ss;
+//}
+//public const std.test.myX x = new std.test.myX{1,"Hello"};
+
+const x.x.x.x.fd myA;
+
+public proc void foo(y.f[] ad) implements x.x.x.g {
+
+
+   int a = new x.x.x.f[10];
+
+   int aa = new A.v.v.s{tag:10,10};   
+   
+/*
+    int[][] a[][], b[], c, d;
+   a = new int[2][2][2][2];
+   b = a[1];
+   c = b[1];
+    int a,b,c;
+    X x;
+    a = (double)a--;
+    x = (X)x;
+    b = x.length;
+    a = x.size();    
+    a = Package.file.foo(56);
+      std.test.baz();
+      int[] x;//
+      int a;
+      a = x.length;
+      x.bar();
+      int b = x.FOO;
+   	int a;
+     X[] x;
+	string s = "Hello World";
+
+	a = x.x.x.x.size;// + "Hello World".length;
+
+
+	a = new mobile(x.x.f);
+	
+        a = new x.x.x.f[][][]{10,10,10};
+
+*/
+
+}
+
+

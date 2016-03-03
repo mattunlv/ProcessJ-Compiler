@@ -1,0 +1,28 @@
+type protocol Reindeer_msg {
+  holiday:    { int id; }
+  deer_ready: { int id; }
+  deliver:    { int id; }
+  deer_done:  { int id; }
+}
+
+type protocol Elf_msg {
+  working:   { int id; }
+  elf_ready: { int id; }
+  consult:   { int id; }
+  eld_done:  { int id; }
+}
+
+type protocol Santa_msg {
+  reindeer_ready: { boolean x; }
+  harness:        { int id; }
+  mush_mush:      { boolean x; }
+  woah:           { boolean x; }
+  unharness:      { int id; }
+  elves_ready:    { boolean x; }
+  greet:          { int id; }
+  consulting:     { boolean x; }
+  santa_done:     { boolean x; }
+  goodbye:        { int id; }
+}
+
+type protocol Message extends Reindeer_msg, Elf_msg, Santa_msg;

@@ -1,0 +1,37 @@
+#pragma LIBRARY;
+#pragma LANGUAGE "C";
+#pragma NATIVELIB "math.h";
+#pragma FILE "math";
+
+package std;
+public native const double M_PI;        /* pi */
+public native const double M_PI_2;      /* pi/2 */
+public native const double M_PI_4;      /* pi/4 */
+public native const double M_1_PI;      /* 1/pi */ 
+public native const double M_2_PI;      /* 2/pi */ 
+public native const double M_2_SQRTPI;  /* 2/sqrt(pi) */
+public native const double M_SQRT2;     /* sqrt(2) */
+public native const double M_SQRT1_2;   /* 1/sqrt(2) */
+
+public native proc double foo();
+public native proc double acos(double x) ;
+public native proc double asin(double x) ;
+public native proc double atan(double x) ;
+public native proc double atan2(double y, double x) ;
+public native proc double cos(double x) ;
+public native proc double cosh(double x) ;
+public native proc double sin(double x) ;
+public native proc double sinh(double x) ;
+public native proc double tanh(double x) ;
+public native proc double exp(double x) ;
+public native proc double ldexp(double x, int exponent) ;
+public native proc double log(double x) ;
+public native proc double log10(double x) ;
+public native proc double pow(double x, double y) ;
+public native proc double sqrt(double x) ;
+public native proc double ceil(double x) ;
+public native proc double fabs(double x) ;
+public native proc long abs(long x) ;
+public native proc int abs(int x) ;
+public native proc double floor(double x) ;
+public native proc double fmod(double x, double y) ;

@@ -1,0 +1,34 @@
+protocol Reindeer_msg {
+ holiday:    { int id; }
+ deer_ready: { int id; }
+ deliver:    { int id; }
+ deer_done:  { int id; }
+}
+
+protocol Elf_msg {
+ working:   { int id; }
+ elf_ready: { int id; }
+ consult:   { int id; }
+ elf_done:  { int id; }
+}
+
+protocol Santa_msg {
+ reindeer_ready: { }
+ harness:        { int id; }
+ mush_mush:      { }
+ woah:           { }
+ unharness:      { int id; }
+ elves_ready:    { }
+ greet:          { int id; }
+ consulting:     { }
+ santa_done:     { }
+ goodbye:        { int id; }
+}
+
+proc void display (chan<Message>.read in) {
+  Message msg;
+  while (true) {
+    msg = in.read();
+    //println(msg);
+  }
+}

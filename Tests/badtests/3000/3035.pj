@@ -1,0 +1,16 @@
+//(4)
+// 7: Boolean type expected in precondition of alt case, found: int
+// Error number: 3035
+// 8: Boolean type expected in precondition of alt case, found: string
+// Error number: 3035
+// 
+// source:TypeChecker/visitAltCase()
+//
+proc void test () {
+  chan<int> c1,c2;
+  int i;
+  alt {
+    (4) && i = c1.read() : { }
+    ("Hello") && i = c2.read() : { }
+  }
+}

@@ -1,0 +1,3 @@
+proc void display (chan<Message>.read in) {
+
+}

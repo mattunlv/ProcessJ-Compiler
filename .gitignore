@@ -1,10 +1,6 @@
 *.class
 *~
 #*
-*.java
-*.pj
-*.txt
-*.occ
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
