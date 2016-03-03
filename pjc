@@ -1,0 +1,2 @@
+java -cp /Users/matt/Dropbox/ProcessJ-USE-THIS-ONE/bin:/Users/matt/Dropbox/ProcessJ-USE-THIS-ONE/src/Utilities/java_cup_runtime.jar:src/Utilities/ST-4.0.7.jar:. ProcessJc -I /Users/matt/Dropbox/ProcessJ-USE-THIS-ONE/include -sts $@
+

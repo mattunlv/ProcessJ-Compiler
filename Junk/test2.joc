@@ -1,0 +1,112 @@
+proc void bar1(const barrier bar) {
+
+}
+
+proc void fool(chan<int>.read in1, chan<int>.read in2, chan<int>.write out) {
+	  int y;
+		alt {
+		  y = in1.read() : {
+		    out.write(y);
+		  }
+		  y = in2.read() : {
+		    out.write(y);
+		  }
+		}
+		y = in1.read({ out.write(y); });
+		}
+      
+type proc mobileProc();
+
+
+mobile proc void foobar() implements mobileProc {
+
+}
+
+proc void bar(int a[], 
+	          shared chan<int>.write santa, 
+	          shared chan<int>.read  santa2, 
+	          shared read chan<int> santa3) {
+    
+    claim(santa, 
+    	  santa2, 
+    	  santa3) {
+	   santa.write(2);
+	   int x = santa2.read();
+	   int y = santa3.read.read();
+	   y = santa3.read();
+    }
+}
+
+proc chan<int>[] gub() {
+}
+
+proc shared chan<int>.read[] baz1() { 
+}
+
+type record Q {
+int a;
+double b;
+}
+
+type protocol A {
+		one: { int a; int b; }
+		two: { double b; double c; }
+}
+
+type protocol B extends A {
+        three: { double b; double c; }
+}
+
+type protocol C extends B;
+
+type protocol D extends C;
+
+proc void foo() {
+  chan<int> c1;	          
+  chan<Q> c11;
+  shared read chan<A> c2; 
+  shared write chan<A> c5;
+  shared write chan<A> c3; 
+  shared chan<A>.write c4;     
+  int myArray[] = [4,5,6,7];
+  int qwerty[3] = [ 46, 45 , 45];
+  shared chan<A>.read myChannel;
+  int myChannel1;
+	
+shared read chan<A> blah;
+  int frqwe = 99999;
+  
+  //foobar myMobileProc = new mobile foobar;
+  	
+  shared read chan<A> c[2];
+  
+ 
+  
+  claim (shared chan<A> myC = c[1], c2) {
+    A a = myC.read();
+    A aa = c5.read();
+  }
+  int iv = 5567;
+    
+  if(1 == 1) {
+    c1.read.read();
+    c1.read();
+    c3.read();
+  } else {
+    iv = 1337;
+    iv = 1337 + 7331;
+  }
+
+  gub()[45].read.read();
+  c1.read();
+
+  baz1(c4,c1,c2);
+  //baz(c1, c1.read, c1.write, c4.read, c4.write, a + 45 - (34 -56));
+
+  claim(shared chan<A>.read ccc = c[1].read, c5) {
+	ccc.read();
+	c5.read.read();
+	
+  }
+  c5.read();
+}

@@ -1,0 +1,228 @@
+\documentclass[pdflatex,11pt,letter]{article}
+
+\usepackage{graphicx}
+\begin{document}
+
+\begin{center}
+Version 1.0\hfill{}September 30, 2013\\[0.5cm]
+{\Huge Imports in ProcessJ}\\[0.5cm]
+by Matt B. Pedersen
+\end{center}
+
+\section{Introduction}
+
+This document describes the semantics and implementation of the 
+{\bf import} statement.
+
+\section{The Import Hierarchy}
+
+
+For a series of imports like
+
+\noindent
+\hspace*{1cm}{\bf import} $std.math$;\\
+\hspace*{1cm}{\bf import} $io.files$;\\
+\hspace*{1cm}{\bf import} $std.random$;\\
+\\
+{\tt .. code .. }\\
+
+\noindent
+the import hierarchy (and thus the order in which name usage is resolved)
+is as follows:\\
+
+\noindent
+The file that contains the {\tt .. code ..} has the final symbol table in the 
+hierarch, and is thus searched first. If nothing is found there, the 
+symbol table representing the import $std.random$ will be searched 
+and so forth until finally the $std.math$ symbol table is searched.\\
+
+\noindent
+If an import using a * is used, the files in the specified package 
+are imported in reverse alphabetical order.\\
+
+\noindent
+A symbol table has two links: $parent$ and $importParent$.
+
+\noindent
+$importParent$ points to the symbol table of the first imported file
+$parent$ point to the next scope which could be another import.\\
+
+\noindent
+The way name resolution is done for import hierarchies is slightly 
+different than the regular static scoping rules; the reason is that
+the look up must be $shallow$: if the main file imports a file $A$ which
+imports a file $B$ which declares a type $T$, then this type $T$ should not
+be available to the main file without an import of $B$.\\
+
+\noindent
+Therefore the resolution goes as follows:\\
+
+\noindent
+when looking for a type or a constant look in the symbol table
+associated with file; if nothing is found then follow the
+link to the $importParent$, but from now on follow the $parent$
+links up the chain to avoid doing any deep searches in the 
+symbol tables for the imported files of other imports.\\
+
+\noindent
+Such is a search is realized quite easily like this:\\
+
+\noindent
+\hspace*{1.0cm}// searches the parent chain
+\hspace*{1.0cm}{\bf public} $Object$ $get$($String$ $name$) \{\\
+\hspace*{1.5cm}  $Object$ $result$ = $entries$.$get$($name$);\\
+\hspace*{1.5cm}  {\bf if} ($result$ != {\bf null})\\
+\hspace*{2.0cm}    {\bf return} $result$;\\
+\hspace*{1.5cm}  {\bf if} ($parent$ == {\bf null}\\
+\hspace*{2.0cm}    {\bf return} {\bf null};\\
+\hspace*{1.5cm}  {\bf return} $parent$.$get$($name$);\\
+\hspace*{1.0cm}\}\\
+$ $\\
+\hspace*{1.0cm}// searches locally then call get with the importParent\\
+\hspace*{1.0cm}// and get then continues up the parent chain.  \\
+\hspace*{1.0cm}{\bf public} $Object$ $getIncludeImports$($String$ $name$) \{\\
+\hspace*{1.5cm}  $Object$ $result$ = $entries$.$get$($name$);\\
+\hspace*{1.5cm}  {\bf if} ($result$ != {\bf null})\\
+\hspace*{2.0cm}    {\bf return} $result$;\\
+\hspace*{1.5cm}  {\bf if} ($importParent$ == {\bf null})\\
+\hspace*{2.0cm}    {\bf return} {\bf null};\\
+\hspace*{1.5cm}  {\bf return} $importParent$.$get$($name$);\\
+\hspace*{1.0cm}\}\\
+
+\section{Different Import Types}
+
+ProcessJ has two different kinds of import which each come in two different
+flavors:
+
+\begin{enumerate}
+\item Single file imports like
+  \begin{enumerate}
+    \item {\bf import} $f$;
+    \item {\bf import} $p$.$f$;
+    \item {\bf import} $p_1$.$p_2$.$f$;\\
+      ...
+    \item {\bf import} $p_1$.$p_2$.$...$.$p_n$.$f$;
+    \end{enumerate}
+    The file import is either a file name by it self, in which case the file
+    must be in the same directory as the file that imports it (and in the same
+    package!), or a number of package names eventually terminated by a file name.
+    the file $p_1$.$p_2$.$f$ must be in the directory {\tt p1/p2} and
+    called {\tt f.pj}.\\
+
+    If no local file (relative to where the main file being compiled is), an import
+    from the include directory is attempted.
+\item Wild card imports like:
+  \begin{enumerate}
+    \item {\bf import} $p$.*;
+    \item {\bf import} $p_1$.$p_2$.*;\\
+       ...
+    \item {\bf import} $p_1$.$p_2$.$...$.$p_n$.*;
+    \end{enumerate}
+    Again, for say $p_1$.$p_2$.*, if {\tt p1/p2} does not exist the include directory is searched.
+
+    Wildcard files are imported in reverse alphabetical order, and a
+    wild card import is a deep import. That is, if the directory {\tt p1/p2}
+    contains other directories, these are also visited and any {\tt .pj}
+    file will be imported.
+\end{enumerate}
+
+
+\subsection{Example}
+
+(The filenames followed by nothing have no imports)
+
+\noindent
+\underline{\tt Main.pj}\\
+{\bf import} Import.A;\\
+{\bf import} Import.M;\\
+{\bf import} Import.N;\\
+$ $\\
+\underline{\tt A.pj}\\
+{\bf import} Import.B;\\
+{\bf import} Import.C;\\
+{\bf import} Import.D;\\
+$ $\\
+\underline{\tt B.pj}\\
+{\bf import} Import.E;\\
+{\bf import} Import.F;\\
+$ $\\
+\underline{\tt C.pj}\\
+$ $\\
+\underline{\tt D.pj}\\
+$ $\\
+\underline{\tt E.pj}\\
+{\bf import} Import.Q;\\
+{\bf import} Import.R;\\
+$ $\\
+\underline{\tt F.pj}\\
+{\bf import} Import.T;\\
+{\bf import} Import.S;\\
+{\bf import} Import.U;\\
+$ $\\
+\underline{\tt M.pj}\\
+$ $\\
+\underline{\tt N.pj}\\
+$ $\\
+\underline{\tt Q.pj}\\
+$ $\\
+\underline{\tt R.pj}\\
+$ $\\
+\underline{\tt S.pj}\\
+$ $\\
+\underline{\tt T.pj}\\
+$ $\\
+\underline{\tt U.pj}\\
+
+\noindent
+With the switch {\tt -sts} on the compiler we get the following import tree:
+\newpage
+\begin{footnotesize}
+\begin{verbatim}
+name.........: Global Type Table
+parent.......: --//
+importParent.: 
+|  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/N.pj
+|  parent.......: 
+|  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/M.pj
+|  |  parent.......: 
+|  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/A.pj
+|  |  |  parent.......: --//
+|  |  |  importParent.: 
+|  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/D.pj
+|  |  |  |  parent.......: 
+|  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/C.pj
+|  |  |  |  |  parent.......: 
+|  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/B.pj
+|  |  |  |  |  |  parent.......: --//
+|  |  |  |  |  |  importParent.: 
+|  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/F.pj
+|  |  |  |  |  |  |  parent.......: 
+|  |  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/E.pj
+|  |  |  |  |  |  |  |  parent.......: --//
+|  |  |  |  |  |  |  |  importParent.: 
+|  |  |  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/R.pj
+|  |  |  |  |  |  |  |  |  parent.......: 
+|  |  |  |  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/Q.pj
+|  |  |  |  |  |  |  |  |  |  parent.......: --//
+|  |  |  |  |  |  |  |  |  |  importParent.: --//
+|  |  |  |  |  |  |  |  |  importParent.: --//
+|  |  |  |  |  |  |  importParent.: 
+|  |  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/U.pj
+|  |  |  |  |  |  |  |  parent.......: 
+|  |  |  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/S.pj
+|  |  |  |  |  |  |  |  |  parent.......: 
+|  |  |  |  |  |  |  |  |  |  name.........: Import: /Volumes/Data/Dropbox/ProcessJ/Import/T.pj
+|  |  |  |  |  |  |  |  |  |  parent.......: --//
+|  |  |  |  |  |  |  |  |  |  importParent.: --//
+|  |  |  |  |  |  |  |  |  importParent.: --//
+|  |  |  |  |  |  |  |  importParent.: --//
+|  |  |  |  |  importParent.: --//
+|  |  |  |  importParent.: --//
+|  |  importParent.: --//
+|  importParent.: --//
+\end{verbatim}
+\end{footnotesize}
+
+\includegraphics[width=\textwidth]{import-example}
+\centerline{Graph version of the import hierarchy.}
+\end{document}

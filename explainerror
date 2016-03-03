@@ -1,0 +1,17 @@
+#!/bin/bash
+
+ERRORDOC=doc/implementation/errors.txt
+
+if [ $@ -eq 0 ] ; then
+  echo "usage: $0 <error number> | list"
+else
+  c=`grep $1 $ERRORDOC | sed 's/\[\([^]]*\)\]//g' | wc -l`
+    if [ $c -eq 0 ] ; then
+    echo "error $1 not found"
+  else
+    echo "----------------------------------------------------------------------"
+    grep $1 $ERRORDOC | sed 's/\[\([^]]*\)\]//g'
+    echo "----------------------------------------------------------------------"
+  fi
+fi
+

@@ -1,0 +1,6 @@
+
+public record myX [refernces=false] {
+       int f;
+}
+
+public proc void baz()[yields=false] { }

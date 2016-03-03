@@ -1,0 +1,82 @@
+<project name="ProcessJ" default="javac" basedir=".">
+	<property name="library.path" value="lib" />
+	<property name="debug" value="on" />
+	<property name="optimize" value="off" />
+	<property name="dist" value="dist" />
+	<property name="src" location="src"/>
+	<property name="build" value="bin" />
+	<property name="parserdir" location="src/Parser/"/>
+	<property name="scannerdir" location="src/Scanner/"/>
+	<property name="cupJar" location="src/Utilities/java_cup.jar"/>
+	<property name="cupRuntimeJar" location="src/Utilities/java_cup_runtime.jar"/>
+	<property name="jflexJar" location="src/Utilities/JFlex.jar"/>
+	<property name="stringtemplatejar" location="src/Utilities/ST-4.0.7.jar"/>
+        <property name="classpath" value="${cupJar}:${cupRuntimeJar}:${jflexJar}:${stringtemplatejar}:."/>
+	<description>
+		Build File for Processj Compiler Project
+	</description>
+	
+	<target name="javac" depends="init, scanner, parser, pjc">
+	</target>
+		        
+	<target name="compile" depends="initlight, pjc">
+	</target>
+
+	<target name="pjc">
+			<javac srcdir="${src}" destdir="${build}" 
+			       optimize="${optimize}" 
+		               debug="${debug}" 
+			       classpath="${classpath}" 
+			       includeantruntime="false" />
+	</target>
+	
+	<target name="parser">
+		<java jar="${cupJar}" input="src/Parser/ProcessJ.cup" fork="true" failonerror="true">
+			<arg value="-package"/>
+			<arg value="Parser"/>
+		</java>
+		<move file="parser.java" todir="${src}/Parser" />
+		<move file="sym.java" todir="${src}/Parser" />
+	</target>
+		
+	<target name="scanner">
+		<java jar="${jflexJar}" fork="true" failonerror="true">
+			<arg value="-d"/>
+			<arg value="src/Scanner"/>
+			<arg value="src/Scanner/ProcessJ.flex"/>
+		</java>
+	</target>
+			
+	<target name="init" depends="clean">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="initlight" depends="dust">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="dust">
+		<delete dir="${build}" />
+	    <delete>
+	    	<fileset dir="${src}" includes="**/*~" defaultexcludes="no" />
+	    </delete>
+	</target>
+
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete file="${src}/Parser/parser.java"/>
+		<delete file="${src}/Parser/sym.java"/>
+		<delete file="${src}/Scanner/Scanner.java"/>
+	    <delete>
+	    	<fileset dir="${src}" includes="**/*~" defaultexcludes="no" />
+	    </delete>
+	</target>
+	
+	<target name="run">
+		<java classpath="${classpath}:${build}" classname="ProcessJc"> 
+			<arg value=""/>
+	        <arg value="test.pj"/>
+		</java>
+	</target>
+</project>

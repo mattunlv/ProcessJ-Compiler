@@ -1,0 +1,72 @@
+#!/bin/bash
+# $1 = package name
+# $2 = file name
+# $4 = install / test
+a=$#
+if [ $a -eq 3 ] ; then
+  echo "Installing ProcessJ Libraries"
+  if [ -e "$1_$2.h" ] ; then
+    echo "$1_$2.h file in place";
+  else 
+    echo "include file $1_$2.h is missing."
+    exit
+  fi
+  if [ -e "$1_$2.c" ] ; then
+    echo "$1_$2.c file in place";
+  else 
+    echo "implementation file $1_$2.c is missing."
+    exit
+  fi
+  if [ -e "$2.pj" ] ; then
+    echo "$2.pj file in place";
+  else 
+    echo "ProcessJ header/library file $2pj is missing."
+    exit
+  fi
+  status=`gcc -c $1_$2.c && echo OK` 
+  ok=`echo $status | tail -1`
+  echo "compile status: $ok"
+  if [ $ok == "OK" ] ; then 
+    echo "compilation succeeded"
+    echo "moving library files"
+    if [ $3 == "test" ] ; then
+      if [ -e "include/C/$1/$2.pj" ] ; then
+        echo "include/C/$1/$2.pj already exists."
+      fi
+      if [ -e "lib/C/obj/$1_$2.o" ] ; then
+        echo "lib/C/obj/$1_$2.o already exists."
+      fi
+      if [ -e "lib/C/include/$1_$2.h" ] ; then
+        echo "lib/C/include/$1_$2.h already exists."
+      fi
+      if [ -e "lib/C/src/$1_$2.c" ] ; then
+        echo "lib/C/src/$1_$2.c already exists."
+      fi
+    else 
+      if [ $3 == "install" ] ; then
+        echo "moving files..."
+	echo "installing $1_$2.{h/c/o/pj}" >> logs/install.log 
+	mv $1_$2.o lib/C/obj/.
+	mv $1_$2.h lib/C/include/.
+  	mv $1_$2.c lib/C/src/.
+	if [ ! -d "include/C/$1" ] ; then
+	  mkdir include/C/$1
+	fi
+        mv $2.pj include/C/$1/.
+      else
+        echo "Say what?"
+      fi
+    fi
+  else	 
+    echo "compilation failed!"
+    echo $status
+  fi
+else 
+ if [ $a -eq 2 ] ; then
+   ./pjc-install-c-library $1 $2 test
+ else
+   echo "usage: pjc-install-library <packagename> <filename> ( test | install )"
+ fi
+fi
+
+
