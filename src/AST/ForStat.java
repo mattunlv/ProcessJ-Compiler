@@ -1,7 +1,7 @@
 package AST;
 import Utilities.Visitor;
 
-public class ForStat extends Statement {
+public class ForStat extends LoopStatement {
 
 	/* Note that init() and incr() can be null */
 	public boolean par;

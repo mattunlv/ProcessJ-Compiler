@@ -1,7 +1,7 @@
 package AST;
 import Utilities.Visitor;
 
-public class DoStat extends Statement {
+public class DoStat extends LoopStatement {
 
 	public DoStat(Statement stat, Expression expr) {
 		super(expr);

@@ -1,7 +1,7 @@
 package AST;
 import Utilities.Visitor;
 
-public class WhileStat extends Statement {
+public class WhileStat extends LoopStatement {
 
 	public WhileStat(Expression expr, Statement stat) {
 		super(expr);
