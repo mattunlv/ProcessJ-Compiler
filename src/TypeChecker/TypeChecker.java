@@ -955,7 +955,7 @@ public class TypeChecker extends Visitor<Type> {
 		    for(SwitchLabel sl : sg.labels()) {
 			if (sl.isDefault()) {
 			    if (ht.contains("default")) 
-				Error.error(sl,"Duplicate default label.", false, 0000);
+				Error.error(sl,"Duplicate default label.", false, 0);
 			    else
 				ht.add("default");
 			    continue;
