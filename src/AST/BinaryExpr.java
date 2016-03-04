@@ -51,7 +51,27 @@ public class BinaryExpr extends Expression {
 		return left().isConstant() && right().isConstant();
 	}
 
+    // This method should ONLY be called if both the left and the right expressions
+    // are sure to be constant value - otherwise this method will crash!
 	public Object constantValue() {
+	    if (left().type.isBooleanType() && right().type.isBooleanType()) {
+		boolean lval = (Boolean)left().constantValue();
+		boolean rval = (Boolean)right().constantValue();
+		
+
+		switch(kind) {
+		case ANDAND: return new Boolean(lval && rval); 
+		case OROR:   return new Boolean(lval || rval);
+		case XOR:    return new Boolean(lval ^ rval);
+		case AND:    return new Boolean(lval & rval);
+		case OR:     return new Boolean(lval | rval);
+		case EQEQ:   return new Boolean(lval == rval);
+		case NOTEQ:  return new Boolean(lval != rval);
+		}
+	    } 
+
+
+
 		BigDecimal lval = (BigDecimal) left().constantValue();
 		BigDecimal rval = (BigDecimal) right().constantValue();
 
@@ -63,6 +83,10 @@ public class BinaryExpr extends Expression {
 			if (left().type.isIntegralType() && right().type.isIntegralType()) 
 				return new BigDecimal(lval.toBigInteger().divide(rval.toBigInteger()));
 			new BigDecimal(lval.doubleValue()/rval.doubleValue());
+		case LT: return new Boolean(lval.compareTo(rval) == -1);
+		case GT: return new Boolean(lval.compareTo(rval) == 1);
+		case LTEQ: return new Boolean(lval.compareTo(rval) != 1);
+		case GTEQ: return new Boolean(lval.compareTo(rval) != -1);
 		case MOD: 
 		case LSHIFT:
 		case RSHIFT:
@@ -81,6 +105,8 @@ public class BinaryExpr extends Expression {
 			case OR:     return new BigDecimal(Integer.toString(lint | rint)); 
 			case XOR:    return new BigDecimal(Integer.toString(lint ^ rint)); 
 			}
+		case EQEQ:  return new Boolean(lval.equals(rval));
+		case NOTEQ: return new Boolean(!lval.equals(rval));			
 		}
 		return null;
 	} 

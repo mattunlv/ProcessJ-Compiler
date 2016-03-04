@@ -78,10 +78,13 @@ public class PrimitiveLiteral extends Literal {
 	}
 
 	public Object constantValue() {
-		if (kind == StringKind || kind == NullKind || kind == BooleanKind)
+		if (kind == StringKind || kind == NullKind)
 			return text;
-		else 
-			return new BigDecimal(text);
+		else if (kind == BooleanKind) {
+		    return new Boolean(text.equals("true"));
+		}
+		else
+		    return new BigDecimal(text);
 	}
 
 

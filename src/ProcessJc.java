@@ -155,9 +155,9 @@ import CodeGeneratorJava.*;
 					System.out.println(Error.errors);
 					System.exit(1);
 				}
-
+				
 				c.visit(new Reachability.Reachability());
-
+				c.visit(new ConstantPropagation.ConstantPropagation());
 
 				////////////////////////////////////////////////////////////////////////////////
 				// CODE GENERATOR
