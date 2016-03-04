@@ -114,11 +114,23 @@ public class Reachability extends Visitor<Boolean> {
 	LoopStatement oldLoopConstruct = loopConstruct;
 	loopConstruct = fs;
 
+	// for (....; false ; ....) S1
+	if (fs.expr() != null &&
+	    fs.expr().isConstant() &&
+	    (fs.expr() instanceof PrimitiveLiteral) &&
+	    (((PrimitiveLiteral)fs.expr()).constantValue().equals("false"))) {
+	    Error.error(fs,"Body of for-loop unreachable",false,0000);
+	    loopConstruct = oldLoopConstruct;
+	    return new Boolean(true);
+	}
+	    
+	// for (... ; true; ...) S1
 	if (fs.expr() == null ||
 	    (fs.expr().isConstant() && 
 	     (fs.expr() instanceof PrimitiveLiteral) && 
 	     (((PrimitiveLiteral)fs.expr()).constantValue().equals("true")))) {
 	    loopConstruct = oldLoopConstruct;
+	    // more here 
 	    return new Boolean(false);
 	}
 	if (fs.stats() != null)
