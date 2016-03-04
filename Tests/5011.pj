@@ -1,0 +1,14 @@
+// P5011.pj. 
+//
+// Reachability 
+//
+// Error: 5011
+// Do-statement is an infinite loop
+//
+proc void P5011() {
+  int a;
+  do {  
+    a = 100;
+  } while (true);
+  a = 100;
+}

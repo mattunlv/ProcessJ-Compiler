@@ -1,0 +1,10 @@
+// P5006.pj. 
+//
+// Reachability 
+//
+// Error: 5006
+// Break statement outside loop or switch construct.
+//
+proc void P5006() {
+     break;
+}

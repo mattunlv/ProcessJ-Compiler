@@ -1,0 +1,12 @@
+// P5004.pj. 
+//
+// Reachability 
+//
+// Error: 5004
+// Body of for-statement unreachable. 
+//
+proc void P5004() {
+  for ( ; false ; ) {
+    int a = 10;
+  }
+}

@@ -1,0 +1,13 @@
+// P5002.pj. 
+//
+// Reachability 
+//
+// Error: 5002
+// While-statement is an infinite loop
+//
+proc void P5002() {
+  int a;
+  while (true) {
+    a = 100;
+  }
+}

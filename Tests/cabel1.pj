@@ -1,0 +1,16 @@
+//Source that writes 2 forever.
+proc void writer(chan<int>.write chanW, int x) [yield=true] {
+  int x = 2;
+  chanW.write(x);
+  x++;
+}
+
+proc void reader(chan<int>.read chanR) [yield=true]{
+    int x = chanR.read();
+}
+
+proc void main(string[] args) {
+	chan<int> intChan;
+    writer(intChan.write);
+    reader(intChan.read);
+}
