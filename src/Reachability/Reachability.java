@@ -30,14 +30,12 @@ public class Reachability extends Visitor<Boolean> {
 	Log.log(is,"Visiting an if-Statement.");
 	// if (true) S1 else S2 - S2 is unreachable
 	if (is.expr().isConstant() && 
-	    (is.expr() instanceof PrimitiveLiteral) &&
-	    (((PrimitiveLiteral)is.expr()).constantValue().equals("true")) &&
+	    ((Boolean)is.expr().constantValue()) &&
 	    is.elsepart() != null) 
 	    Error.error(is, "Else-part of if-statement unreachable.", false, 5000);
 	// if (false) S1 ... - S1 is unreachable
 	if (is.expr().isConstant() && 
-	    (is.expr() instanceof PrimitiveLiteral) &&
-	    (((PrimitiveLiteral)is.expr()).constantValue().equals("false")))
+	    (!(Boolean)is.expr().constantValue()))
 	    Error.error(is, "Then-part of if-statement unreachable.", false, 5001);
 	boolean thenBranch = true;
 	boolean elseBranch = true;
@@ -54,16 +52,8 @@ public class Reachability extends Visitor<Boolean> {
 	loopConstruct = ws;
 
 	boolean b = ws.stat().visit(this);
-	/*System.out.println("- Can run to completion: " + b);
-		System.out.println("- Has a break..........: " + ws.hasBreak);
-	System.out.println("- Has a return.........: " + ws.hasReturn);
-	System.out.println("- Has a constant expr..: " + ws.expr().isConstant());
-	System.out.println("- Expr is Literal......: " + (ws.expr() instanceof PrimitiveLiteral));
-	System.out.println("- Is it true? .........: " + (((PrimitiveLiteral)ws.expr()).constantValue()));
-	*/     
-	if (ws.expr().isConstant() &&       
-	    (ws.expr() instanceof PrimitiveLiteral) && 
-	    (((PrimitiveLiteral)ws.expr()).constantValue().equals("true")) &&
+	if (ws.expr().isConstant() && 
+	    ((Boolean)ws.expr().constantValue()) &&
 	    b &&                         // the statement can run to completion
 	    !ws.hasBreak && !ws.hasReturn) {  // but has no breaks, so it will loop forever
 	    Error.error(ws,"While-statement is an infinite loop", false, 5002);
@@ -73,8 +63,7 @@ public class Reachability extends Visitor<Boolean> {
 
 	if (ws.expr() != null &&
 	    ws.expr().isConstant() &&
-	    (ws.expr() instanceof PrimitiveLiteral) &&
-	    (((PrimitiveLiteral)ws.expr()).constantValue().equals("false"))) {
+	    (!(Boolean)ws.expr().constantValue())) {
 	    Error.error(ws,"Body of while-statement unreachable.", false, 5012);
 	    loopConstruct = oldLoopConstruct;
 	    return new Boolean(true);
@@ -95,8 +84,7 @@ public class Reachability extends Visitor<Boolean> {
 	boolean b = ds.stat().visit(this);
 
 	if (ds.expr().isConstant() && 
-	    ds.expr() instanceof PrimitiveLiteral && 
-	    (((PrimitiveLiteral)ds.expr()).constantValue().equals("true")) &&
+	    ((Boolean)ds.expr().constantValue()) &&
 	    b &&                         // the statement can run to completion
 	    !ds.hasBreak && !ds.hasReturn) {  // but has no breaks, so it will loop forever
 	    loopConstruct = oldLoopConstruct;
@@ -135,8 +123,7 @@ public class Reachability extends Visitor<Boolean> {
 	// for (....; false ; ....) S1
 	if (fs.expr() != null &&
 	    fs.expr().isConstant() &&
-	    (fs.expr() instanceof PrimitiveLiteral) &&
-	    (((PrimitiveLiteral)fs.expr()).constantValue().equals("false"))) {
+	    (!(Boolean)fs.expr().constantValue())) {
 	    Error.error(fs,"Body of for-statement unreachable.", false, 5004);
 	    loopConstruct = oldLoopConstruct;
 	    return new Boolean(true);
@@ -149,8 +136,7 @@ public class Reachability extends Visitor<Boolean> {
 	// for (... ; true; ...) S1
 	if ((fs.expr() == null ||
 	    (fs.expr().isConstant() && 
-	    (fs.expr() instanceof PrimitiveLiteral) && 
-	     (((PrimitiveLiteral)fs.expr()).constantValue().equals("true")))) &&
+	     ((Boolean)fs.expr().constantValue()))) &&
 	    b &&                        // the statement can run to completion
 	    !fs.hasBreak && !fs.hasReturn)  // but has no breaks, so it will loop forever
 	    {
@@ -162,8 +148,8 @@ public class Reachability extends Visitor<Boolean> {
 	return new Boolean(true);
     }
     
-    //AltStat
-    // WHAT TODO??
+    // AltStat
+    // just visit the children - default implementation 
 
     // DONE
     public Boolean visitBreakStat(BreakStat bs) {
@@ -175,7 +161,8 @@ public class Reachability extends Visitor<Boolean> {
 	    Error.error(bs, "Break statement outside loop or switch construct.", false, 5006);
 	    return new Boolean(true); // this break doesn't matter cause it can't be here anyways!
 	}
-	loopConstruct.hasBreak = true;
+	if (loopConstruct != null)
+	    loopConstruct.hasBreak = true;
 	return new Boolean(false);
     }
     
@@ -200,7 +187,8 @@ public class Reachability extends Visitor<Boolean> {
 	    Error.error(cs, "Continue statement outside loop construct.", false, 5007); 
 	    return new Boolean(true); // this continue doesn't matter cause it can't be here anyways!
 	}
-	loopConstruct.hasContinue = true;
+	if (loopConstruct != null)
+	    loopConstruct.hasContinue = true;
 	return new Boolean(false);
     }
     // DONE
@@ -247,10 +235,16 @@ public class Reachability extends Visitor<Boolean> {
 	return new Boolean(true);
     }
     
+    public Boolean visitSwitchGroup(SwitchGroup sg) {
+	return new Block(sg.statements()).visit(this);
+    }
+
+
     public Boolean visitSwitchStat(SwitchStat ss) {
 	Log.log(ss,"Visiting a switch-statement.");
 	SwitchStat oldSwitchConstruct = switchConstruct;
 	switchConstruct = ss;
+	ss.switchBlocks().visit(this);       
 	// TODO finish this!
 	switchConstruct = oldSwitchConstruct;
 	return new Boolean(true);
