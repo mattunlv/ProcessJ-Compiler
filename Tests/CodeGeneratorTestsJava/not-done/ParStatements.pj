@@ -1,0 +1,39 @@
+
+/**
+ * Not so trivial program, calling
+ * multiple functions.
+*/
+import std.io;
+
+//Source that writes 2 forever.
+proc void source1() {
+
+  for(int i = 0; i < 10; i ++){
+    println("Source1()");
+  }
+
+  return;
+}
+
+proc void source2() {
+
+  for(int i = 0; i < 10; i ++){
+    println("Source2()");
+  }
+
+  return;
+}
+
+proc void procMain() {
+  int x;
+  int z = 0;
+  int y = 3, w = 7;
+  int cat = 0;
+  par{
+    x = 5;
+    z++;
+    int v = y + w;
+    f(cat + 5);
+  }
+  return;
+}

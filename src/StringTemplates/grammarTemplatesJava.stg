@@ -1,0 +1,305 @@
+Info() ::= <<
+ This file contains all templates for the ProcessJ compiler based on the grammar of
+ ProcessJ. The CodeGeneratorJava.java file then uses these rules as well as a visitor
+ to generate our Java equivalent code.
+>>
+
+Compilation(pragmas, packageName, imports, typeDecls, prototypes, parBlockPrototypes,
+  parBlockProcs) ::= <<
+<! TODO pragmas, packageName, imports !>
+
+package Generated<if(packageName)>.<packageName><endif>;
+import java.util.*;
+import ProcessJ.runtime.Process;
+import ProcessJ.runtime.*;
+
+public class <packageName> { <! add and use className and extends/implements if needed. !>
+	<typeDecls;
+ 		separator ="\n">
+}
+>>
+
+AltCase(number, guardToDo, statementList) ::= <<
+case <number>:
+  <guardToDo>;
+  <statementList; separator = ";\n">;
+  break;
+>>
+
+AltStat(altType, enableChannelList, waitType, disableChannelList,
+        switchStatement) ::= <<
+<! This is the main statement to create our AltCase, we have auxillary functions
+   to fill the rest of it in... !>
+/*Start of Alternative!*/
+<altType>;
+
+<enableChannelList; separator = ";\n">;
+
+/*Do waiting here! */
+<waitType>;
+
+<disableChannelList; separator = ";\n">;
+
+<switchStatement>
+
+/*End of Alternative!*/
+>>
+
+NormalAltType(globalWsName) ::= "Alt(<globalWsName>)"
+TimerAltType(globalWsName) ::= "TimerAlt(<globalWsName>)"
+
+
+NormalWaitType(globalWsName) ::= "AltWait(<globalWsName>)"
+TimerWaitType(globalWsName) ::= "TimerAltWait(<globalWsName>)"
+
+AltSwitch(altEnd, caseList) ::= <<
+<! Our Switch Statement is a list of cases separated by breaks. !>
+switch( <altEnd> ){
+  <caseList; separator ="\n">
+  default:
+    System.out.println("Reached default case of switch statement from Alt\n");
+    System.out.println("This should never happen... dying now X(\n");
+}
+>>
+
+AltEnableTimeout(globalWsName, number, time, name) ::= <<
+<! This statement is funny as we actually need a variable to hold our time. !>
+Time <name> = TimerRead(<globalWsName>) + <time>;
+AltEnableTimer(<globalWsName>, <number>, <name>)
+>>
+
+AltEnableSkip(globalWsName, number) ::= "AltEnableSkip(<globalWsName>, <number>)"
+AltEnableChannel(globalWsName, number, name) ::= "AltEnableChannel(<globalWsName>, <number>, <name>)"
+
+
+AltDisableTimeout(globalWsName, number, name) ::= <<
+AltDisableTimer(<globalWsName>, <number>, <name>)
+>>
+
+
+AltDisableChannel(globalWsName, number, name) ::= "AltDisableChannel(<globalWsName>, <number>, <name>)"
+AltDisableSkip(globalWsName, number) ::= "AltDisableSkip(<globalWsName>, <number>)"
+
+
+Assignment(left, right, op) ::= "<left> <op> <right>"
+
+BinaryExpr(left, right, op) ::= "(<left> <op> <right>)"
+
+BreakStat() ::= "break"
+
+CastExpr(ct, expr) ::= "(<ct>) (<expr>)"
+
+ChanInit(channelName) ::= "ChanInit(<channelName>)"
+
+ChannelWriteStat(channel, expr) ::= <<
+<channel>.write(this, <expr>)
+>>
+
+ChannelReadExprInt(channel) ::= <<
+<channel>.read(this)
+>>
+
+ChannelReadExprTimer(channel) ::= <<
+TimerRead()
+>>
+
+ContinueStat() ::= "continue"
+
+DoStat(stat, expr) ::= <<
+do {
+  <stat; separator = ";\n">;
+} while( <expr> )
+>>
+
+ExternPrint(string, argumentList, argumentCount) ::= <<
+<! cds-TODO: change this into normal java println !>
+System.out.printf("<string>"<if(argumentList)>, <argumentList; separator = ", "><endif>)
+>>
+
+ForStat(init, expr, incr, barriers, stats) ::= <<
+for(<init; separator = ",">; <expr>; <incr>){
+  <stats; separator = ";\n">;
+}
+>>
+
+IfStat(expr, thenPart, elsePart) ::= <<
+if( <expr> ) {
+  <thenPart; separator = ";\n">;
+}<if(elsePart)> else {
+  <elsePart; separator = ";\n">;
+}<endif>
+>>
+
+InvocationWithReturn(functionName, paramNumber, procParams, returnType) ::= <<
+({
+  <returnType> returnValue;
+  functionName(<if(procParams)>, <procParams; separator =", "><endif>, &returnType);
+  returnValue;
+})
+>>
+
+InvocationNoReturn(qualifiedFunctionName, procParams, isProcess) ::= <<
+<if(isProcess)>
+(new <qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>)).schedule()<\\>
+<else>
+<qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
+<endif>
+>>
+
+InvocationPar(qualifiedFunctionName, procParams, parName, isProcess) ::= <<
+<if(isProcess)>
+(new <qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>){
+	public void finalize() {
+		<parName>.decrement();		
+	}
+}).schedule()<\\>
+<else>
+<qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
+<endif>
+>>
+
+LocalDecl(type, var, parentYields, constant, channelPart) ::= <<
+<! If this is channel it must be initialized! !>
+<if(parentYields)>
+<var><if(channelPart)> = new <type>()<endif><\\>
+<else>
+<type> <var><if(channelPart)> = new <type>()<endif><\\>
+<endif>
+>>
+
+GlobalDecl(type, name, constant, channelPart) ::= <<
+<! If this is channel it must be initialized! !>
+<type> <name><if(channelPart)> = new <type>()<endif>
+>>
+
+NewArray(type, size) ::= "new <type>[<size>]"
+
+ParamDecl(type, name) ::= "<type> <name>"
+
+ProcTypeYieldDecl(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+
+public static class <name> extends Process {
+
+	<if(formals)><formals; separator = ";\n">;<endif>
+	<if(globals)><globals; separator = ";\n">;<endif>
+
+    <!modifiers><returnType> <name>(<\\!>
+    public <name>(<\\>
+    	<if(formals)><formals; separator = ", "><endif>) {
+    	<if(formalNames)><formalNames:{n | this.<n> = <n>}; separator = ";\n">;<endif>
+    	runLabel = 0;
+    }
+
+	@Override
+	public void run() {
+		
+		<body; separator = ";\n">;<\\>
+      	
+      	<! TODO: cds add logic for returning rescheduling processes. !>
+      	
+      	terminate();
+		label(2);
+	}
+}
+>>
+
+ProcTypeMainDecl(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+
+public static void main(String[] args) {
+	Scheduler scheduler = new Scheduler();
+	Process.scheduler = scheduler;
+	System.out.println("Added _main process to scheduler...");
+		
+	<body; separator = ";\n">;
+	
+	System.out.println("Starting the scheduler...");
+	Process.scheduler.start();
+		
+	System.out.println("Scheduler thread.start() done.");
+}
+>>
+			
+ProcTypeDecl(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+
+public static <returnType> <name>(<if(formals)><formals; separator = ", "><endif>) {
+	<body; separator = ";\n">;
+}
+>>
+
+ProcParam(parWsName, index, paramNumber, param) ::= <<
+ProcParam(<parWsName>[<index>], <paramNumber>, <param>)
+>>
+
+
+ProcGetParam(type, name, number) ::= <<
+<type> <name> = ProcGetParam(<number>, <type>)
+>>
+
+
+ParBlockProc(name, body, getParameters) ::= <<
+<! Very similar to ProcTypeDecl but simplified for ParBlocks only. !>
+void <name>(){
+  <if(getParameters)><getParameters; separator = ";\n">;<endif>
+  <body>;
+
+  return;
+}
+>>
+
+ParBlock(processCount, parName, stats) ::= <<
+switch(runLabel) {
+	case 0:
+		break;	
+	case 1:
+		jump(1);
+		break;
+}
+	
+final Par <parName> = new Par(<processCount>, this);
+
+setNotReady();
+	
+<stats; separator=";\n">;
+	
+yield(1);
+
+jump(2);
+label(1);
+
+
+>>
+
+Prototype(name, formals) ::= <<
+void <name>(<if(formals)>, <formals; separator = ", "><endif>)
+>>
+
+ReturnStat(expr) ::= "return<if(expr)> <expr><endif>"
+
+SwitchLabel(constExpr, defaultExpr) ::= <<
+<if(constExpr)>case <constExpr><endif><if(defaultExpr)><defaultExpr><endif>:
+>>
+
+SwitchGroup(labels, stmts) ::= <<
+  <labels; separator = "\n">
+    <stmts; separator = ";\n">;
+>>
+
+SwitchStat(expr, switchGroups) ::= <<
+switch( <expr> ){
+  <switchGroups; separator = "\n">
+}
+>>
+
+Ternary(expr, trueBranch, falseBranch) ::= "<expr> ? <trueBranch> : <falseBranch>"
+
+UnaryPostExpr(expr, op) ::= "<expr><op>"
+
+UnaryPreExpr(expr, op) ::= "<op><expr>"
+
+Var(name, init) ::= "<name><if(init)> = <init><endif>"
+
+WhileStat(expr, stat) ::= <<
+while( <expr> ) {
+  <stat; separator = ";\n">;
+}
+>>

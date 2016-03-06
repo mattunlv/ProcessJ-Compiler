@@ -1,0 +1,36 @@
+/**
+ * Not so simple program, creates channel and has
+ * source talk to sink.
+*/
+import std.io;
+
+//Source that writes 2 forever.
+proc void source(chan<int>.write chanW, int x, boolean flag) [yield=true] {
+  int x = 2;
+
+  while (true){
+    chanW.write(x);
+    x++;
+  }
+}
+
+proc void writer(chan<int>.read chanR) [yield=true]{
+  while(true){
+    int x = chanR.read();
+    //println("Reader read: " + x);
+  }
+}
+
+proc void procMain() [yield=true]{
+  chan<int> intChan;
+  par{
+    source(intChan);
+    writer(intChan);
+  }
+  return;
+}
+
+proc void main(string[] args){
+	procMain();
+}
+

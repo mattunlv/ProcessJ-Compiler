@@ -1,0 +1,13 @@
+import Blah.A3;
+
+
+proc void baz() {
+}
+
+
+
+proc void main() {
+  A1::foo(3);
+  bar();
+  baz();
+}

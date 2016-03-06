@@ -1,0 +1,24 @@
+proc void p1(int c) [yeild=false] {
+	int y = 5;
+	c = 10;
+}
+
+proc void p2(int c, double x) [yeild=false] {
+	string z = "zzz";
+	c = 4;
+	x = 1.1;
+
+}
+
+proc void foo(int x) [yeild=true]{
+
+	p1(10);
+
+}
+
+proc void main(string[] args) {
+	int yy = 100;
+	
+	foo(5);
+	p2(5, 2.1);
+}

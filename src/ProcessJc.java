@@ -1,15 +1,19 @@
-	import Utilities.Error;
-	import Utilities.Visitor;
-	import Utilities.Settings;
-	import Utilities.SymbolTable;
-	import Printers.*;
-	import Scanner.*;
-	import Parser.*;
-	import AST.*;
-import CodeGeneratorC.*;
-import java.io.*;
-import CodeGeneratorJava.*;
-	import Library.*;
+	import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+
+import AST.AST;
+import AST.Compilation;
+import CodeGeneratorC.CodeGeneratorC;
+import CodeGeneratorJava.CodeGeneratorJava;
+import Instrument.Instrumenter;
+import Library.Library;
+import Parser.parser;
+import Printers.ParseTreePrinter;
+import Scanner.Scanner;
+import Utilities.Error;
+import Utilities.Settings;
+import Utilities.SymbolTable;
 	
 	public class ProcessJc {
 		public static void usage() {
@@ -157,7 +161,6 @@ import CodeGeneratorJava.*;
 				}
 				
 				c.visit(new Reachability.Reachability());
-				c.visit(new ConstantPropagation.ConstantPropagation());
 
 				////////////////////////////////////////////////////////////////////////////////
 				// CODE GENERATOR
@@ -165,13 +168,39 @@ import CodeGeneratorJava.*;
 				if (Settings.targetLanguage.equals("c"))
 				    c.visit(new CodeGeneratorC<AST>());
 				else if (Settings.targetLanguage.equals("JVM"))
-				    c.visit(new CodeGeneratorJava<AST>());
+//				    c.visit(new CodeGeneratorJava<AST>());
+					generateCodeJava(c, argv[i]);
 				else {
 				    System.out.println("Unknown target language selected");
 				    System.exit(1);
 				}
 				System.out.println("============= S = U = C = C = E = S = S =================");
 			}	
+		}
+		
+		private static void generateCodeJava(Compilation c, String filename) {
+			CodeGeneratorJava<Object> generator = new CodeGeneratorJava<Object>();
+			/*
+			 * Ignoring the path and .pj extension and getting just the filename.
+			 */
+			String[] tokens = filename.split(File.separator);
+			String n = tokens[tokens.length - 1];
+			String name = n.substring(0, n.lastIndexOf("."));
+			generator.setOriginalFilename(name);
+
+			c.visit(generator);
+			
+			//FIXME should we call the asmifier here or should we make a separate
+			//call from the pjc script? I like it here coz it makes getting the class
+			//files very easy.
+			try {
+				Instrumenter obj = new Instrumenter(name);
+				obj.execute();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			return;
 		}
 
 		public static void displayFile(String name) {

@@ -1,0 +1,17 @@
+/**
+ * Testing alternatives! That is, ALT :)
+ */
+proc void alternative(chan<int>.read intChan){
+  int x;
+
+  alt{
+    x = intChan.read() : {
+      println("x was: " + x);
+    }
+    skip : {
+      println("Skip was called instead!\n");
+    }
+  }
+
+  return;
+}

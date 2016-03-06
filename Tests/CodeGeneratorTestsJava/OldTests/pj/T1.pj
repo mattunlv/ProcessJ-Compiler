@@ -1,0 +1,48 @@
+
+
+
+
+
+public proc void foo(shared chan<int>.read sharedReadWriteChan,
+            	     shared chan<int>.read chandfdf) {
+
+  alt {
+    x = c1.read() : { }
+    y = c2.read() : { }
+    t.timeout(700) : { }
+ }
+
+
+}
+  
+public proc void main(string args[]) {
+  shared chan<int> sharedReadWriteChan;
+  shared read chan<int> sharedReadChan;
+  shared write chan<int> sharedWriteChan;
+
+  par {
+    foo(c.read);
+  }
+}
+
+
+public proc void foo(int a) {
+  chan<int> c;
+
+
+  timer t;
+  int time = t.read();
+  t.timeout(100);
+}
+
+public record Client {
+    string first_name, last_name;
+    string address1, address2, city;
+    int zip;
+    Transaction transactions[]; 
+  }   
+
+public protocol P {
+    request: { int number; double amount; }
+    reply: { bool status; }
+  }

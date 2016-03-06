@@ -1,0 +1,30 @@
+/**
+ * Proc to class conversion test.
+ */
+ 
+const double PI = 3.14;
+
+proc void foo(int p, boolean k){
+  double x = 0;
+  double z = 4.5;
+  return;
+}
+
+proc void bar(int a, int b) {
+
+	boolean x = true;
+	int z = 5;
+	
+}
+
+
+proc void baz(double x) {
+	
+	string z = "hello";
+}
+
+proc void main(string args[]) {
+	foo(5, false);
+	bar(2, 4);
+	baz(2.3);
+}

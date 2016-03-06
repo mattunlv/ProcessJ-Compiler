@@ -1,0 +1,14 @@
+/**
+ * Simple program!
+ */
+proc void main(){
+  int x = 0;
+  do{
+    int z, y;
+    z = 4;
+    y = x;
+    x++;
+  }while(x < 4);
+
+  return;
+}

@@ -1,0 +1,27 @@
+proc void p1(chan<int>.read c) [yield=true]{
+
+}
+
+proc void p2(chan<int>.write c, int x) [yield=true]{
+
+}
+
+proc void foo(int x) [yield=true]{
+
+  chan<int> c;
+
+  par {
+    p1(c.read);
+    p2(c.write, x);
+  }
+  
+  bar(10); 
+}
+
+proc void bar(int y) [yield=false]{
+	y = y+10;
+}
+
+proc void main(string[] args) {
+	foo(5);
+}

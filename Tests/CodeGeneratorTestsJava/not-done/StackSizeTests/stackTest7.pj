@@ -1,0 +1,11 @@
+import std.io;
+
+proc void myMain(){
+  par{
+    int x = 5;
+    int y = 6;
+  }
+
+  return;
+}
+

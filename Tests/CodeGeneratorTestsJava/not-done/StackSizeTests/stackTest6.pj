@@ -1,0 +1,13 @@
+import std.io;
+
+proc void printNumberNTimes(int x, int n){
+  for(int i = 0; i < n; i++)
+    println(i + ": Our Number was: " + x);
+}
+
+proc void myMain(){
+  int x = 5;
+  int n = 10;
+  printNumberNTimes(x,n);
+}
+

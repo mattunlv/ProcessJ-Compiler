@@ -1,0 +1,31 @@
+import f;
+import a.b.c.d.e.f;
+import a.b.*;
+
+public record R extends x.y::A {
+  int a;
+}
+
+public proc void foo() implements std.mobil::bar {
+       P.ff.f.f.f::myRecordType[] mr;
+       chan<P.F::MyType> c;
+
+
+       //       x.y.g.f.fg.fg = x.g.e.f.f.f.f.f;
+
+       //x.y.z.w = 8;
+
+       r = new std.b.g.e.d.f.g::R{12,34};
+
+       x = R::x;
+
+       
+       P.F::x.g.foo();
+
+
+       P.F.x.x.x.x::foo(7, std.math::PI);
+       r = P.F::r.f.r.e;
+
+       P.F.y.y.y.y::RecordConst.field1.field2.function(8);
+//       P.F::constRecord.field = 78;
+}

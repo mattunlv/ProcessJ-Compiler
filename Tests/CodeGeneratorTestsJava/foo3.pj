@@ -1,0 +1,9 @@
+import foo1;
+import foo2;
+
+
+proc void main(){
+
+	foo1::A();
+
+}

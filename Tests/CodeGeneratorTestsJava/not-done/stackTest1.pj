@@ -1,0 +1,13 @@
+/**
+ * Testing stack allocation 1.
+ */
+import std.io;
+
+proc void main1(){
+  int x = 0;
+  for(int i = 0; i < 10; ++i){
+    println("Hello World!");
+  }
+
+  return;
+}

@@ -1,0 +1,25 @@
+/**
+ * Program test calling a function inside a paramters...
+*/
+import std.io;
+
+//Source that writes 2 forever.
+proc void source1(int n) {
+  println("Source1()");
+
+  for(int i = 0; i < n; i ++){
+    println("X was :" + 1);
+    println("Y was :" + 2);
+  }
+
+  return;
+}
+
+proc int source2() {
+  return 10;
+}
+
+proc void procMain() {
+  source1(source2());
+}
+

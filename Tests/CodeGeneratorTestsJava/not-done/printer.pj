@@ -1,0 +1,50 @@
+import std.io;
+/**
+ * Simple program, creates two processes that continually write numbers to
+ * other process.
+ */
+proc void writeEven(chan<int>.write c){
+  int i = 0;
+  while(true){
+    c.write(i);
+    i += 2;
+  }
+
+  return;
+}
+
+proc void writeOdd(chan<int>.write c){
+  int i = 1;
+  while(true){
+    c.write(i);
+    i += 2;
+  }
+
+  return;
+}
+
+proc void printer(chan<int>.read c1, chan<int>.read c2){
+  int x;
+  while(true){
+    alt{
+      x = c1.read() : {
+        println("Channel 1: " + x);
+      }
+      x = c2.read() : {
+        println("Channel 2: " + x);
+      }
+    }
+  }
+  return;
+}
+
+proc void myMain(){
+  chan<int> c1;
+  chan<int> c2;
+  par{
+    writeEven(c1.write);
+    writeOdd(c2.write);
+    printer(c1.read, c2.read);
+  }
+  return;
+}

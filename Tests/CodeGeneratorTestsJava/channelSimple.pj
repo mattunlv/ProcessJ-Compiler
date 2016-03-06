@@ -1,0 +1,24 @@
+import std.io;
+
+proc void writer(chan<int>.write chanW) [yield=true]{
+  chanW.write(2);
+  return;
+}
+
+proc void procMain() [yield=true]{
+  chan<int> iChan;
+  writer(iChan.write);
+  
+  int a; 
+
+  while(true) {
+  	a++;
+  	}
+
+  return;
+}
+
+proc void main(string[] args) {
+	procMain();
+}
+

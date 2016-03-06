@@ -1,0 +1,10 @@
+import std.io;
+
+public proc int f(int n) {
+  return n;
+}
+
+public proc void Main() {
+  f(f(3));
+  return;
+}

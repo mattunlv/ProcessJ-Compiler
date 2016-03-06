@@ -1,0 +1,10 @@
+
+
+record FFF { int c; }
+
+record DDD { FFF myF; }
+
+proc void foo(int x) { 
+  }
+
+proc void foo(int y, int x) { }

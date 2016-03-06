@@ -1,0 +1,39 @@
+/**
+ * Name globalization test.
+ */
+proc void main(int p, boolean k){
+  double x = 0;
+  double y = 1;
+  double z = 4.5;
+
+  if (k) 
+  	p = 10;
+  	
+  for(int i=0; i<5; i++){
+ 	i = 2; 
+  }
+  
+  for(int i=0; i<10; i++){
+  	i--;
+  }
+  
+  
+  x = (double)x + y;
+  y = (int)((int)z + (double)x);
+  return;
+}
+
+proc void main2(int a, int b) {
+
+	boolean x = true;
+	int z = 4;
+	
+	for(int i=0; i<5; i++){
+ 		i = 2; 
+ 	}
+  
+  	for(int i=0; i<10; i++){
+  		i--;
+  	}
+
+}

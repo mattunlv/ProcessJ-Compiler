@@ -1,0 +1,2 @@
+#!/bin/bash
+java -cp bin:src/Utilities/java_cup_runtime.jar:src/Utilities/ST-4.0.7.jar:src/Utilities/asm-all-3.3.1.jar:. ProcessJc -t JVM $@

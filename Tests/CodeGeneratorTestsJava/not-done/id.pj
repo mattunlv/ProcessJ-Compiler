@@ -1,0 +1,22 @@
+import std.io;
+
+
+proc void id(chan<boolean>.read a, chan<boolean>.write b){
+  boolean x;
+  x = a.read();
+  b.write(x);
+  return;
+}
+
+proc void myMain(){
+  chan<boolean> channelOne, channelTwo;
+  int x;
+  par{
+    channelOne.write(true);
+    id(channelOne.read, channelTwo.write);
+    x = channelTwo.read();
+  }
+
+  println("x was: " + x);
+  return;
+}

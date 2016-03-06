@@ -1,0 +1,11 @@
+import std.io;
+
+proc void printNumber(int x){
+  println("Our Number was: " + 5);
+}
+
+proc void myMain(){
+  int x = 5;
+  printNumber(5);
+}
+

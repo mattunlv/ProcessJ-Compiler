@@ -1,0 +1,47 @@
+/**
+ * Not so simple program, creates 2 channel and has
+ * source talk to doubler talk to sink!
+*/
+import std.io;
+
+//Source that writes 2 forever.
+proc void source(chan<int>.write chanW) {
+  int x = 1;
+
+  while (true){
+    chanW.write(x);
+    x++;
+  }
+  return;
+}
+
+proc void writer(chan<int>.read chanR){
+  while(true){
+    int x = chanR.read();
+    println("Reader read: " + x);
+  }
+
+  return;
+}
+
+proc void doubler(chan<int>.read toDoubler, chan<int>.write toWriter){
+  while(true){
+    int x = toDoubler.read();
+    toWriter.write(x * 2);
+  }
+
+  return;
+}
+
+proc void procMain() {
+  chan<int> toDoubler;
+  chan<int> toWriter;
+  par{
+    source(toDoubler);
+    writer(toWriter);
+    doubler(toDoubler, toWriter);
+  }
+
+  return;
+}
+
