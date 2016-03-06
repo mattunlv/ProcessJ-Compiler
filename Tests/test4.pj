@@ -1,0 +1,15 @@
+
+proc void foobar() { 
+
+for (;;) {
+    int a = 9;
+
+}
+
+
+
+int b = 9;
+
+
+
+}

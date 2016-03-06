@@ -1,0 +1,21 @@
+
+Type	     | Signature
+-------------+------------
+boolean	     | Z
+byte	     | B
+short	     | S
+char	     | C
+int	     | I
+long	     | J
+float	     | F
+double	     | D
+void	     | V
+barrier	     | R
+timer	     | M
+array        | [t; where t is the base type 
+record 	     | <Rn; n is the name
+protocol     | <Pn; n is the name
+procedure    | (param signature)t t is return type signature
+named type   | Lname;
+channeltype  | {t;
+channelendtype {t;! or {t;? ! for reading end and ? for writing end

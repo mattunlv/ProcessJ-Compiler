@@ -1,0 +1,11 @@
+
+mobile proc void foo() ;
+
+mobile proc void bar() implements foo { }
+
+proc void main() {
+  foo f = new f;
+  chan<foo> c;
+
+  c.write(f);
+}

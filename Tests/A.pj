@@ -1,0 +1,7 @@
+import B;
+proc void foo() {
+}
+
+public record BB {
+  foo foo;
+}

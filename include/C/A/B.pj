@@ -1,0 +1,6 @@
+package A;
+import A.C;
+
+public record R {
+  int a;
+}

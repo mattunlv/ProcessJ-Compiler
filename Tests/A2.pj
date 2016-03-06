@@ -1,0 +1,15 @@
+import Blah.A3;
+import Blah.Bloop.A5;
+
+proc void baz() [yields=false] {
+}
+
+
+
+proc void main() [yields=true] {
+  A1::foo(3);
+//  AAA::f();
+//  A1.b::f a;
+  bar();
+  baz();
+}

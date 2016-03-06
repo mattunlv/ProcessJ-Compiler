@@ -1,0 +1,14 @@
+// P5000.pj. 
+//
+// Reachability 
+//
+// Error: 5000
+// Else-part of if-statement unreachable
+//
+proc void P5000() {
+  int a;
+  if (true)
+    a = 100;
+  else
+    a = 500;
+}

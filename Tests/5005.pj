@@ -1,0 +1,12 @@
+// P5005.pj. 
+//
+// Reachability 
+//
+// Error: 5005
+// For-statement is an infinite loop.
+//
+proc void P5005() {
+  for ( ; ; ) {
+    int a = 10;
+  }
+}

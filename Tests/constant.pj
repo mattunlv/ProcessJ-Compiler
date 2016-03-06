@@ -1,0 +1,10 @@
+public proc void constant() {
+  int a;
+  if (true && true) {
+    a = 9+9;
+  }
+  if (true || false) {
+    double d = 8*4.3-(byte)4;
+  }
+
+}

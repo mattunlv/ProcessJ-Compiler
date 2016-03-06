@@ -1,0 +1,12 @@
+// P5012.pj. 
+//
+// Reachability 
+//
+// Error: 5012
+// Body of while-statement unreachable. 
+//
+proc void P5012() {
+  while (false) {
+    int a = 100;
+  }
+}

@@ -1,0 +1,10 @@
+//(2)
+//9: Right hand side operand of operator '*=' must be of numeric type.
+//Error number: 3005
+//
+// source:TypeChecker/visitAssignment()
+//
+proc void test () {
+  int i;
+  i *= "Hello";
+}

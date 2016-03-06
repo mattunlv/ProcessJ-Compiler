@@ -1,0 +1,54 @@
+
+hmmm error checking .....
+
+perhaps with non-terminating errors, set an error flag that prevents more checking until it is unset; this should happen at a statement level.
+
+
+
+
+when searching for procedures, search all the way back and collect candidates in the entire 
+imported package structure, warnings if some found with the same signature and name and error
+if they have different return types, if same return type then just grab the one that is furthest 
+DOWN in the import hierarchy!
+
+
+
+
+circular reference in imports!
+
+
+I think the following is legal:
+  for (int i=-0,j=0; ..... ; )
+
+non library procedures cannot use the word NATIVE either
+
+
+
+Library files actual file name should match the name in the FILE pragma
+
+
+Native library files CAN define ProcessJ constants - they just do not get
+mapped to C!
+
+
+#import kjdsfksjdkf makes the compiler fail 
+
+
+
+
+what happens if we have name clashes in an import package.* between two differnt files.....
+
+
+add ErrorType to visitor
+
+
+
+file name are incorrect for imports in NameChecker due to explicit file or package/file target in invocations
+
+
+
+libraries cannot have imports !!
+
+
+no double imports!
+no imports repeated that is

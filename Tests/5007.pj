@@ -1,0 +1,10 @@
+// P5007.pj. 
+//
+// Reachability 
+//
+// Error: 5007
+// Continue statement outside loop construct.
+//
+proc void P5007() {
+     continue;
+}

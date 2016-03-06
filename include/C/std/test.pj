@@ -1,0 +1,6 @@
+
+public record myX {
+       int f;
+}
+
+public proc void baz() { }
