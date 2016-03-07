@@ -29,9 +29,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
  * This class does the necessary bytecode
  * re-writing so that the yields in ProcessJ
  * work correctly.
- * 
- * @author cabel
- *
+ *  
  */
 public class Instrumenter {
 
@@ -48,6 +46,7 @@ public class Instrumenter {
 		System.out.println("*  Instrumenting classes in:   *");
 		System.out.println("================================");
 		System.out.println("Path:" + fullPath);
+		System.out.println("--------------------------------");
 	
 	}
 
@@ -55,28 +54,24 @@ public class Instrumenter {
 
 		File directory = new File(fullPath);
 		File[] directoryListing = directory.listFiles();
-		File copied = null;
 
 		if (directoryListing != null) {
 			for (File file: directoryListing) {
 				if (file.isFile() && isClassFile(file)){
 
-					System.out.println("Making a copy of => " + file.getName());
-					copied = copy(file.getName(), createCopyName(file.getName()));
 
 					System.out.println("Instrumenting => " + file.getName());
-					FileInputStream is = new FileInputStream(copied);
-					// make new class reader
+					FileInputStream is = new FileInputStream(file);
 					ClassReader cr = new ClassReader(is);
 			
-					// make new class visitor
 					byte[] bytes = getClassBytes(cr, false);
 			
 					if (bytes != null) {
-						FileOutputStream fos = new FileOutputStream(file);
+						FileOutputStream fos = new FileOutputStream(file, false);
 						fos.write(bytes);
 						fos.close();
 					}
+					is.close();
 				}
 			}
 		}
@@ -198,7 +193,6 @@ public class Instrumenter {
 			AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
 
 			int labelNumber = getOperand(cn.name, operandNode);
-			System.out.println("labelNumber=" + labelNumber);
 			LabelNode labelNode = new LabelNode();
 			labelRefs.put(labelNumber, labelNode);
 
@@ -212,9 +206,9 @@ public class Instrumenter {
 
 		// join resumes to yields 
 		for (AbstractInsnNode node : resumes) {
-			AbstractInsnNode pNode = (AbstractInsnNode) node.getPrevious();
+			AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
 
-			int labelNumber = getOperand(cn.name, pNode);
+			int labelNumber = getOperand(cn.name, operandNode);
 			LabelNode labelNode = myRefs.get(labelNumber);
 
 			if (labelNode != null) {
@@ -301,29 +295,6 @@ public class Instrumenter {
 	    return "class".equals(name.substring(name.lastIndexOf(".") + 1));
 	}
 	
-	private String createCopyName(String filename) {
-		String temp = filename.substring(0, filename.lastIndexOf("."));
-		return temp+"-copy.class";
-	}
-
-	private File copy(String from, String to) throws Exception {
-		File src = new File(fullPath+from);
-		File dest = new File(fullPath+to);
-
-		FileInputStream is = new FileInputStream(src);
-
-		ClassReader cr = new ClassReader(is);
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-		cr.accept(cw, 0);
-
-		FileOutputStream fos = new FileOutputStream(dest);
-		fos.write(cw.toByteArray());
-		fos.close();
-
-		dest.deleteOnExit();
-		return dest;
-	}
-	
 	private int getOperand(String clazz, final AbstractInsnNode node) {
         
         int labelNumber = -1;
@@ -339,7 +310,7 @@ public class Instrumenter {
         		 * If need be, this can be looked into.
         		 */
         		VarInsnNode vis = (VarInsnNode) node;
-                int opvis = vis.getOpcode();
+        		int opvis = vis.getOpcode();
                 int var = vis.var;
                 System.out.println(" > vis opcode=" + opvis + " value=" + var);
         		break;
