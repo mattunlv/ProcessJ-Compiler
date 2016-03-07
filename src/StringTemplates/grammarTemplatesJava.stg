@@ -187,7 +187,6 @@ public static class <name> extends Process {
     public <name>(<\\>
     	<if(formals)><formals; separator = ", "><endif>) {
     	<if(formalNames)><formalNames:{n | this.<n> = <n>}; separator = ";\n">;<endif>
-    	runLabel = 0;
     }
 
 	@Override
@@ -261,12 +260,10 @@ setNotReady();
 	
 <stats; separator=";\n">;
 	
-yield(1);
+runLabel = 1;
 
 jump(2);
 label(1);
-
-
 >>
 
 Prototype(name, formals) ::= <<

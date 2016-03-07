@@ -1018,6 +1018,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String[] formals = (String[]) pd.formalParams().visit(this);
 
 		String[] block = (String[]) pd.body().visit(this);
+		
+		System.out.println("===========");
+		for(String b : block) {
+			System.out.println(b);
+		}
+		System.out.println("+++++++++++");
 
 		template.add("packageName", this.originalFilename);
 		template.add("returnType", returnType);

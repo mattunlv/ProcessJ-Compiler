@@ -6,6 +6,9 @@ proc void p2(chan<int>.write c, int x) [yield=true]{
 
 }
 
+proc void p3(int y) [yield=true]{}
+proc void p4(int z) [yield=true]{}
+
 proc void foo(int x) [yield=true]{
 
   chan<int> c;
@@ -16,6 +19,11 @@ proc void foo(int x) [yield=true]{
   }
   
   bar(10); 
+  
+  par {
+  	p3(4);
+  	p4(5);
+  	}
 }
 
 proc void bar(int y) [yield=false]{
