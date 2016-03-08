@@ -157,7 +157,6 @@ import CodeGeneratorJava.*;
 				}
 				
 				c.visit(new Reachability.Reachability());
-				c.visit(new ConstantPropagation.ConstantPropagation());
 
 				////////////////////////////////////////////////////////////////////////////////
 				// CODE GENERATOR
