@@ -33,8 +33,9 @@ import org.objectweb.asm.util.CheckClassAdapter;
  */
 public class Instrumenter {
 
-	static final String MARK_RESUME = "resume";
 	static final String MARK_YIELD = "yield";
+	static final String MARK_RESUME = "resume";
+	static final String MARK_LABEL = "label";
 	public static final int Op_goto = 167;
 
 	public String fullPath = "";
@@ -118,6 +119,7 @@ public class Instrumenter {
 
 		final List<AbstractInsnNode> yields = new ArrayList<AbstractInsnNode>();
 		final List<AbstractInsnNode> resumes = new ArrayList<AbstractInsnNode>();
+		final List<AbstractInsnNode> labels = new ArrayList<AbstractInsnNode>();
 
 		final Map<Integer, LabelNode> labelRefs = new HashMap<Integer, LabelNode>();
 
@@ -127,13 +129,13 @@ public class Instrumenter {
 
 			MethodNode mn = (MethodNode) o;
 
-			extractYieldData(cn, mn, yields, resumes);
+			extractYieldData(cn, mn, yields, resumes, labels);
 
 			if (yields.size() > 0) {
 
 				hasJumps = true;
 				
-				insertLabelNodes(cn, mn, yields, labelRefs);
+				insertLabelNodes(cn, mn, labels, labelRefs);
 
 				// connect to which yields!
 				makeResumesToYields(cn, mn, resumes, labelRefs);
@@ -153,7 +155,8 @@ public class Instrumenter {
 	}
 	
 	private void extractYieldData(final ClassNode cn, final MethodNode mn, 
-			final List<AbstractInsnNode> yields, final List<AbstractInsnNode> resumes) {
+			final List<AbstractInsnNode> yields, final List<AbstractInsnNode> resumes
+			, final List<AbstractInsnNode> labels) {
 
 		final String workingClassName = cn.name.replace('.', '/');
 		ListIterator<AbstractInsnNode> iterator = mn.instructions.iterator();
@@ -168,14 +171,17 @@ public class Instrumenter {
 
 				if (min.owner.equals(workingClassName)) {
 
-					if (min.name.equals(MARK_RESUME)) {
-
-						resumes.add(min);
-
-					} else if (min.name.equals(MARK_YIELD)) {
+					if (min.name.equals(MARK_YIELD)) {
 
 						yields.add(min);
 
+					} else if (min.name.equals(MARK_RESUME)) {
+
+						resumes.add(min);
+
+					} else if (min.name.equals(MARK_LABEL)) {
+						
+						labels.add(min);
 					}
 				}
 			}
@@ -184,19 +190,22 @@ public class Instrumenter {
 	}
 	
 	private void insertLabelNodes( final ClassNode cn, final MethodNode mn,
-			final List<AbstractInsnNode> yields, 
+			final List<AbstractInsnNode> labels, 
 			final Map<Integer, LabelNode> labelRefs) {
 
 		labelRefs.clear();
 
-		for (AbstractInsnNode node : yields) {
+		for (AbstractInsnNode node : labels) {
 			AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
 
 			int labelNumber = getOperand(cn.name, operandNode);
+			
+			AbstractInsnNode loadANode = operandNode.getPrevious(); // we need to back up one more to before the push instruction
+
 			LabelNode labelNode = new LabelNode();
 			labelRefs.put(labelNumber, labelNode);
 
-			mn.instructions.insert(node, labelNode);
+			mn.instructions.insertBefore(loadANode, labelNode);
 		}
 	}
 	
@@ -222,6 +231,8 @@ public class Instrumenter {
 		LabelNode jumpDest = new LabelNode();
 		
 		/*
+		 * 03/07/2016
+		 * 
 		 * Insert a jump destination before the last instruction 
 		 * of the method. The last instruction is always a return 
 		 * opcode (statement). But it can be either one of these
@@ -236,6 +247,13 @@ public class Instrumenter {
 		 *  2. ireturn that returns a variable value will have
 		 *  aload_0 and getfield instructions before it.
 		 *  		 
+		 *  6:00pm EDIT
+		 *  Since ProcessJ processes do not return any value, but just
+		 *  void, we might not need anything other than RETURN. But 
+		 *  for multi-core scheduler, we are thinking of returning a 
+		 *  List<Process>. Then ARETURN might be needed. Else they aren't.
+		 *  
+		 *  Will leave them in anything. Won't hurt.
 		 */
 		int ret_opcode = mn.instructions.getLast().getOpcode();
 		
