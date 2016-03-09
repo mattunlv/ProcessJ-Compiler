@@ -112,7 +112,7 @@ public class BinaryExpr extends Expression {
 	} 
 
     public String toString() {
-	return left() + opSyms[op()] + right();
+	return left() + " " +  opSyms[op()] + " " + right();
     }
 
 

@@ -62,14 +62,24 @@ public class Error {
 		}
 	}   
 	
-	public static Type addError(AST e, String msg, int errorno) {
-		System.out.println(fileName + ":" + e.line + ": " + msg);
-		System.out.println("Error number: " + errorno);
+	public static void warning(AST e, String msg, int errorno) {
+	    System.out.print(fileName + ":" + e.line + ": ");
+	    System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
+	    System.out.print("Warning number: ");
+	    System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
+	    errors += "\n" + fileName + ":" + e.line + ": " + msg;
+	    errors += "\n" + "Warning number: " + errorno;
+	}  
 
-		errorCount++;
-		errors += "\n" + fileName + ":" + e.line + ": " + msg;
-		errors += "\n" + "Error number: " + errorno;
-		return new ErrorType();
+	public static Type addError(AST e, String msg, int errorno) {
+	    System.out.print(fileName + ":" + e.line + ": ");
+	    System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
+	    System.out.print("Error number: ");
+	    System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
+	    errorCount++;
+	    errors += "\n" + fileName + ":" + e.line + ": " + ColorCodes.ParseColors(":red,n:" + msg + "[RC]");
+	    errors += "\n" + "Error number: " + ColorCodes.ParseColors(":red,n:" + errorno + "[RC]");
+	    return new ErrorType();
 	}  
 	
 	

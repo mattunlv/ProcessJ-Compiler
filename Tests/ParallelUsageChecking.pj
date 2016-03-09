@@ -23,9 +23,13 @@ proc void foo() {
        bar(c3.write,b,c);
        baz(c2.write,a,b);
        r.b = c2.read();
+
        aa[6+f(a-b)-r.b] = c2.read();
+       r.a++;
+       --aa[6+f(a-b)-r.b];
+       //r.a = c2.read();       
+       c3.write(r.a + aa[a++ + a++]);
       }
-     
 }
 
 
