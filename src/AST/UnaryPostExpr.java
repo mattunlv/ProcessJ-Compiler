@@ -22,6 +22,10 @@ public class UnaryPostExpr extends Expression {
 	public Expression expr() { return (Expression)children[0]; }
 	public int op()          { return kind; }
 
+    public String toString() {
+	return expr().toString() + opSyms[kind];
+    }
+
 
         public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitUnaryPostExpr(this);

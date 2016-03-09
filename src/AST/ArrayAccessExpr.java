@@ -14,7 +14,7 @@ public class ArrayAccessExpr extends Expression {
 	public Expression index()  { return (Expression)children[1]; }
 
 	public String toString() {
-		return target() + " [" + index() + "]";
+		return target() + "[" + index() + "]";
 	}
 
         public <S extends Object> S visit(Visitor<S> v) {

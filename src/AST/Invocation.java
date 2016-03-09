@@ -15,6 +15,16 @@ public class Invocation extends Expression {
 		children = new AST[] {target, name, params };
 	}
 
+    public String toString() {
+	String s = (target() == null  ? "" : target() + ".") + procedureName() + "(";
+	for (int i=0; i<params().size(); i++) {
+	    s += params().child(i);
+	    if (i <params().size()-1)
+		s += ",";
+	}
+	s += ")";
+	return s;
+    }
 	
 
 

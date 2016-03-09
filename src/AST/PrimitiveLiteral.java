@@ -89,7 +89,7 @@ public class PrimitiveLiteral extends Literal {
 
 
 	public String toString() {
-		return names[kind] + "-type = " + text;
+		return text;
 	}
 
 	public float floatValue() {
