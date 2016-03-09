@@ -1,6 +1,5 @@
 package Utilities;
 import java.io.File;
-
 import AST.*;
 
 public class Error {
@@ -50,8 +49,10 @@ public class Error {
 	}   
 
 	public static void error(AST e, String msg, boolean terminate, int errorno) {
-		System.out.println(fileName + ":" + e.line + ": " + msg);
-		System.out.println("Error number: " + errorno);
+	    System.out.print(fileName + ":" + e.line + ": ");
+	    System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
+	    System.out.print("Error number: ");
+	    System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
 		if (terminate)
 			System.exit(1);
 		else {

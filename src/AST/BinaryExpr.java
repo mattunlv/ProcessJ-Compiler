@@ -111,6 +111,11 @@ public class BinaryExpr extends Expression {
 		return null;
 	} 
 
+    public String toString() {
+	return left() + opSyms[op()] + right();
+    }
+
+
         public <S extends Object> S visit(Visitor<S> v) {
 		return v.visitBinaryExpr(this);
 	}
