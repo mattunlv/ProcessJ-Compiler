@@ -357,6 +357,17 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 	// SuspendStat - nothing to do (always resumes a procedure of the same name!)
 	// SwitchGroup -- nothing to do
 	// SwitchLabel - nothing to do
+    public T visitSwitchLabel(SwitchLabel sl) {
+	Log.log(sl.line + ": Visiting SwitchLabel (" + sl.expr() + ").");
+	// A SwitchLabel should be a PrimitiveLiteral OR a NameExpression
+	if (!sl.isDefault())
+	    if (!(sl.expr() instanceof PrimitiveLiteral) && !(sl.expr() instanceof NameExpr))
+		Error.error(sl,"Switch label must be constant or a protocol tag.", false, 2224);
+	return null;
+    }
+
+	
+    
 	// SwitchStat - nothing to do
 	// SyncStat - nothing to do
 	// Ternary - nothing to do

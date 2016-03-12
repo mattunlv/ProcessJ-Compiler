@@ -38,7 +38,7 @@ NameChecker:
 2221  Symbol ‘XXX’ not found.
 2222  ‘XXX’ cannot be extended as a record as it is not of record type.
 // 2223  ‘XXX’ repeated in extends clause of record type ‘YYY’.  <— should be deleted
-
+2224  Switch label must be constant or a protocol tag.
 
 TypeChecker:
 3000  Array type required, but found type XXX.
@@ -84,4 +84,28 @@ TypeChecker:
 3040  Procedure return type is void; return statement cannot return a value.
 3041  Procedure return type is `XXX’ but procedure return type is void.
 3042  Incompatible type in return statement.
-3043  
+3043  Switch statement expects value of type int or a protocol tag.
+3044  Switch labels must be of type int or a protocol tag.
+3045  Switch labels must be constants.
+3046  Duplicate default label.
+3047  Duplicate case label.
+3048  Non-barrier type in sync statement.
+3049  Invalid type in timeout statement, integral type required.
+3050  Timer type required in timeout statement.
+3051  Cannot apply operator ‘<op>’ to something of type XXX.
+3052  Cannot apply operator ‘<op>’ to something of type XXX.
+3053  Cannot apply operator ‘!’ to something of type XXX.
+3054  Cannot apply operator ‘~’ to something of type XXX.
+3055  Variable expected, found value.
+3056  Cannot apply operator ‘<op>’ to something of type XXX.
+3057  Variable expected, found value.
+3058  Cannot assign value of type XXX to variable of type YYY.
+3059  Non boolean Expression found as test in while-statement.
+3060  Protocol tag ‘XXX’ not found in protocol ‘YYY’.
+3061  Request for member ‘XXX’ in something not a record or protocol type.
+3062  Record type ‘XXX’ has no member ‘YYY’.
+
+
+
+
+
