@@ -95,6 +95,12 @@ public class Reachability extends Visitor<Boolean> {
 	return new Boolean(true);
     }
 
+    public Boolean visitAltStat(AltStat as) {
+	Log.log(as,"Visiting a alt statement.");
+	super.visitAltStat(as);
+	return new Boolean(true);
+    }
+
     // DONE
     public Boolean visitBlock(Block bl) {
 	Log.log(bl,"Visiting a block." + bl.stats().size());
@@ -102,7 +108,9 @@ public class Reachability extends Visitor<Boolean> {
 	boolean b = true;
 	for (int i=0; i<bl.stats().size(); i++) {
 	    if (bl.stats().child(i) != null) {
+		System.out.println("visiting child: " + i);
 		b = bl.stats().child(i).visit(this);
+		System.out.println("visiting child: " + i + " done");
 		if (!b && bl.stats().size()-1 > i) {
 		    Error.error(bl.stats().child(i),"Unreachable code following statement beginning on line " + bl.stats().child(i).line + ".", false, 5003); 
 		    canFinish = false;
