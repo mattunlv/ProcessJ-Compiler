@@ -59,8 +59,7 @@ public class Instrumenter {
 		if (directoryListing != null) {
 			for (File file: directoryListing) {
 				if (file.isFile() && isClassFile(file)){
-
-
+					
 					System.out.println("Instrumenting => " + file.getName());
 					FileInputStream is = new FileInputStream(file);
 					ClassReader cr = new ClassReader(is);
@@ -376,9 +375,9 @@ public class Instrumenter {
 		while(it.hasNext()) {
 			AbstractInsnNode n = (AbstractInsnNode)it.next();
 			if (n.getOpcode() == Opcodes.ATHROW)
-				System.out.println("athrow found");
+				System.out.println("athrow found");//we want to remove this
 			else if (n.getOpcode() == Opcodes.NOP)
-				System.out.println("nop found");
+				System.out.println("nop found");//we want to remove this
 		}
 		
 		//for(AbstractInsnNode n1: remove)

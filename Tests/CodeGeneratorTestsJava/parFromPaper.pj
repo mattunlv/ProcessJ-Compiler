@@ -23,7 +23,7 @@ proc void foo(int x) [yield=true]{
   par {
   	p3(4);
   	p4(5);
-  	}
+  }
 }
 
 proc void bar(int y) [yield=false]{

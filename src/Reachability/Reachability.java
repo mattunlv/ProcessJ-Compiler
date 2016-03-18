@@ -94,6 +94,12 @@ public class Reachability extends Visitor<Boolean> {
 	loopConstruct = oldLoopConstruct;
 	return new Boolean(true);
     }
+    
+    public Boolean visitAltStat(AltStat as) {
+	Log.log(as,"Visiting a alt statement.");
+	super.visitAltStat(as);
+	return new Boolean(true);
+    }
 
     // DONE
     public Boolean visitBlock(Block bl) {

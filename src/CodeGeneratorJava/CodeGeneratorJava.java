@@ -8,8 +8,6 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -80,6 +78,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private Map<String, String> _gLocalNamesMap = null;
 	private List<String> _gLocals = null;
 	private int _gvarCnt = 0;
+	private int _jumpCnt = 0;
 	private boolean _proc_yields = false;
 	private int _parCnt = 0;
 	private final String MAIN_SIGNATURE = "([T;)V";
@@ -233,16 +232,26 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * ChannelType
+	 * ChannelType [cds done]
 	 */
 	public T visitChannelType(ChannelType ct) {
 		Log.log(ct.line + ": Visiting a Channel Type!");
 
-		return (T) ("Channel<" + getWrapperType(ct.baseType()) + ">");
+		String typeString;
+		switch(ct.shared()) {
+			case ChannelType.NOT_SHARED: typeString = "One2OneChannel";break;
+			case ChannelType.SHARED_WRITE: typeString = "Many2OneChannel";break;
+			case ChannelType.SHARED_READ: typeString = "One2ManyChannel";break;
+			case ChannelType.SHARED_READ_WRITE: typeString = "Many2ManyChannel";break;
+			default: typeString = "One2OneChannel";
+		}
+		
+		return (T) (typeString + "<" + getWrapperType(ct.baseType()) + ">");
 	}
 
 	/**
-	 * ChannelEndExpr
+	 * ChannelEndExpr [cds done]
+	 * :this is the proc argument in invocation 
 	 */
 	public T visitChannelEndExpr(ChannelEndExpr ce) {
 		Log.log(ce.line + ": Visiting a Channel End Expression!");
@@ -253,7 +262,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * ChannelEndType
+	 * ChannelEndType [cds done]
+	 * :this is the type in the proc parameter.
 	 */
 	public T visitChannelEndType(ChannelEndType ct) {
 		Log.log(ct.line + ": Visiting a Channel End Type!");
@@ -266,86 +276,66 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitChannelReadExpr(ChannelReadExpr cr) {
 		Log.log(cr.line + ": Visiting ChannelReadExpr");
-		//This needs to be a function call in C that takes one argument:
-		//    ChanInInt(wordPointer,intIn, &x);
-		//We will have to use a temp varible to achieve this with notation like:
-		//    int x = t.read();
-		//TODO: Extend to all possible types.
-		ST template = null;
-		Expression channelExpr = cr.channel();
-		NameExpr channelNameExpr = null;
-		//This is either a NameExpression (chan.read()) or a ChannelEndExpr (chan.read.read())
-		if (channelExpr instanceof NameExpr)
-			channelNameExpr = (NameExpr) channelExpr;
-		else if (channelExpr instanceof ChannelEndExpr)
-			channelNameExpr = (NameExpr) ((ChannelEndExpr) channelExpr)
-					.channel();
 
-		String channel = (String) channelNameExpr.visit(this);
-		Type myType = null;
-
-		//TODO: Clean this mess up.
-		if (channelNameExpr.myDecl instanceof LocalDecl)
-			//Figure out type of channel and do appropriate code generation based on this.
-			myType = ((LocalDecl) channelNameExpr.myDecl).type();
-		if (channelNameExpr.myDecl instanceof ParamDecl)
-			//Figure out type of channel and do appropriate code generation based on this.
-			myType = ((ParamDecl) channelNameExpr.myDecl).type();
-
-		//Add multiple types for different things here: TODO add all types.
-		//Posibility One: Timers!
-		if (myType.isTimerType()) {
-			template = group.getInstanceOf("ChannelReadExprTimer");
-		}
-		//Posibility Two: This is an actual end: chan<type>.read chan,
-		//chan.read()
-		else if (myType.isChannelEndType()) {
-			Type baseType = ((ChannelEndType) myType).baseType();
-
-			if (baseType.isIntegerType() || baseType.isBooleanType()) {
-				template = group.getInstanceOf("ChannelReadExprInt");
-				template.add("channel", channel);
-			} else {
-				String errorMsg = "Unsupported type: %s for ChannelEndType!";
-				String error = String.format(errorMsg, baseType.toString());
-				Error.error(cr, error);
-			}
-		}
-		//Posibility Three: This is a channel to be treated as an end to avoid
-		//chan.read.read().
-		else if (myType.isChannelType()) {
-			Type baseType = ((ChannelType) myType).baseType();
-
-			if (baseType.isIntegerType() || baseType.isBooleanType()) {
-				template = group.getInstanceOf("ChannelReadExprInt");
-				template.add("channel", channel);
-			} else {
-				String errorMsg = "Unsupported type: %s for ChannelEndType!";
-				String error = String.format(errorMsg, baseType.toString());
-				Error.error(cr, error);
-			}
-		} else {
-			String errorMsg = "Unsupported type: %s for ChannelReadExpr.";
-			String error = String.format(errorMsg, myType.typeName());
-			Error.error(cr, error);
-		}
-
-		return (T) template.render();
+		/*
+		 * 03.18.2016
+		 * This visitor is done inside visitAssignment since read value
+		 * assignment for channels need to be handled inside the generated
+		 * code block.
+		 */
+		return (T) "";
 	}
 
 	/**
 	 * ChannelWriteStat
+	 * TODO: template should be based on type of expression!
+	 * Only int works for now.
 	 */
 	public T visitChannelWriteStat(ChannelWriteStat cw) {
 		Log.log(cw.line + ": Visiting a Channel Write Statement!");
-
+		
 		ST template = group.getInstanceOf("ChannelWriteStat");
+
+		NameExpr channelNameExpr = null;
+	    /*
+	     * Can either be NameExpression (chan.write(x)) or
+	     * ChannelEndExpr (chan.write.write(x))
+	     */
+		Expression channelExpr = cw.channel();
+
+	    if (channelExpr instanceof NameExpr) {
+	      channelNameExpr = (NameExpr) channelExpr;
+	    } else if (channelExpr instanceof ChannelEndExpr) {
+	      channelNameExpr = (NameExpr) ((ChannelEndExpr) channelExpr).channel();
+	    }
+	    
+	    Type myType = null;
+	    if (channelNameExpr.myDecl instanceof LocalDecl) {
+	        //Figure out type of channel and do appropriate code generation based on this.
+	        myType = ((LocalDecl) channelNameExpr.myDecl).type();
+	    } else if (channelNameExpr.myDecl instanceof ParamDecl) {
+	    	//Figure out type of channel and do appropriate code generation based on this.
+	    	myType = ((ParamDecl) channelNameExpr.myDecl).type();
+	    }
+	    
+	    if (myType.isChannelEndType()) {
+	    	ChannelEndType chanType = (ChannelEndType) myType;
+	        if (chanType.isShared() || chanType.isWrite()) {
+	            template.add("shared", true);
+	         }
+	    } else if (myType.isChannelType()) {
+	    	ChannelType chanType = (ChannelType) myType;
+	        if (chanType.shared() == ChannelType.SHARED_READ || chanType.shared() == ChannelType.SHARED_READ_WRITE) {
+	            template.add("shared", true);
+	          }
+	    }
+
 		String expr = (String) cw.expr().visit(this);
-		String channel = (String) cw.channel().visit(this);
-		//TODO: template should be based on type of expression!
-		//Only int works for now.
+		String channel = (String) channelExpr.visit(this);
 		template.add("channel", channel);
 		template.add("expr", expr);
+		template.add("jmp0", _jumpCnt++);
+		template.add("jmp1", _jumpCnt++);
 
 		return (T) template.render();
 	}
@@ -414,14 +404,117 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		ST template = group.getInstanceOf("Assignment");
 
 		String left = (String) as.left().visit(this);
-		String right = (String) as.right().visit(this);
 		String op = (String) as.opString();
 
-		template.add("left", left);
-		template.add("right", right);
-		template.add("op", op);
+		if(as.right() instanceof ChannelReadExpr) {
+			template = group.getInstanceOf("ChannelReadExprInt");
+			return (T) createChannelReadExpr(left, (ChannelReadExpr)as.right());
+		} else {
+			template = group.getInstanceOf("Assignment");
+
+			String right = (String) as.right().visit(this);
+			template.add("left", left);
+			template.add("right", right);
+			template.add("op", op);
+		}
 
 		return (T) template.render();
+	}
+	
+	public String createChannelReadExpr(String left, ChannelReadExpr cr) {
+		ST template = null;
+		Expression channelExpr = cr.channel();
+		NameExpr channelNameExpr = null;
+		/*
+		 * Can either be NameExpression (chan.read()) or
+		 * ChannelEndExpr (chan.read.read())
+		 */
+		if (channelExpr instanceof NameExpr) {
+			channelNameExpr = (NameExpr) channelExpr;
+		} else if (channelExpr instanceof ChannelEndExpr) {
+			channelNameExpr = (NameExpr) ((ChannelEndExpr) channelExpr).channel();
+		}
+
+		String channel = (String) channelNameExpr.visit(this);
+		Type myType = null;
+
+		//TODO: Clean this mess up.
+		if (channelNameExpr.myDecl instanceof LocalDecl) {
+			//Figure out type of channel and do appropriate code generation based on this.
+			myType = ((LocalDecl) channelNameExpr.myDecl).type();
+		} else if (channelNameExpr.myDecl instanceof ParamDecl) {
+			//Figure out type of channel and do appropriate code generation based on this.
+			myType = ((ParamDecl) channelNameExpr.myDecl).type();
+		}
+
+		/*
+		 * NOTE: for the moment, timer read expr is of type ChannelReadExpr
+		 * just because they look the same. So, we have this here. But, 
+		 * hopefully in the future, we can have TimerReadExpr and its own
+		 * visitor.
+		 */
+		if (myType.isTimerType()) {
+			template = group.getInstanceOf("TimerReadExpr");
+		}
+		
+		/*
+		 * Possibility Two: This is an actual end: chan<type>.read chan,
+		 * chan.read()
+		 */
+		else if (myType.isChannelEndType()) {
+			ChannelEndType chanType = (ChannelEndType) myType;
+			Type baseType = chanType.baseType();
+
+			if (baseType.isIntegerType() || baseType.isBooleanType()) {
+				template = group.getInstanceOf("ChannelReadExprInt");
+				template.add("channel", channel);
+				template.add("left", left);
+				
+				template.add("jmp0", _jumpCnt++);
+				template.add("jmp1", _jumpCnt++);
+				
+				if (chanType.isShared() || chanType.isRead()) {
+					template.add("shared", true);
+				}
+			} else {
+				String errorMsg = "Unsupported type: %s for ChannelEndType!";
+				String error = String.format(errorMsg, baseType.toString());
+				Error.error(cr, error);
+			}
+		}
+
+		/*
+		 * Possibility Three: This is a channel to be treated as an end to avoid
+		 * chan.read.read(). 
+		 */
+		else if (myType.isChannelType()) {
+			ChannelType chanType = (ChannelType) myType;
+			Type baseType = chanType.baseType();
+
+			if (baseType.isIntegerType() || baseType.isBooleanType()) {
+				template = group.getInstanceOf("ChannelReadExprInt");
+				template.add("channel", channel);
+				template.add("left", left);
+				
+				template.add("jmp0", _jumpCnt++);
+				template.add("jmp1", _jumpCnt++);
+				
+				if (chanType.shared() == ChannelType.SHARED_READ || chanType.shared() == ChannelType.SHARED_READ_WRITE) {
+					template.add("shared", true);
+				}
+
+			} else {
+				String errorMsg = "Unsupported type: %s for ChannelEndType!";
+				String error = String.format(errorMsg, baseType.toString());
+				Error.error(cr, error);
+			}
+		} else {
+			String errorMsg = "Unsupported type: %s for ChannelReadExpr.";
+			String error = String.format(errorMsg, myType.typeName());
+			Error.error(cr, error);
+		}
+
+		return template.render();
 	}
 
 	/**
@@ -639,7 +732,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		//Add all our fields to our template!
 		template.add("qualifiedFunctionName", qualifiedFunctionName);
 		//cds TODO: figure this out for methods.
-		template.add("isProcess", procYields(pd));
+		template.add("isProcess", isYieldingProc(pd));
 		if (paramArray.length != 0)
 			template.add("procParams", paramArray);
 
@@ -660,14 +753,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				+ ld.var().name().getname() + ")");
 
 		/*
-		 * cds: TODO: isConstant?? in java, probably no need as compiler generated code is not going to overwrite any
+		 * cds: TODO: should the const keyword with localdecl be taken care of?? 
+		 * in java, probably no need as compiler generated code is not going to overwrite any
 		 * var whether or not constant.
 		 */
 
-		ST template = group.getInstanceOf("LocalDecl");
-
 		String typeString = (String) ld.type().visit(this);
-
+		
 		String name = ld.var().name().getname();
 		String gname = globalize(name, false);
 		ld.var().name().setName(gname);
@@ -677,26 +769,34 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			_gLocals.add(typeString + " " + ld.var().name().getname());
 		}
 
-		String var = (String) ld.var().visit(this);
-
-		// Channels require an initialization and we treat the type different
-		// when we are
-		// inside a local declr.
-		if (ld.type().isChannelType() == true) {
-			//FIXME change createChannelInit to bool value or something.
-			template.add("channelPart", createChannelInit(var));
-			template.add("type", typeString);
+		ST template = group.getInstanceOf("LocalDecl");
+		
+		if(ld.var().init() != null && ld.var().init() instanceof ChannelReadExpr) {
+			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), ld.var().init(), Assignment.EQ).visit(this);
+			return (T) assignment;
 		} else {
-			template.add("type", typeString);
+			/*
+			 * Channels in ProcessJ do not require initialization but in 
+			 * Java, we need it. So, the below code makes the grammar template
+			 * do it.
+			 */
+			if (ld.type().isChannelType() == true) {
+				template.add("channelPart", true);
+				template.add("type", typeString);
+			} else {
+				template.add("channelPart", false);
+				template.add("type", typeString);
+			}
+			String var = (String) ld.var().visit(this);
+			template.add("var", var);
+			/*
+			 * cds TODO: cheating here by setting this bool in proctypedecl and making it global. find a better way.
+			 */
+			template.add("procYields", _proc_yields);
+			
+			return (T) template.render();
 		}
 
-		template.add("var", var);
-		/*
-		 * cds TODO: cheating here by setting this bool in proctypedecl and making it global. find a better way.
-		 */
-		template.add("parentYields", _proc_yields);
-
-		return (T) template.render();
 	}
 
 	/**
@@ -920,7 +1020,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		//Add all our fields to our template!
 		template.add("qualifiedFunctionName", qualifiedFunctionName);
 		//cds TODO: figure this out for methods.
-		template.add("isProcess", procYields(pd));
+		template.add("isProcess", isYieldingProc(pd));
 		if (paramArray.length != 0)
 			template.add("procParams", paramArray);
 
@@ -988,7 +1088,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		ST template = null;
 
-		this._proc_yields = procYields(pd);
+		this._proc_yields = isYieldingProc(pd);
 
 		if ("main".equals(name) && MAIN_SIGNATURE.equals(pd.signature())) {
 			template = group.getInstanceOf("ProcTypeMainDecl");
@@ -1001,6 +1101,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		/*
 		 * Initializing global var count for new class.
 		 */
+		_jumpCnt = 0;
 		_gvarCnt = 0;
 		_gFormalNamesMap = new HashMap<String, String>();
 		_gLocalNamesMap = new HashMap<String, String>();
@@ -1019,11 +1120,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		String[] block = (String[]) pd.body().visit(this);
 		
-		System.out.println("===========");
-		for(String b : block) {
-			System.out.println(b);
-		}
-		System.out.println("+++++++++++");
+//		System.out.println("===========");
+//		for(String b : block) {
+//			System.out.println(b);
+//		}
+//		System.out.println("+++++++++++");
 
 		template.add("packageName", this.originalFilename);
 		template.add("returnType", returnType);
@@ -1196,7 +1297,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String exprStr = "";
 		Expression expr = va.init();
 
-		template.add("name", name);
+		/*
+		 * This is to get the var name inside
+		 * code generated for channel read.
+		 */
+		if (expr instanceof ChannelReadExpr) {
+//			((ChannelReadExpr)expr).varname = name;
+		} else {
+			template.add("name", name);
+		}
 
 		// Expr may be null if the variable is not intialized to anything!
 		if (expr != null) {
@@ -1240,17 +1349,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("name", name);
 		if (formals != null && formals.length != 0)
 			template.add("formals", formals);
-
-		return template.render();
-	}
-
-	/**
-	 * Given the results of the var.visit(this) from the visitLocalDecl it will return the channelInit string needed if
-	 * the visited type was a Channel declaration.
-	 */
-	String createChannelInit(String var) {
-		ST template = group.getInstanceOf("ChanInit");
-		template.add("channelName", var);
 
 		return template.render();
 	}
@@ -1325,7 +1423,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return listOfEnableDisable;
 	}
 
-	boolean procYields(ProcTypeDecl pd) {
+	public boolean isYieldingProc(ProcTypeDecl pd) {
 		if (pd == null)
 			return false;
 
@@ -1448,6 +1546,21 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 					+ File.separator + filename + ".java");
 			writer = new BufferedWriter(new OutputStreamWriter(fos, "utf-8"));
 			writer.write(finalOutput);
+			
+			
+			//TODO try compiling here?
+//			JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+//			
+//			if (compiler == null) {
+//			    throw new Exception("JDK required (running inside of JRE)");
+//			  }
+//			
+//		       StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
+//
+//		       Iterable<? extends JavaFileObject> compilationUnits1 =
+//		           fileManager.getJavaFileObjectsFromFiles(Arrays.asList(files1));
+//		       compiler.getTask(null, fileManager, null, null, null, compilationUnits1).call();
+//		       
 		} catch (IOException ex) {
 			Log.log("IOException: Could not write to file for some reason :/");
 		} finally {

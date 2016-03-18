@@ -16,5 +16,4 @@ hs_err_pid*
 # cabel ignores these
 cds-notes/
 src/SampleTests/
-src/ProcessJ/
 src/Generated/

@@ -6,7 +6,16 @@ public abstract class Process {
 	public boolean terminated = false; // has the process terminated
 
     public static Scheduler scheduler;
+    public Object context;
 	
+    public Process() {
+    	
+    }
+
+    public Process(Object context) {
+    	this.context = context;
+    }
+
 	public abstract void run();
 
 	public void schedule() {

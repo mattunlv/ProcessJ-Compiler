@@ -209,12 +209,12 @@ public class ProcessJc {
 		//FIXME should we call the asmifier here or should we make a separate
 		//call from the pjc script? I like it here coz it makes getting the class
 		//files very easy.
-		try {
-			Instrumenter obj = new Instrumenter(name);
-			obj.execute();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+//		try {
+//			Instrumenter obj = new Instrumenter(name);
+//			obj.execute();
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
 
 		return;
 	}
