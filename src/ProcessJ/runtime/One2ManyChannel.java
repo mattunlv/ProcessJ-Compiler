@@ -1,6 +1,6 @@
 package ProcessJ.runtime;
 
-import java.util.*;
+import java.util.LinkedList;
 
 // One Writer and Many Readers
 public class One2ManyChannel<T> extends Channel<T> {

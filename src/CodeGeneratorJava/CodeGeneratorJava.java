@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -78,6 +79,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private Map<String, String> _gLocalNamesMap = null;
 	private List<String> _gLocals = null;
 	private int _gvarCnt = 0;
+	private int _tempVarCnt = 0;
 	private int _jumpCnt = 0;
 	private boolean _proc_yields = false;
 	private int _parCnt = 0;
@@ -320,13 +322,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	    
 	    if (myType.isChannelEndType()) {
 	    	ChannelEndType chanType = (ChannelEndType) myType;
-	        if (chanType.isShared() || chanType.isWrite()) {
+	        if (chanType.isShared()) {
 	            template.add("shared", true);
+	         } else {
+	        	 template.add("shared", false);
 	         }
 	    } else if (myType.isChannelType()) {
 	    	ChannelType chanType = (ChannelType) myType;
-	        if (chanType.shared() == ChannelType.SHARED_READ || chanType.shared() == ChannelType.SHARED_READ_WRITE) {
+	        if (chanType.shared() == ChannelType.SHARED_WRITE || chanType.shared() == ChannelType.SHARED_READ_WRITE) {
 	            template.add("shared", true);
+	          } else {
+	        	  template.add("shared", false);
 	          }
 	    }
 
@@ -401,17 +407,16 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitAssignment(Assignment as) {
 		Log.log(as.line + ": Visiting an Assignment");
-		ST template = group.getInstanceOf("Assignment");
 
+		ST template = group.getInstanceOf("Assignment");
 		String left = (String) as.left().visit(this);
 		String op = (String) as.opString();
 
 		if(as.right() instanceof ChannelReadExpr) {
-			template = group.getInstanceOf("ChannelReadExprInt");
 			return (T) createChannelReadExpr(left, (ChannelReadExpr)as.right());
+		} else if(as.right() instanceof Invocation) {
+			return (T) createInvocationWithChannelReadExpr(left, (Invocation)as.right());
 		} else {
-			template = group.getInstanceOf("Assignment");
-
 			String right = (String) as.right().visit(this);
 			template.add("left", left);
 			template.add("right", right);
@@ -421,6 +426,61 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) template.render();
 	}
 	
+	public T createInvocationWithChannelReadExpr(String left, Invocation in) {
+//		ST template = group.getInstanceOf("InvocationWithChannelReadExprParam");
+		ST template = null;
+		
+		
+		ProcTypeDecl pd = in.targetProc;
+		String qualifiedPkg = getQualifiedPkg(pd);
+		String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
+
+		Sequence<Expression> params = in.params();
+		List<String> paramLst = new ArrayList<String>();
+		Iterator<Expression> it = params.iterator();
+		List<String> paramBlocks = new ArrayList<String>();
+		while(it.hasNext()) {
+			Expression e = it.next();
+			if (e != null) {
+				String paramStr = null;
+				if (e instanceof ChannelReadExpr) {
+					String typeString = in.targetProc.returnType().typeName();
+					String tempVar = globalize("temp", false);
+					_gLocals.add(typeString + " " + tempVar);
+					String chanRead = createChannelReadExpr(tempVar, (ChannelReadExpr)e);
+					
+					paramBlocks.add(chanRead);
+					paramLst.add(tempVar);
+				} else if (e instanceof Invocation && isRightChannelReadExpr(e)){
+					String typeString = in.targetProc.returnType().typeName();
+					String tempVar = globalize("temp", false);
+					_gLocals.add(typeString + " " + tempVar);
+					String invocationBlock = (String)createInvocationWithChannelReadExpr(tempVar, (Invocation) e);
+					
+					paramBlocks.add(invocationBlock);
+					paramLst.add(tempVar);
+				} else {
+					paramLst.add((String)e.visit(this));
+				}
+			}
+		}
+
+		template = group.getInstanceOf("InvocationNormal");
+		template.add("qualifiedProc", qualifiedProc);
+		template.add("isProcess", isYieldingProc(pd)); //needed for main method.
+		template.add("procParams", paramLst);
+		
+		String invocationBlock = template.render();
+		
+		template = group.getInstanceOf("InvocationWithChannelReadExprParam");
+		
+		template.add("paramBlocks", paramBlocks);
+		template.add("left", left);
+		template.add("right", invocationBlock);
+		
+		return (T) template.render();
+	}
+
 	public String createChannelReadExpr(String left, ChannelReadExpr cr) {
 		ST template = null;
 		Expression channelExpr = cr.channel();
@@ -473,9 +533,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				template.add("jmp0", _jumpCnt++);
 				template.add("jmp1", _jumpCnt++);
 				
-				if (chanType.isShared() || chanType.isRead()) {
-					template.add("shared", true);
-				}
 			} else {
 				String errorMsg = "Unsupported type: %s for ChannelEndType!";
 				String error = String.format(errorMsg, baseType.toString());
@@ -499,10 +556,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				template.add("jmp0", _jumpCnt++);
 				template.add("jmp1", _jumpCnt++);
 				
-				if (chanType.shared() == ChannelType.SHARED_READ || chanType.shared() == ChannelType.SHARED_READ_WRITE) {
-					template.add("shared", true);
-				}
-
 			} else {
 				String errorMsg = "Unsupported type: %s for ChannelEndType!";
 				String error = String.format(errorMsg, baseType.toString());
@@ -672,23 +725,42 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * Invocation.
 	 */
 	public T visitInvocation(Invocation in) {
-		/*
-		 * TODO: things go horribly wrong when doing something like f(g())... This could probably be fixed by using a
-		 * temporary variable.
-		 */
-		Log.log(in.line + ": Visiting Invocation ("
-				+ in.procedureName().getname() + ")");
-
-		//=====================Dirty Dirty code. Clean later.=================
-		//cds TODO: add this check??
-				if (in.targetProc == null)
-					System.out.println("targetProc is null.");
+		Log.log(in.line + ": Visiting Invocation (" + in.procedureName().getname() + ")");
 
 		ProcTypeDecl pd = in.targetProc;
+		String qualifiedPkg = getQualifiedPkg(pd);
+		String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
+
+		Sequence<Expression> params = in.params();
+		List<String> paramLst = new ArrayList<String>();
+		Iterator<Expression> it = params.iterator();
+		while(it.hasNext()) {
+			Expression e = it.next();
+			if (e != null) {
+				String paramStr = null;
+				if (e instanceof ChannelReadExpr) {
+					
+				} else {
+					paramStr = (String)e.visit(this);
+				}
+
+				if (paramStr != null)
+					paramLst.add(paramStr);
+			}
+		}
+
+		ST template = group.getInstanceOf("InvocationNormal");
+		template.add("qualifiedProc", qualifiedProc);
+		template.add("isProcess", isYieldingProc(pd)); //needed for main method.
+		template.add("procParams", paramLst);
+
+		return (T) template.render();
+	}
+
+	private String getQualifiedPkg(ProcTypeDecl pd) {
 		String myPkg = pd.myPackage;
 		StringBuilder qualifiedPkg = new StringBuilder();
 
-		//		System.out.println("++++++++++" + myPkg);
 		String[] tokens = myPkg.split("\\.");
 		boolean pk_start = false;
 		for (int i = 0; i < tokens.length; i++) {
@@ -702,47 +774,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 					qualifiedPkg.append(".");
 			}
 		}
-
-		String qualifiedFunctionName = qualifiedPkg.toString() + "."
-				+ convertProcName(in.procedureName().getname());
-
-		//======================================
-
-		//Print statements are treated differently. TODO: In the future this will change.
-		//cds: TODO this needs to be done with library import.
-		//		if (functionName.equals("println"))
-		//			return (T) createPrintFunction(in);
-
-		Sequence<Expression> params = in.params();
-
-		//Get out the type belonging to this function so we know if there is a return value!
-		//TODO This causes NPE.
-		//String returnType = in.targetProc.returnType().typeName();
-		//Boolean hasReturn = returnType.equals("void");
-		//TODO: Finish implemeting type returning. Really tough right now since the type checker
-		//doesn't select the proper function.
-		Boolean hasReturn = false;
-		String correctTemplate = (!hasReturn) ? "InvocationNoReturn"
-				: "InvocationWihReturn";
-
-		//Array list for ProcParams for this invocation.
-		String[] paramArray = (String[]) params.visit(this);
-		ST template = group.getInstanceOf(correctTemplate);
-
-		//Add all our fields to our template!
-		template.add("qualifiedFunctionName", qualifiedFunctionName);
-		//cds TODO: figure this out for methods.
-		template.add("isProcess", isYieldingProc(pd));
-		if (paramArray.length != 0)
-			template.add("procParams", paramArray);
-
-		//Handle case with return.
-		if (hasReturn == true) {
-			//TODO once Typechecker works change to comemented out line.
-			;//template.add("returnType", returnType);
-		}
-
-		return (T) template.render();
+		return qualifiedPkg.toString();
 	}
 
 	/**
@@ -771,7 +803,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		ST template = group.getInstanceOf("LocalDecl");
 		
-		if(ld.var().init() != null && ld.var().init() instanceof ChannelReadExpr) {
+		if(isRightChannelReadExpr(ld.var().init())) {
 			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), ld.var().init(), Assignment.EQ).visit(this);
 			return (T) assignment;
 		} else {
@@ -780,7 +812,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			 * Java, we need it. So, the below code makes the grammar template
 			 * do it.
 			 */
-			if (ld.type().isChannelType() == true) {
+			if (ld.type().isChannelType()) {
 				template.add("channelPart", true);
 				template.add("type", typeString);
 			} else {
@@ -789,14 +821,33 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			}
 			String var = (String) ld.var().visit(this);
 			template.add("var", var);
-			/*
-			 * cds TODO: cheating here by setting this bool in proctypedecl and making it global. find a better way.
-			 */
 			template.add("procYields", _proc_yields);
 			
 			return (T) template.render();
 		}
+	}
+	
+	/**
+	 * Checks to see if 
+	 */
+	public boolean isRightChannelReadExpr(Expression expr) {
+		
+		if (expr == null)
+			return false;
 
+		if ( expr instanceof ChannelReadExpr ) {
+			return true;
+		} else if ( expr instanceof Invocation ) {
+			Sequence<Expression> params = ((Invocation)expr).params();
+			Iterator<Expression> it = params.iterator();
+			while(it.hasNext()) {
+				boolean result = isRightChannelReadExpr(it.next());
+				if (result) {
+					return result;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -973,26 +1024,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		//cds TODO: add this check??
 		//		if (in.targetProc != null)
 		ProcTypeDecl pd = in.targetProc;
-		String myPkg = pd.myPackage;
-		StringBuilder qualifiedPkg = new StringBuilder();
-
-		//		System.out.println("++++++++++" + myPkg);
-		String[] tokens = myPkg.split("\\.");
-		boolean pk_start = false;
-		for (int i = 0; i < tokens.length; i++) {
-			if (tokens[i].equals(this.originalFilename))
-				pk_start = true;
-
-			if (pk_start) {
-				qualifiedPkg.append(tokens[i]);
-
-				if (i < tokens.length - 1)
-					qualifiedPkg.append(".");
-			}
-		}
+		String qualifiedPkg = getQualifiedPkg(pd);
 
 		String qualifiedFunctionName = qualifiedPkg.toString() + "."
-				+ convertProcName(in.procedureName().getname());
+				+ in.procedureName().getname();
 
 		//======================================
 
@@ -1110,30 +1145,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		// TODO: Modifiers?
 		Sequence<Modifier> modifiers = pd.modifiers();
 
-		/*
-		 * All functions are declared void and their return value is returned through a function parameter. TODO: Why
-		 * should it be done this way??
-		 */
-		String returnType = "void";
-
+		String returnType = (String) pd.returnType().visit(this);
 		String[] formals = (String[]) pd.formalParams().visit(this);
-
 		String[] block = (String[]) pd.body().visit(this);
 		
-//		System.out.println("===========");
-//		for(String b : block) {
-//			System.out.println(b);
-//		}
-//		System.out.println("+++++++++++");
-
 		template.add("packageName", this.originalFilename);
 		template.add("returnType", returnType);
 
-		/*
-		 * TODO: maybe do not convertProcName to _"name". since there might be library calls that do not name things
-		 * that way.
-		 */
-		template.add("name", convertProcName(name));
+//		template.add("name", convertProcName(name));
+		template.add("name", name);
 
 		if (formals.length != 0) {
 			template.add("formals", formals);
@@ -1463,10 +1483,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return false;
 	}
 
-	String convertProcName(String name) {
-
-		return "_" + name;
-	}
+//	String convertProcName(String name) {
+//
+//		return "_" + name;
+//	}
 
 	/**
 	 * Check if given AltCase is a Skip.

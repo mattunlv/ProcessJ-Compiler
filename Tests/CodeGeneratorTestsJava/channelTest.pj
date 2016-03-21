@@ -5,12 +5,34 @@ proc void writer(chan<int>.write chanW) [yield=true] {
 }
 
 proc void reader(chan<int>.read chanR) [yield=true]{
-    int x = chanR.read();
-    //chanR.read();
+    //int x = chanR.read();
+    //invoke
+    int y = 100;
+    y = compute(chanR.read(), compute1(chanR.read()));
+    //y = compute(getValue());
 }
 
-proc void compute(int x) {
+proc int getValue() {
+	return 5;	
+}
+
+//having the line below breaks typechecker
+//proc void getValue(){}
+
+proc int compute1(int z) {
+	return z + 10;
+}
+
+proc int compute(int x, int y) {
 	x = 2;
+	return x;
+}
+
+proc void anonymous()[yield=true] {
+	shared chan<int> a;
+	int x = 0;
+	a.write.write(100);
+    x = a.read.read();
 }
 
 proc void main(string[] args) {
@@ -19,7 +41,6 @@ proc void main(string[] args) {
     reader(intChan.read);
     
     //do the anonymous blocks for these.
-    //intChan.read.read();
     //compute(intChan.read());
 }
 

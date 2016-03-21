@@ -111,19 +111,19 @@ if (<channel>.isReadyToWrite()) {
 label(<jmp1>)
 >>
 
-ChannelReadExprInt(left, channel, jmp0, jmp1, shared) ::= <<
+ChannelReadExprInt(left, channel, jmp0, jmp1) ::= <<
 switch(runLabel) {
 	case <jmp0>: resume(<jmp0>);break;
 	case <jmp1>: resume(<jmp1>); break;
 }
 			
-label(0);
+label(<jmp0>);
 if(<channel>.isReadyToRead(this)) {
 	<left> = <channel>.read(this);
 	runLabel = <jmp1>;
 	yield(<jmp1>);
 } else {
-	<if(shared)><channel>.addReader(this);<endif>
+	<channel>.addReader(this);
 	setNotReady();
 	runLabel = <jmp0>;
 	yield(<jmp0>);
@@ -163,20 +163,17 @@ if( <expr> ) {
 }<endif>
 >>
 
-InvocationWithReturn(functionName, paramNumber, procParams, returnType) ::= <<
-({
-  <returnType> returnValue;
-  functionName(<if(procParams)>, <procParams; separator =", "><endif>, &returnType);
-  returnValue;
-})
+InvocationNormal(qualifiedProc, procParams, isProcess) ::= <<
+<if(isProcess)>
+(new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)).schedule()<\\>
+<else>
+<qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
+<endif>
 >>
 
-InvocationNoReturn(qualifiedFunctionName, procParams, isProcess) ::= <<
-<if(isProcess)>
-(new <qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>)).schedule()<\\>
-<else>
-<qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
-<endif>
+InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
+<if(paramBlocks)><paramBlocks; separator=";\n\n">;<endif>
+<left> = <right>
 >>
 
 InvocationPar(qualifiedFunctionName, procParams, parName, isProcess) ::= <<

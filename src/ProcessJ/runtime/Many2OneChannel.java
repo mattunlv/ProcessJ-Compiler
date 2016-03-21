@@ -35,4 +35,8 @@ public class Many2OneChannel<T> extends Channel<T> {
 	synchronized public void addWriter(Process p) {
 		writers.add(p);
 	}
+	
+	synchronized public void addReader(Process p) {
+		reader = p;
+	}
 }
