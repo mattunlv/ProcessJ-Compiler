@@ -6,10 +6,9 @@ public abstract class Process {
 	public boolean terminated = false; // has the process terminated
 
     public static Scheduler scheduler;
-    public Object context;
+    public Object context = null;
 	
     public Process() {
-    	
     }
 
     public Process(Object context) {

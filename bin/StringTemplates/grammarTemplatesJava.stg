@@ -92,8 +92,8 @@ CastExpr(ct, expr) ::= "(<ct>) (<expr>)"
 ChannelWriteStat(channel, expr, jmp0, jmp1, shared) ::= <<
 
 switch(runLabel) {
-	case <jmp0>: resume(<jmp0>);
-	case <jmp1>: resume(<jmp1>);
+	case <jmp0>: resume(<jmp0>); break;
+	case <jmp1>: resume(<jmp1>); break;
 }
 
 label(<jmp0>);
@@ -119,7 +119,11 @@ switch(runLabel) {
 			
 label(<jmp0>);
 if(<channel>.isReadyToRead(this)) {
+<if(left)>
 	<left> = <channel>.read(this);
+<else>
+	<channel>.read(this);
+<endif>
 	runLabel = <jmp1>;
 	yield(<jmp1>);
 } else {
@@ -173,7 +177,7 @@ InvocationNormal(qualifiedProc, procParams, isProcess) ::= <<
 
 InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
 <if(paramBlocks)><paramBlocks; separator=";\n\n">;<endif>
-<left> = <right>
+<if(left)><left> =<endif> <right>
 >>
 
 InvocationPar(qualifiedFunctionName, procParams, parName, isProcess) ::= <<
@@ -265,7 +269,7 @@ ProcGetParam(type, name, number) ::= <<
 
 
 ParBlockProc(name, body, getParameters) ::= <<
-<! Very similar to ProcTypeDecl but simplified for ParBlocks only. !>
+<! cds: what is this for???? Very similar to ProcTypeDecl but simplified for ParBlocks only. !>
 void <name>(){
   <if(getParameters)><getParameters; separator = ";\n">;<endif>
   <body>;
@@ -286,25 +290,21 @@ case <caseNum>: resume(<caseNum>)
 >>
 /******************************/
 
-ParBlock(processCount, parName, stats) ::= <<
+ParBlock(parCnt, parBlockName, stats, jmp0, jmp1) ::= <<
 switch(runLabel) {
-	case 0:
-		break;	
-	case 1:
-		jump(1);
-		break;
+	case <jmp0>: resume(<jmp0>); break;	
+	case <jmp1>: resume(<jmp1>); break;
 }
-	
-final Par <parName> = new Par(<processCount>, this);
+label(<jmp0>);	
+final Par <parBlockName> = new Par(<parCnt>, this);
 
 setNotReady();
 	
 <stats; separator=";\n">;
 	
-runLabel = 1;
-
-jump(2);
-label(1);
+runLabel = <jmp1>;
+yield(<jmp1>);
+label(<jmp1>)
 >>
 
 Prototype(name, formals) ::= <<

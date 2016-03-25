@@ -79,10 +79,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private Map<String, String> _gLocalNamesMap = null;
 	private List<String> _gLocals = null;
 	private int _gvarCnt = 0;
-	private int _tempVarCnt = 0;
 	private int _jumpCnt = 0;
-	private boolean _proc_yields = false;
 	private int _parCnt = 0;
+	private boolean _inParBlock = false;
+	private String _parBlockName = null;
+
+	private boolean _proc_yields = false;
 	private final String MAIN_SIGNATURE = "([T;)V";
 
 	//TODO look at trying to get this name from Error.filename or from compilation.
@@ -278,14 +280,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitChannelReadExpr(ChannelReadExpr cr) {
 		Log.log(cr.line + ": Visiting ChannelReadExpr");
-
-		/*
-		 * 03.18.2016
-		 * This visitor is done inside visitAssignment since read value
-		 * assignment for channels need to be handled inside the generated
-		 * code block.
-		 */
-		return (T) "";
+		return (T) createChannelReadExpr(null, cr);
 	}
 
 	/**
@@ -415,7 +410,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if(as.right() instanceof ChannelReadExpr) {
 			return (T) createChannelReadExpr(left, (ChannelReadExpr)as.right());
 		} else if(as.right() instanceof Invocation) {
-			return (T) createInvocationWithChannelReadExpr(left, (Invocation)as.right());
+//			return (T) createInvocationWithChannelReadExpr(left, (Invocation)as.right());
+			return (T) createInvocation(left, (Invocation)as.right(), null);
 		} else {
 			String right = (String) as.right().visit(this);
 			template.add("left", left);
@@ -426,39 +422,44 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) template.render();
 	}
 	
-	public T createInvocationWithChannelReadExpr(String left, Invocation in) {
-//		ST template = group.getInstanceOf("InvocationWithChannelReadExprParam");
+	public T createInvocation(String left, Invocation in, String parName) {
+		Log.log(in.line + ": Creating Invocation ("+ in.procedureName().getname() + ") with LHS as " + left);
+
 		ST template = null;
-		
-		
 		ProcTypeDecl pd = in.targetProc;
 		String qualifiedPkg = getQualifiedPkg(pd);
 		String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
 
-		Sequence<Expression> params = in.params();
 		List<String> paramLst = new ArrayList<String>();
-		Iterator<Expression> it = params.iterator();
 		List<String> paramBlocks = new ArrayList<String>();
-		while(it.hasNext()) {
-			Expression e = it.next();
+
+		/*
+		 * Generate param code.
+		 */
+		Sequence<Expression> params = in.params();
+		for(int i = 0; i < params.size(); i++) {
+			Expression e = params.child(i);
 			if (e != null) {
-				String paramStr = null;
 				if (e instanceof ChannelReadExpr) {
-					String typeString = in.targetProc.returnType().typeName();
+
+					String typeString = in.targetProc.formalParams().child(i).type().typeName();
 					String tempVar = globalize("temp", false);
 					_gLocals.add(typeString + " " + tempVar);
-					String chanRead = createChannelReadExpr(tempVar, (ChannelReadExpr)e);
+					String chanReadBlock = (String) createChannelReadExpr(tempVar, (ChannelReadExpr)e);
 					
-					paramBlocks.add(chanRead);
+					paramBlocks.add(chanReadBlock);
 					paramLst.add(tempVar);
-				} else if (e instanceof Invocation && isRightChannelReadExpr(e)){
-					String typeString = in.targetProc.returnType().typeName();
+
+				} else if (e instanceof Invocation){
+
+					String typeString = ((Invocation)e).targetProc.returnType().typeName();
 					String tempVar = globalize("temp", false);
 					_gLocals.add(typeString + " " + tempVar);
-					String invocationBlock = (String)createInvocationWithChannelReadExpr(tempVar, (Invocation) e);
+					String invocationBlock = (String) createInvocation(tempVar, (Invocation) e, null);
 					
 					paramBlocks.add(invocationBlock);
 					paramLst.add(tempVar);
+
 				} else {
 					paramLst.add((String)e.visit(this));
 				}
@@ -467,8 +468,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		template = group.getInstanceOf("InvocationNormal");
 		template.add("qualifiedProc", qualifiedProc);
-		template.add("isProcess", isYieldingProc(pd)); //needed for main method.
 		template.add("procParams", paramLst);
+		
+		/*
+		 * If target proc (pd) is a yielding proc, ie. it is a process,
+		 * instead of normal invocation, we need to instantiate the process
+		 * and schedule it.
+		 */
+		template.add("isProcess", isYieldingProc(pd));
 		
 		String invocationBlock = template.render();
 		
@@ -481,7 +488,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) template.render();
 	}
 
-	public String createChannelReadExpr(String left, ChannelReadExpr cr) {
+	public T createChannelReadExpr(String left, ChannelReadExpr cr) {
+		Log.log(cr.line + ": Creating ChannelReadExpr with LHS as " + left);
+
 		ST template = null;
 		Expression channelExpr = cr.channel();
 		NameExpr channelNameExpr = null;
@@ -498,12 +507,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String channel = (String) channelNameExpr.visit(this);
 		Type myType = null;
 
-		//TODO: Clean this mess up.
+		//Figure out type of channel and do appropriate code generation based on this.
 		if (channelNameExpr.myDecl instanceof LocalDecl) {
-			//Figure out type of channel and do appropriate code generation based on this.
 			myType = ((LocalDecl) channelNameExpr.myDecl).type();
 		} else if (channelNameExpr.myDecl instanceof ParamDecl) {
-			//Figure out type of channel and do appropriate code generation based on this.
 			myType = ((ParamDecl) channelNameExpr.myDecl).type();
 		}
 
@@ -515,6 +522,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 */
 		if (myType.isTimerType()) {
 			template = group.getInstanceOf("TimerReadExpr");
+			//TODO: complete this.
 		}
 		
 		/*
@@ -567,7 +575,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			Error.error(cr, error);
 		}
 
-		return template.render();
+		return (T)template.render();
 	}
 
 	/**
@@ -726,35 +734,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitInvocation(Invocation in) {
 		Log.log(in.line + ": Visiting Invocation (" + in.procedureName().getname() + ")");
-
-		ProcTypeDecl pd = in.targetProc;
-		String qualifiedPkg = getQualifiedPkg(pd);
-		String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
-
-		Sequence<Expression> params = in.params();
-		List<String> paramLst = new ArrayList<String>();
-		Iterator<Expression> it = params.iterator();
-		while(it.hasNext()) {
-			Expression e = it.next();
-			if (e != null) {
-				String paramStr = null;
-				if (e instanceof ChannelReadExpr) {
-					
-				} else {
-					paramStr = (String)e.visit(this);
-				}
-
-				if (paramStr != null)
-					paramLst.add(paramStr);
-			}
-		}
-
-		ST template = group.getInstanceOf("InvocationNormal");
-		template.add("qualifiedProc", qualifiedProc);
-		template.add("isProcess", isYieldingProc(pd)); //needed for main method.
-		template.add("procParams", paramLst);
-
-		return (T) template.render();
+		return (T) createInvocation(null, in, null);
 	}
 
 	private String getQualifiedPkg(ProcTypeDecl pd) {
@@ -803,8 +783,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		ST template = group.getInstanceOf("LocalDecl");
 		
-		if(isRightChannelReadExpr(ld.var().init())) {
-			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), ld.var().init(), Assignment.EQ).visit(this);
+		Expression right = ld.var().init();
+//		if(hasChannelReadExpr(ld.var().init())) {
+		if(right instanceof ChannelReadExpr || right instanceof Invocation){
+			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), right, Assignment.EQ).visit(this);
 			return (T) assignment;
 		} else {
 			/*
@@ -825,30 +807,53 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			
 			return (T) template.render();
 		}
+		
+//		if (_proc_yields) { //process will have only fields
+//			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), ld.var().init(), Assignment.EQ).visit(this);
+//			return (T) assignment;
+//		} else { //method can have locals
+//			/*
+//			 * Channels in ProcessJ do not require initialization but in 
+//			 * Java, we need it. So, the below code makes the grammar template
+//			 * do it.
+//			 */
+//			if (ld.type().isChannelType()) {
+//				template.add("channelPart", true);
+//				template.add("type", typeString);
+//			} else {
+//				template.add("channelPart", false);
+//				template.add("type", typeString);
+//			}
+//			String var = (String) ld.var().visit(this);
+//			template.add("var", var);
+//
+//			return (T) template.render();
+//		}
+
 	}
 	
 	/**
 	 * Checks to see if 
 	 */
-	public boolean isRightChannelReadExpr(Expression expr) {
-		
-		if (expr == null)
-			return false;
-
-		if ( expr instanceof ChannelReadExpr ) {
-			return true;
-		} else if ( expr instanceof Invocation ) {
-			Sequence<Expression> params = ((Invocation)expr).params();
-			Iterator<Expression> it = params.iterator();
-			while(it.hasNext()) {
-				boolean result = isRightChannelReadExpr(it.next());
-				if (result) {
-					return result;
-				}
-			}
-		}
-		return false;
-	}
+//	public boolean hasChannelReadExpr(Expression expr) {
+//		
+//		if (expr == null)
+//			return false;
+//
+//		if ( expr instanceof ChannelReadExpr ) {
+//			return true;
+//		} else if ( expr instanceof Invocation ) {
+//			Sequence<Expression> params = ((Invocation)expr).params();
+//			Iterator<Expression> it = params.iterator();
+//			while(it.hasNext()) {
+//				boolean result = hasChannelReadExpr(it.next());
+//				if (result) {
+//					return result;
+//				}
+//			}
+//		}
+//		return false;
+//	}
 
 	/**
 	 * IfStat 
@@ -976,53 +981,46 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitParBlock(ParBlock pb) {
 		Log.log(pb.line + ": Visiting a ParBlock");
 
-		String parName = "par" + ++this._parCnt;
-
-		//Template holding the actual block like syntax.
+		_inParBlock = true;
 		ST parBlockTemplate = group.getInstanceOf("ParBlock");
-		//Every function will need to know it's index number for since they share an array.
+		_parBlockName = "par" + ++this._parCnt;
 
 		Sequence<Statement> se = pb.stats();
-		Log.log(se.line + ": Visiting a Sequence");
-		String[] stmts = new String[se.size()];
+		String[] stats = new String[se.size()];
 
-		// Iterate through all children placing results in array.
 		for (int k = 0; k < se.size(); k++) {
 			if (se.child(k) != null) {
-				if (se.child(k) instanceof ExprStat) {
-					ExprStat es = (ExprStat) se.child(k);
-					if (es.expr() instanceof Invocation) {
-						stmts[k] = (String) createParInvocation(
-								(Invocation) es.expr(), parName);
-					} else {
-						stmts[k] = (String) se.child(k).visit(this);
-					}
+//				if (se.child(k) instanceof ExprStat) {
+//					ExprStat es = (ExprStat) se.child(k);
+//					if (es.expr() instanceof Invocation) {
+//						stats[k] = (String) createParInvocation(null, (Invocation) es.expr());
+//					} else if (es.expr() instanceof ChannelReadExpr) {
+//						
+//					} else {
+						//stats[k] = (String) se.child(k).visit(this);
+//					}
 
-				} else {
-					stmts[k] = (String) se.child(k).visit(this);
-				}
+//				} else {
+					stats[k] = (String) se.child(k).visit(this);
+//				}
 			} else {
-				stmts[k] = null;
+				stats[k] = null;
 			}
 		}
 
-		System.out.println("stmts.length=" + stmts.length);
-		for (int j = 0; j < stmts.length; j++) {
-			System.out.println(stmts[j]);
-		}
-		parBlockTemplate.add("processCount", 2);
-		parBlockTemplate.add("stats", stmts);
-		parBlockTemplate.add("parName", parName);
+		parBlockTemplate.add("parCnt", stats.length);
+		parBlockTemplate.add("stats", stats);
+		parBlockTemplate.add("parBlockName", _parBlockName);
+		parBlockTemplate.add("jmp0", _jumpCnt++);
+		parBlockTemplate.add("jmp1", _jumpCnt++);
 
+		_inParBlock = false;
 		return (T) parBlockTemplate.render();
 	}
 
 	public T createParInvocation(Invocation in, String parName) {
 		Log.log(in.line + ": Creating Par Invocation ("
 				+ in.procedureName().getname() + ") for " + parName);
-		//=====================Dirty Dirty code. Clean later.=================
-		//cds TODO: add this check??
-		//		if (in.targetProc != null)
 		ProcTypeDecl pd = in.targetProc;
 		String qualifiedPkg = getQualifiedPkg(pd);
 
@@ -1138,10 +1136,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 */
 		_jumpCnt = 0;
 		_gvarCnt = 0;
+		_parCnt = 0;
+		_inParBlock = false;
 		_gFormalNamesMap = new HashMap<String, String>();
 		_gLocalNamesMap = new HashMap<String, String>();
 		_gLocals = new ArrayList<String>();
 
+		
 		// TODO: Modifiers?
 		Sequence<Modifier> modifiers = pd.modifiers();
 

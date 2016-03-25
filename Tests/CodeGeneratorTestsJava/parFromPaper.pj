@@ -1,19 +1,23 @@
 proc void p1(chan<int>.read c) [yield=true]{
-
+	int y = c.read();
 }
 
 proc void p2(chan<int>.write c, int x) [yield=true]{
-
+	c.write(x);
 }
 
-proc void p3(int y) [yield=true]{}
-proc void p4(int z) [yield=true]{}
+proc int p3(int y){
+	return y;
+}
+proc int p4(int z){
+	return z;	
+}
 
 proc void foo(int x) [yield=true]{
 
   chan<int> c;
-
   par {
+    //x = c.read();
     p1(c.read);
     p2(c.write, x);
   }
@@ -21,8 +25,10 @@ proc void foo(int x) [yield=true]{
   bar(10); 
   
   par {
-  	p3(4);
-  	p4(5);
+  	int p = p3(4);
+  	int k = p4(5);
+  	if(x ==5)
+  		x = 10;
   }
 }
 
