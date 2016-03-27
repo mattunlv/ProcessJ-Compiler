@@ -6,7 +6,6 @@ proc void writer(chan<int>.write chanW) [yield=true] {
 
 proc void compute(int x, int y, int z) [yield=true] {
 	x = 2;
-	//return x;
 }
 
 proc int compute1(int z, int y) {

@@ -13,29 +13,48 @@ proc int p4(int z){
 	return z;	
 }
 
-proc void foo(int x) [yield=true]{
-
-  chan<int> c;
-  par {
-    //x = c.read();
-    p1(c.read);
-    p2(c.write, x);
-  }
-  
-  bar(10); 
-  
-  par {
-  	int p = p3(4);
-  	int k = p4(5);
-  	if(x ==5)
-  		x = 10;
-  }
-}
-
 proc void bar(int y) [yield=false]{
 	y = y+10;
 }
 
 proc void main(string[] args) {
 	foo(5);
+}
+
+proc int compute3(int x) {
+	x = 5;
+	return x;
+}
+
+proc void compute(int x, int y, int z) [yield=true] {
+	x = 2;
+}
+
+proc void foo(int x) [yield=true]{
+
+  chan<int> c;
+  par {
+   x = c.read();
+   if(x == 5)
+    	x = 10;
+    else
+    	x = 100;
+    	
+    while(x < 5)
+    	x--;
+    	
+    compute(c.read(), compute3(c.read()), 10);
+
+    p1(c.read);
+  }
+  
+  bar(10); 
+  p2(c.write, x);
+  
+ /* par {
+  	int p = p3(4);
+  	int k = p4(5);
+  	if(x ==5)
+  		x = 10;
+  }*/
 }

@@ -2,17 +2,11 @@ package ProcessJ.runtime;
 
 public abstract class Channel<T> {
 	
-//	protected final static int TYPE_ONE_TO_ONE = 0; 
-//	protected final static int TYPE_ONE_TO_MANY = 1; 
-//	protected final static int TYPE_MANY_TO_ONE = 2; 
-//	protected final static int TYPE_MANY_TO_MANY = 3; 
-
 	// the data item communicated on the channel
 	protected T data;
 	// is there any data?
 	public boolean ready = false;
 	protected boolean reservedForAlt = false;
-//	protected int type;
 
 	Process reservedForReader = null;
 
@@ -128,8 +122,4 @@ public abstract class Channel<T> {
 	synchronized public boolean isReadyToWrite() {
 		return !ready;
 	}
-
-//	public int getType() {
-//		return this.type;
-//	}
 }
