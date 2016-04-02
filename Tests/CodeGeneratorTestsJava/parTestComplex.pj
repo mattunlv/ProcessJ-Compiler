@@ -24,10 +24,9 @@ proc void writer(chan<int>.read chanR) [yield=true]{
 proc void procMain() [yield=true]{
   chan<int> intChan;
   par{
-    source(intChan);
-    writer(intChan);
+    source(intChan.write, 10, true);
+    writer(intChan.read);
   }
-  return;
 }
 
 proc void main(string[] args){

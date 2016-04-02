@@ -33,310 +33,311 @@ import org.objectweb.asm.util.CheckClassAdapter;
  */
 public class Instrumenter {
 
-	static final String MARK_YIELD = "yield";
-	static final String MARK_RESUME = "resume";
-	static final String MARK_LABEL = "label";
-	public static final int Op_goto = 167;
+  static final String MARK_YIELD = "yield";
+  static final String MARK_RESUME = "resume";
+  static final String MARK_LABEL = "label";
 
-	public String fullPath = "";
-	
-	public Instrumenter(String folder) {
-		this.fullPath = Instrumenter.class.getResource("../"+ folder +"/").getPath();
-		
-		System.out.println("================================");
-		System.out.println("*  Instrumenting classes in:   *");
-		System.out.println("================================");
-		System.out.println("Path:" + fullPath);
-		System.out.println("--------------------------------");
-	
-	}
+  public String fullPath = "";
+  
+  public Instrumenter(String folder) {
+    this.fullPath = Instrumenter.class.getResource("../"+ folder +"/").getPath();
+    
+    System.out.println("================================");
+    System.out.println("*  Instrumenting classes in:   *");
+    System.out.println("================================");
+    System.out.println("Path:" + fullPath);
+    System.out.println("--------------------------------");
+  
+  }
 
-	public void execute() throws Exception {
+  public void execute() throws Exception {
 
-		File directory = new File(fullPath);
-		File[] directoryListing = directory.listFiles();
+    File directory = new File(fullPath);
+    File[] directoryListing = directory.listFiles();
 
-		if (directoryListing != null) {
-			for (File file: directoryListing) {
-				if (file.isFile() && isClassFile(file)){
-					
-					System.out.println("Instrumenting => " + file.getName());
-					FileInputStream is = new FileInputStream(file);
-					ClassReader cr = new ClassReader(is);
-			
-					byte[] bytes = getClassBytes(cr, false);
-			
-					if (bytes != null) {
-						FileOutputStream fos = new FileOutputStream(file, false);
-						fos.write(bytes);
-						fos.close();
-					}
-					is.close();
-				}
-			}
-		}
-		
-		System.out.println("Done!!");
-	}
-	
-	
+    if (directoryListing != null) {
+      for (File file: directoryListing) {
+        if (file.isFile() && isClassFile(file)){
+          
+          System.out.println("Instrumenting => " + file.getName());
+          FileInputStream is = new FileInputStream(file);
+          ClassReader cr = new ClassReader(is);
+      
+          byte[] bytes = getClassBytes(cr, false);
+      
+          if (bytes != null) {
+            FileOutputStream fos = new FileOutputStream(file, false);
+            fos.write(bytes);
+            fos.close();
+          }
+          is.close();
+        }
+      }
+    }
+    
+    System.out.println("Done!!");
+  }
+  
+  
 
-	public byte[] getClassBytes(ClassReader cr, boolean changeFile)
-			throws Exception {
+  public byte[] getClassBytes(ClassReader cr, boolean changeFile)
+      throws Exception {
 
-		// lets see assembler code before transformation
-		// ASMifierClassVisitor.main(new String[]{className.replace('/', '.')});
+    // lets see assembler code before transformation
+    // ASMifierClassVisitor.main(new String[]{className.replace('/', '.')});
 
-		ClassNode cn = new ClassNode();
-		cr.accept(cn, 0);
+    ClassNode cn = new ClassNode();
+    cr.accept(cn, 0);
 
-		boolean changed = makeChanges(cn);
+    boolean changed = makeChanges(cn);
 
-		if (changed) {
-			return getNewClassBytes(cn);
-		} else {
-			return null;
-		}
-	}
+    if (changed) {
+      return getNewClassBytes(cn);
+    } else {
+      return null;
+    }
+  }
 
-	@SuppressWarnings("unchecked")
-	private byte[] getNewClassBytes(final ClassNode cn) {
-		byte[] classBytes;
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-		cn.accept(cw);
-		classBytes = cw.toByteArray();
-		
-		/*
-		 * Use this to see if changed bytecode will pass verifier. 
-		 */
-		//verifyModifiedClass(cw);
-		
-		return classBytes;
-	}
+  @SuppressWarnings("unchecked")
+  private byte[] getNewClassBytes(final ClassNode cn) {
+    byte[] classBytes;
+    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+    cn.accept(cw);
+    classBytes = cw.toByteArray();
+    
+    /*
+     * Use this to see if changed bytecode will pass verifier. 
+     */
+    //verifyModifiedClass(cw);
+    
+    return classBytes;
+  }
 
-	public boolean makeChanges(final ClassNode cn) {
+  public boolean makeChanges(final ClassNode cn) {
 
-		final List<AbstractInsnNode> yields = new ArrayList<AbstractInsnNode>();
-		final List<AbstractInsnNode> resumes = new ArrayList<AbstractInsnNode>();
-		final List<AbstractInsnNode> labels = new ArrayList<AbstractInsnNode>();
+    final List<AbstractInsnNode> yields = new ArrayList<AbstractInsnNode>();
+    final List<AbstractInsnNode> resumes = new ArrayList<AbstractInsnNode>();
+    final List<AbstractInsnNode> labels = new ArrayList<AbstractInsnNode>();
 
-		final Map<Integer, LabelNode> labelRefs = new HashMap<Integer, LabelNode>();
+    final Map<Integer, LabelNode> labelRefs = new HashMap<Integer, LabelNode>();
 
-		boolean hasJumps = false;
+    boolean hasJumps = false;
 
-		for (Object o : cn.methods) {
+    for (Object o : cn.methods) {
 
-			MethodNode mn = (MethodNode) o;
+      MethodNode mn = (MethodNode) o;
 
-			extractYieldData(cn, mn, yields, resumes, labels);
+      extractYieldData(cn, mn, yields, resumes, labels);
 
-			if (yields.size() > 0) {
+      if (yields.size() > 0) {
 
-				hasJumps = true;
-				
-				insertLabelNodes(cn, mn, labels, labelRefs);
+        hasJumps = true;
+        
+        insertLabelNodes(cn, mn, labels, labelRefs);
 
-				// connect to which yields!
-				makeResumesToYields(cn, mn, resumes, labelRefs);
+        // connect to which label!
+        makeResumesToLabels(cn, mn, resumes, labelRefs);
 
-				insertReturnOnYields(mn, yields);
-				
-//				cleanup(mn);
-				
-			}
+        insertReturnOnYields(mn, yields);
+        
+//        cleanup(mn);
+        
+      }
 
-			resumes.clear();
-			yields.clear();
-			labelRefs.clear();
+      resumes.clear();
+      yields.clear();
+      labelRefs.clear();
 
-		}
-		return hasJumps;
-	}
-	
-	private void extractYieldData(final ClassNode cn, final MethodNode mn, 
-			final List<AbstractInsnNode> yields, final List<AbstractInsnNode> resumes
-			, final List<AbstractInsnNode> labels) {
+    }
+    return hasJumps;
+  }
+  
+  private void extractYieldData(final ClassNode cn, final MethodNode mn, 
+      final List<AbstractInsnNode> yields, final List<AbstractInsnNode> resumes
+      , final List<AbstractInsnNode> labels) {
 
-		final String workingClassName = cn.name.replace('.', '/');
-		ListIterator<AbstractInsnNode> iterator = mn.instructions.iterator();
+    final String workingClassName = cn.name.replace('.', '/');
+    ListIterator<AbstractInsnNode> iterator = mn.instructions.iterator();
 
-		while (iterator.hasNext()) {
+    while (iterator.hasNext()) {
 
-			AbstractInsnNode insnNode = (AbstractInsnNode) iterator.next();
+      AbstractInsnNode insnNode = (AbstractInsnNode) iterator.next();
 
-			if (insnNode.getType() == AbstractInsnNode.METHOD_INSN) {
+      if (insnNode.getType() == AbstractInsnNode.METHOD_INSN) {
 
-				MethodInsnNode min = (MethodInsnNode) insnNode;
+        MethodInsnNode min = (MethodInsnNode) insnNode;
 
-				if (min.owner.equals(workingClassName)) {
+        if (min.owner.equals(workingClassName)) {
 
-					if (min.name.equals(MARK_YIELD)) {
+          if (min.name.equals(MARK_YIELD)) {
 
-						yields.add(min);
+            yields.add(min);
 
-					} else if (min.name.equals(MARK_RESUME)) {
+          } else if (min.name.equals(MARK_RESUME)) {
 
-						resumes.add(min);
+            resumes.add(min);
 
-					} else if (min.name.equals(MARK_LABEL)) {
-						
-						labels.add(min);
-					}
-				}
-			}
+          } else if (min.name.equals(MARK_LABEL)) {
+            
+            labels.add(min);
+          }
+        }
+      }
 
-		}
-	}
-	
-	private void insertLabelNodes( final ClassNode cn, final MethodNode mn,
-			final List<AbstractInsnNode> labels, 
-			final Map<Integer, LabelNode> labelRefs) {
+    }
+  }
+  
+  private void insertLabelNodes( final ClassNode cn, final MethodNode mn,
+      final List<AbstractInsnNode> labels, 
+      final Map<Integer, LabelNode> labelRefs) {
 
-		labelRefs.clear();
+    labelRefs.clear();
 
-		for (AbstractInsnNode node : labels) {
-			AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
+    for (AbstractInsnNode node : labels) {
+      AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
 
-			int labelNumber = getOperand(cn.name, operandNode);
-			
-			AbstractInsnNode loadANode = operandNode.getPrevious(); // we need to back up one more to before the push instruction
+      int labelNumber = getOperand(cn.name, operandNode);
+      
+      AbstractInsnNode loadANode = operandNode.getPrevious(); // we need to back up one more to before the push instruction
 
-			LabelNode labelNode = new LabelNode();
-			labelRefs.put(labelNumber, labelNode);
+      LabelNode labelNode = new LabelNode();
+      labelRefs.put(labelNumber, labelNode);
 
-			mn.instructions.insertBefore(loadANode, labelNode);
-		}
-	}
-	
-	
-	private void makeResumesToYields(final ClassNode cn, final MethodNode mn, 
-			final List<AbstractInsnNode> resumes, final Map<Integer, LabelNode> myRefs) {
+      mn.instructions.insertBefore(loadANode, labelNode);
+    }
+  }
+  
+  
+  private void makeResumesToLabels(final ClassNode cn, final MethodNode mn, 
+      final List<AbstractInsnNode> resumes, final Map<Integer, LabelNode> myRefs) {
 
-		// join resumes to yields 
-		for (AbstractInsnNode node : resumes) {
-			AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
+    // join resumes to labels 
+    for (AbstractInsnNode node : resumes) {
+      AbstractInsnNode operandNode = (AbstractInsnNode) node.getPrevious();
 
-			int labelNumber = getOperand(cn.name, operandNode);
-			LabelNode labelNode = myRefs.get(labelNumber);
+      int labelNumber = getOperand(cn.name, operandNode);
+      LabelNode labelNode = myRefs.get(labelNumber);
 
-			if (labelNode != null) {
-				mn.instructions.insert(node, new JumpInsnNode(Op_goto, labelNode));
-			}
-		}
-	}
-	
-	private void insertReturnOnYields(final MethodNode mn, final List<AbstractInsnNode> yields) {
-		//the label we want to insert just before the method return.
-		LabelNode jumpDest = new LabelNode();
-		
-		/*
-		 * 03/07/2016
-		 * 
-		 * Insert a jump destination before the last instruction 
-		 * of the method. The last instruction is always a return 
-		 * opcode (statement). But it can be either one of these
-		 * based on what type method returns: return, ireturn, 
-		 * lreturn, freturn, dreturn and areturn. These need to be 
-		 * handled differently as they can have related preceding
-		 * operations.
-		 * 
-		 *  Example: 
-		 *  1. ireturn that returns constant value can have 
-		 *  iconst_<x> or bipush or sipush or ldc etc.
-		 *  2. ireturn that returns a variable value will have
-		 *  aload_0 and getfield instructions before it.
-		 *  		 
-		 *  6:00pm EDIT
-		 *  Since ProcessJ processes do not return any value, but just
-		 *  void, we might not need anything other than RETURN. But 
-		 *  for multi-core scheduler, we are thinking of returning a 
-		 *  List<Process>. Then ARETURN might be needed. Else they aren't.
-		 *  
-		 *  Will leave them in anything. Won't hurt.
-		 */
-		int ret_opcode = mn.instructions.getLast().getOpcode();
-		
-		switch(ret_opcode) {
-			case Opcodes.RETURN: //doesn't have any preceding operation
-				mn.instructions.insertBefore(mn.instructions.getLast(), jumpDest);
-				break;
-			case Opcodes.IRETURN:
-			case Opcodes.DRETURN:
-			case Opcodes.FRETURN:
-			case Opcodes.LRETURN:
-			case Opcodes.ARETURN:
+      if (labelNode != null) {
+        mn.instructions.insert(node, new JumpInsnNode(Opcodes.GOTO, labelNode));
+      }
+    }
+  }
+  
+  private void insertReturnOnYields(final MethodNode mn, final List<AbstractInsnNode> yields) {
+    //the label we want to insert just before the method return.
+    LabelNode jumpDest = new LabelNode();
 
-				int ret_prev_opcode = mn.instructions.getLast().getPrevious().getOpcode();
+    /*
+     * 03/07/2016
+     * 
+     * Insert a jump destination before the last instruction 
+     * of the method. The last instruction is always a return 
+     * opcode (statement). But it can be either one of these
+     * based on what type method returns: return, ireturn, 
+     * lreturn, freturn, dreturn and areturn. These need to be 
+     * handled differently as they can have related preceding
+     * operations.
+     * 
+     *  Example: 
+     *  1. ireturn that returns constant value can have 
+     *  iconst_<x> or bipush or sipush or ldc etc.
+     *  2. ireturn that returns a variable value will have
+     *  aload_0 and getfield instructions before it.
+     *       
+     *  6:00pm EDIT
+     *  Since ProcessJ processes do not return any value, but just
+     *  void, we might not need anything other than RETURN. But 
+     *  for multi-core scheduler, we are thinking of returning a 
+     *  List<Process>. Then ARETURN might be needed. Else they aren't.
+     *  
+     *  Will leave them in anything. Won't hurt.
+     */
+    AbstractInsnNode retNode = mn.instructions.getLast().getPrevious();
 
-				if (ret_prev_opcode == Opcodes.GETFIELD) {
-					//if previous opcode is a getfield, then there must be aload_0 before it.
-					mn.instructions.insertBefore(mn.instructions.getLast().getPrevious().getPrevious(), jumpDest);
-				} else {
-					//if not, there is only one preceding operation like bipush, ldc, etc.
-					mn.instructions.insertBefore(mn.instructions.getLast().getPrevious(), jumpDest);
-				}
-				break;
-			default:
-				jumpDest = null;
-		}
-		
-		if (jumpDest != null) {
-			for (AbstractInsnNode node : yields) {
-				//insert goto jumpDest after each yield as we want the method to return.
-				mn.instructions.insert(node, new JumpInsnNode(Op_goto, jumpDest));
-			}
-		}
-	}
-	
-	private void verifyModifiedClass(ClassWriter cw) {
+    int ret_opcode = retNode.getOpcode();
 
-		System.out.println("==============================");
-		System.out.println("*  Verifying modified class  *");
-		System.out.println("==============================");
+    switch(ret_opcode) {
+      case Opcodes.RETURN: //doesn't have any preceding operation
+        mn.instructions.insertBefore(retNode, jumpDest);
+        break;
+      case Opcodes.IRETURN:
+      case Opcodes.DRETURN:
+      case Opcodes.FRETURN:
+      case Opcodes.LRETURN:
+      case Opcodes.ARETURN:
 
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		/*
-		 * It won't be exactly the same verification as JVM does, but it runs 
-		 * data flow analysis for the code of each method and checks that 
-		 * expectations are met for each method instruction.
-		 */
-		CheckClassAdapter.verify(new ClassReader(cw.toByteArray()), true, pw);
+        int ret_prev_opcode = retNode.getPrevious().getOpcode();
 
-		//if result is empty, verification passed.
-		System.out.println("Result:" + sw.toString());
-	}
-	
-	private boolean isClassFile(File file) throws Exception {
-		String name = file.getName();
-	    return "class".equals(name.substring(name.lastIndexOf(".") + 1));
-	}
-	
-	private int getOperand(String clazz, final AbstractInsnNode node) {
+        if (ret_prev_opcode == Opcodes.GETFIELD) {
+          //if previous opcode is a getfield, then there must be aload_0 before it.
+          mn.instructions.insertBefore(retNode.getPrevious().getPrevious(), jumpDest);
+        } else {
+          //if not, there is only one preceding operation like bipush, ldc, etc.
+          mn.instructions.insertBefore(retNode.getPrevious(), jumpDest);
+        }
+        break;
+      default:
+        jumpDest = null;
+    }
+    
+    if (jumpDest != null) {
+      for (AbstractInsnNode node : yields) {
+        //insert goto jumpDest after each yield as we want the method to return.
+        mn.instructions.insert(node, new JumpInsnNode(Opcodes.GOTO, jumpDest));
+      }
+    }
+  }
+  
+  private void verifyModifiedClass(ClassWriter cw) {
+
+    System.out.println("==============================");
+    System.out.println("*  Verifying modified class  *");
+    System.out.println("==============================");
+
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    /*
+     * It won't be exactly the same verification as JVM does, but it runs 
+     * data flow analysis for the code of each method and checks that 
+     * expectations are met for each method instruction.
+     */
+    CheckClassAdapter.verify(new ClassReader(cw.toByteArray()), true, pw);
+
+    //if result is empty, verification passed.
+    System.out.println("Result:" + sw.toString());
+  }
+  
+  private boolean isClassFile(File file) throws Exception {
+    String name = file.getName();
+      return "class".equals(name.substring(name.lastIndexOf(".") + 1));
+  }
+  
+  private int getOperand(String clazz, final AbstractInsnNode node) {
         
         int labelNumber = -1;
         
         switch(node.getType()) {
-        	case AbstractInsnNode.VAR_INSN: 
-        		/*
-        		 * Limitation: variables cannot be used to
-        		 * yield/resume. e.g. yield(x)
-        		 * 
-        		 * There is no way to get the actual value
-        		 * of x. So, this code does nothing for now. 
-        		 * If need be, this can be looked into.
-        		 */
-        		VarInsnNode vis = (VarInsnNode) node;
-        		int opvis = vis.getOpcode();
+          case AbstractInsnNode.VAR_INSN: 
+            /*
+             * Limitation: variables cannot be used to
+             * yield/resume. e.g. yield(x)
+             * 
+             * There is no way to get the actual value
+             * of x. So, this code does nothing for now. 
+             * If need be, this can be looked into.
+             */
+            VarInsnNode vis = (VarInsnNode) node;
+            int opvis = vis.getOpcode();
                 int var = vis.var;
                 System.out.println(" > vis opcode=" + opvis + " value=" + var);
-        		break;
-        	case AbstractInsnNode.INT_INSN: //handles yields on values >5
-        		IntInsnNode iin = (IntInsnNode) node;
+            break;
+          case AbstractInsnNode.INT_INSN: //handles yields on values >5
+            IntInsnNode iin = (IntInsnNode) node;
                 labelNumber = iin.operand;
-        		break;
-        	case AbstractInsnNode.INSN: //handles yields on -1 to 5
-        		InsnNode insn = (InsnNode) node;
+            break;
+          case AbstractInsnNode.INSN: //handles yields on -1 to 5
+            InsnNode insn = (InsnNode) node;
                 int opcode = insn.getOpcode();
                 
                 switch(opcode){
@@ -362,41 +363,41 @@ public class Instrumenter {
                         labelNumber = 5;
                         break;
                 }
-        		break;
+            break;
         }
 
         return labelNumber;
     }
-	
-	private void cleanup(MethodNode mn) {
-		mn.instructions.resetLabels();
-		ListIterator it = mn.instructions.iterator();
-		List<AbstractInsnNode> remove = new ArrayList<AbstractInsnNode>();
-		while(it.hasNext()) {
-			AbstractInsnNode n = (AbstractInsnNode)it.next();
-			if (n.getOpcode() == Opcodes.ATHROW)
-				System.out.println("athrow found");//we want to remove this
-			else if (n.getOpcode() == Opcodes.NOP)
-				System.out.println("nop found");//we want to remove this
-		}
-		
-		//for(AbstractInsnNode n1: remove)
-			//mn.instructions.remove(n1);
-	}
-	
-	public static void main(String[] args) {
-		try {
+  
+  private void cleanup(MethodNode mn) {
+    mn.instructions.resetLabels();
+    ListIterator it = mn.instructions.iterator();
+    List<AbstractInsnNode> remove = new ArrayList<AbstractInsnNode>();
+    while(it.hasNext()) {
+      AbstractInsnNode n = (AbstractInsnNode)it.next();
+      if (n.getOpcode() == Opcodes.ATHROW)
+        System.out.println("athrow found");//we want to remove this
+      else if (n.getOpcode() == Opcodes.NOP)
+        System.out.println("nop found");//we want to remove this
+    }
+    
+    //for(AbstractInsnNode n1: remove)
+      //mn.instructions.remove(n1);
+  }
+  
+  public static void main(String[] args) {
+    try {
 
-			if (args.length == 1 ) {
-				Instrumenter obj = new Instrumenter(args[0]);
-				obj.execute();
-			} else {
-				System.out.println("Print Usage!!!");
-			}
+      if (args.length == 1 ) {
+        Instrumenter obj = new Instrumenter(args[0]);
+        obj.execute();
+      } else {
+        System.out.println("Print Usage!!!");
+      }
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 
 }

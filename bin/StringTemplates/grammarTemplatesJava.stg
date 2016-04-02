@@ -1,3 +1,5 @@
+delimiters "<",">"
+
 Info() ::= <<
  This file contains all templates for the ProcessJ compiler based on the grammar of
  ProcessJ. The CodeGeneratorJava.java file then uses these rules as well as a visitor
@@ -45,13 +47,6 @@ AltStat(altType, enableChannelList, waitType, disableChannelList,
 /*End of Alternative!*/
 >>
 
-NormalAltType(globalWsName) ::= "Alt(<globalWsName>)"
-TimerAltType(globalWsName) ::= "TimerAlt(<globalWsName>)"
-
-
-NormalWaitType(globalWsName) ::= "AltWait(<globalWsName>)"
-TimerWaitType(globalWsName) ::= "TimerAltWait(<globalWsName>)"
-
 AltSwitch(altEnd, caseList) ::= <<
 <! Our Switch Statement is a list of cases separated by breaks. !>
 switch( <altEnd> ){
@@ -91,32 +86,27 @@ CastExpr(ct, expr) ::= "(<ct>) (<expr>)"
 
 ChannelWriteStat(channel, expr, jmp0, jmp1, shared) ::= <<
 
-switch(runLabel) {
+<!switch(runLabel) {
 	case <jmp0>: resume(<jmp0>); break;
 	case <jmp1>: resume(<jmp1>); break;
-}
+}!>
 
 label(<jmp0>);
 if (<channel>.isReadyToWrite()) {
 	<channel>.write(this, <expr>);
-	runLabel = <jmp1>;
+	this.runLabel = <jmp1>;
 	yield(<jmp1>);
 } else {
 	<if(shared)><channel>.addWriter(this);<endif>
 	setNotReady();
-	runLabel = <jmp0>;
+	this.runLabel = <jmp0>;
 	yield(<jmp0>);
 }
 	
 label(<jmp1>)
 >>
 
-ChannelReadExprInt(left, channel, jmp0, jmp1) ::= <<
-switch(runLabel) {
-	case <jmp0>: resume(<jmp0>);break;
-	case <jmp1>: resume(<jmp1>); break;
-}
-			
+ChannelReadExpr(left, channel, jmp0, jmp1) ::= <<
 label(<jmp0>);
 if(<channel>.isReadyToRead(this)) {
 <if(left)>
@@ -124,15 +114,14 @@ if(<channel>.isReadyToRead(this)) {
 <else>
 	<channel>.read(this);
 <endif>
-	runLabel = <jmp1>;
+	this.runLabel = <jmp1>;
 	yield(<jmp1>);
 } else {
-	<channel>.addReader(this);
 	setNotReady();
-	runLabel = <jmp0>;
+	<channel>.addReader(this);
+	this.runLabel = <jmp0>;
 	yield(<jmp0>);
 }
-
 label(<jmp1>)
 >>
 
@@ -167,9 +156,17 @@ if( <expr> ) {
 }<endif>
 >>
 
-InvocationNormal(qualifiedProc, procParams, isProcess) ::= <<
+InvocationNormal(qualifiedProc, procParams, isProcess, par, parName) ::= <<
 <if(isProcess)>
+<if(par)>
+(new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
+  public void finalize() {
+    <parName>.decrement();    
+  }
+}).schedule()<\\>
+<else>
 (new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)).schedule()<\\>
+<endif>
 <else>
 <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
 <endif>
@@ -177,27 +174,21 @@ InvocationNormal(qualifiedProc, procParams, isProcess) ::= <<
 
 InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
 <if(paramBlocks)><paramBlocks; separator=";\n\n">;<endif>
-<if(left)><left> =<endif> <right>
+<if(left)><left>=<endif><right>
 >>
 
-InvocationPar(qualifiedFunctionName, procParams, parName, isProcess) ::= <<
-<if(isProcess)>
-(new <qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>){
-	public void finalize() {
-		<parName>.decrement();		
-	}
-}).schedule()<\\>
-<else>
-<qualifiedFunctionName>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
-<endif>
->>
-
-LocalDecl(type, var, procYields, constant, channelPart) ::= <<
+LocalDecl(type, var, procYields, constant, channelPart, isRightNull) ::= <<
 <! If this is channel it must be initialized! !>
 <if(procYields)>
-<var><if(channelPart)> = new <type>()<endif><\\>
+<if(channelPart)>
+<var><if(isRightNull)> = new <type>()<endif><\\>
 <else>
-<type> <var><if(channelPart)> = new <type>()<endif><\\>
+<if(!isRightNull)><var><endif>
+<endif>
+<else>
+<if(channelPart)>
+<type> <var><if(isRightNull)> = new <type>()<endif><\\>
+<endif>
 <endif>
 >>
 
@@ -210,7 +201,7 @@ NewArray(type, size) ::= "new <type>[<size>]"
 
 ParamDecl(type, name) ::= "<type> <name>"
 
-ProcTypeYieldDecl(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+ProcTypeDeclToProcess(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, lookupswitch, body) ::= <<
 
 public static class <name> extends Process {
 
@@ -225,17 +216,14 @@ public static class <name> extends Process {
 
 	@Override
 	public void run() {
-		
-		<body; separator = ";\n">;<\\>
-      	
-      	<! TODO: cds add logic for returning rescheduling processes. !>
-      	
+		<lookupswitch>
+		<body; separator = ";\n">;
       	terminate();
 	}
 }
 >>
 
-ProcTypeMainDecl(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+ProcTypeDeclToMain(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
 
 public static void main(String[] args) {
 	Scheduler scheduler = new Scheduler();
@@ -251,11 +239,26 @@ public static void main(String[] args) {
 }
 >>
 			
-ProcTypeDecl(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+ProcTypeDeclToMethod(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
 
 public static <returnType> <name>(<if(formals)><formals; separator = ", "><endif>) {
 	<body; separator = ";\n">;
 }
+>>
+
+LookupSwitchTable(cases) ::= <<
+<if(cases)>
+switch(this.runLabel) {
+    <cases; separator = ";\n">;
+}<endif>
+>>
+
+LookupSwitchInitialCase(caseNum) ::= <<
+case <caseNum>: break
+>>
+
+LookupSwitchCase(caseNum) ::= <<
+case <caseNum>: resume(<caseNum>); break
 >>
 
 ProcParam(parWsName, index, paramNumber, param) ::= <<
@@ -267,44 +270,30 @@ ProcGetParam(type, name, number) ::= <<
 <type> <name> = ProcGetParam(<number>, <type>)
 >>
 
-
-ParBlockProc(name, body, getParameters) ::= <<
-<! cds: what is this for???? Very similar to ProcTypeDecl but simplified for ParBlocks only. !>
-void <name>(){
-  <if(getParameters)><getParameters; separator = ";\n">;<endif>
-  <body>;
-
-  return;
-}
->>
-
-/* might be needed for parblock */
-LookupSwitchTable(expr, cases) ::= <<
-switch(<expr>) {
-    <cases; separator = ";\n">;
-}
->>
-
-LookupSwitchCase(caseNum) ::= <<
-case <caseNum>: resume(<caseNum>)
->>
-/******************************/
-
-ParBlock(parCnt, parBlockName, stats, jmp0, jmp1) ::= <<
-switch(runLabel) {
-	case <jmp0>: resume(<jmp0>); break;	
-	case <jmp1>: resume(<jmp1>); break;
-}
+ParBlock(parCnt, parName, stats, jmp0, jmp1) ::= <<
 label(<jmp0>);	
-final Par <parBlockName> = new Par(<parCnt>, this);
-
-setNotReady();
+final Par <parName> = new Par(<parCnt>, this);
 	
 <stats; separator=";\n">;
 	
-runLabel = <jmp1>;
+setNotReady();
+this.runLabel = <jmp1>;
 yield(<jmp1>);
 label(<jmp1>)
+>>
+
+ParBlockStat(parName, lookupswitch, body) ::= <<
+new Process(){
+	public void run() {
+		<lookupswitch>
+		<body; separator = ";\n">;
+      	terminate();
+	}
+	
+	public void finalize() {
+		<parName>.decrement();	
+	}
+}.schedule()
 >>
 
 Prototype(name, formals) ::= <<

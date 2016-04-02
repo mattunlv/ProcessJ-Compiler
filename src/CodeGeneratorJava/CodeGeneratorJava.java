@@ -18,6 +18,7 @@ import org.stringtemplate.v4.STGroupFile;
 import AST.AltCase;
 import AST.AltStat;
 import AST.ArrayAccessExpr;
+import AST.ArrayLiteral;
 import AST.ArrayType;
 import AST.Assignment;
 import AST.BinaryExpr;
@@ -61,7 +62,6 @@ import AST.UnaryPostExpr;
 import AST.UnaryPreExpr;
 import AST.Var;
 import AST.WhileStat;
-// import NameCollector.NameCollector;
 import Utilities.Error;
 import Utilities.Log;
 import Utilities.Visitor;
@@ -97,7 +97,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log("*        F I R S T  P A S S              *");
 		Log.log("=========================================");
 
-		// Load our string templates from specified directory.
+		/*
+		 * Load StringTemplate grammar template.
+		 */
 		this.group = new STGroupFile(grammarStFile);
 	}
 
@@ -140,7 +142,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * AltStat FIXME: incomplete and think about PRIALT as well.
+	 * AltStat 
+	 * FIXME: incomplete and think about PRIALT as well.
 	 */
 	public T visitAltStat(AltStat as) {
 		Log.log(as.line + ": Visiting an AltStat");
@@ -175,12 +178,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String[] disableList = createEnableDisable(altCaseList, false);
 
 		//Only thing left to do is to make the switch statement holding our cases to run.
-		ST altEndTemplate = group.getInstanceOf("AltEnd");
 		ST altSwitchTemplate = group.getInstanceOf("AltSwitch");
 
 		//Create AltEnd part.
-		altEndTemplate.add("globalWsName", "workspace");
-		String altEndStr = altEndTemplate.render();
 
 		//Iterate over our children setting their number.
 		for (int i = 0; i < count; i++) {
@@ -192,13 +192,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String[] caseList = (String[]) altCaseList.visit(this);
 
 		//Now make our switch string.
-		altSwitchTemplate.add("altEnd", altEndStr);
 		altSwitchTemplate.add("caseList", caseList);
 		String altSwitchStr = altSwitchTemplate.render();
-
-		//Make our wait and alt templates.
-		altTypeTemplate.add("globalWsName", "workspace");
-		waitTypeTemplate.add("globalWsName", "workspace");
 
 		//Make final string!
 		template.add("altType", altTypeTemplate.render());
@@ -224,8 +219,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	/**
 	 * ArrayLiteral
 	 * 
-	 * TODO: What to do about this?
+	 * TODO: Just the base method for now as a placeholder.
+	 * What to do about this?
 	 */
+	public T visitArrayLiteral(ArrayLiteral al) {
+		return al.visitChildren(this);
+	}
 
 	/**
 	 * ArrayType
@@ -237,7 +236,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * ChannelType [cds done]
+	 * ChannelType
 	 */
 	public T visitChannelType(ChannelType ct) {
 		Log.log(ct.line + ": Visiting a Channel Type!");
@@ -255,8 +254,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * ChannelEndExpr [cds done]
-	 * :this is the proc argument in invocation 
+	 * ChannelEndExpr
 	 */
 	public T visitChannelEndExpr(ChannelEndExpr ce) {
 		Log.log(ce.line + ": Visiting a Channel End Expression!");
@@ -267,8 +265,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * ChannelEndType [cds done]
-	 * :this is the type in the proc parameter.
+	 * ChannelEndType
 	 */
 	public T visitChannelEndType(ChannelEndType ct) {
 		Log.log(ct.line + ": Visiting a Channel End Type!");
@@ -307,20 +304,19 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	    
 	    Type myType = null;
 	    if (channelNameExpr.myDecl instanceof LocalDecl) {
-	        //Figure out type of channel and do appropriate code generation based on this.
 	        myType = ((LocalDecl) channelNameExpr.myDecl).type();
 	    } else if (channelNameExpr.myDecl instanceof ParamDecl) {
-	    	//Figure out type of channel and do appropriate code generation based on this.
 	    	myType = ((ParamDecl) channelNameExpr.myDecl).type();
 	    }
 	    
 	    if (myType.isChannelEndType()) {
 	    	ChannelEndType chanType = (ChannelEndType) myType;
-	        if (chanType.isShared()) {
-	            template.add("shared", true);
-	         } else {
-	        	 template.add("shared", false);
-	         }
+	    	template.add("shared", chanType.isShared());
+//	        if (chanType.isShared()) {
+//	            template.add("shared", true);
+//	         } else {
+//	        	 template.add("shared", false);
+//	         }
 	    } else if (myType.isChannelType()) {
 	    	ChannelType chanType = (ChannelType) myType;
 	        if (chanType.shared() == ChannelType.SHARED_WRITE || chanType.shared() == ChannelType.SHARED_READ_WRITE) {
@@ -335,26 +331,22 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("channel", channel);
 		template.add("expr", expr);
 
+		/*
+		 * Adding switch cases for resumption.
+		 */
 		for (int i=0; i<2; i++) {
+			if (_inParBlock) {
+				_parSwitchCases.add(getLookupSwitchCase(_jumpCnt));	
+			} else {
+				_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+			}
 			template.add("jmp" + i, _jumpCnt);
-			_switchCases.add(getLookupSwitchCase(_jumpCnt));	
 			_jumpCnt++;
 		}
-
+		
 		return (T) template.render();
 	}
 	
-	public String getLookupSwitchCase(int jmp) {
-		ST template = null;
-		if (jmp==0) {
-			template = group.getInstanceOf("LookupSwitchInitialCase");
-		} else {
-			template = group.getInstanceOf("LookupSwitchCase");
-		}
-		template.add("caseNum", jmp);
-		return template.render();
-	}
-
 	/**
 	 * Compilation
 	 */
@@ -512,6 +504,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		ST template = null;
 		Expression channelExpr = cr.channel();
 		NameExpr channelNameExpr = null;
+
 		/*
 		 * Can either be NameExpression (chan.read()) or
 		 * ChannelEndExpr (chan.read.read())
@@ -525,7 +518,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String channel = (String) channelNameExpr.visit(this);
 		Type myType = null;
 
-		//Figure out type of channel and do appropriate code generation based on this.
 		if (channelNameExpr.myDecl instanceof LocalDecl) {
 			myType = ((LocalDecl) channelNameExpr.myDecl).type();
 		} else if (channelNameExpr.myDecl instanceof ParamDecl) {
@@ -534,15 +526,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		if (myType.isTimerType()) {
 			/*
+			 * Possibility One: Timer
+			 * 
 			 * NOTE: for the moment, timer read expr is of type ChannelReadExpr
-			 * just because they look the same. So, we have this here. But, 
-			 * hopefully in the future, we can have TimerReadExpr and its own
-			 * visitor.
+			 * just because they are very similar. But, if need be, we can have
+			 * TimerReadExpr and its own visitor in the future.
 			 */
 			template = group.getInstanceOf("TimerReadExpr");
 			//TODO: complete this.
 		} else { 
 			Type baseType = null;
+
 			/*
 			 * Possibility Two: This is an actual end: chan<type>.read chan,
 			 * chan.read()
@@ -551,6 +545,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				ChannelEndType chanType = (ChannelEndType) myType;
 				baseType = chanType.baseType();
 			} 
+
 			/*
 			 * Possibility Three: This is a channel to be treated as an end to avoid
 			 * chan.read.read(). 
@@ -563,11 +558,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			if (baseType.isIntegerType() || baseType.isBooleanType()) {
 				
 				template = group.getInstanceOf("ChannelReadExpr");
+				
+				/*
+			     * Adding switch cases for resumption.
+			     */
 				for (int i=0; i<2; i++) {
-					_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+					if (_inParBlock) {
+						_parSwitchCases.add(getLookupSwitchCase(_jumpCnt));	
+					} else {
+						_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+					}
 					template.add("jmp" + i, _jumpCnt);
 					_jumpCnt++;
 				}
+					
 				template.add("channel", channel);
 				template.add("left", left);
 			} else {
@@ -587,9 +591,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitBreakStat(BreakStat bs) {
 		Log.log(bs.line + ": Visiting a BreakStat");
 		ST template = group.getInstanceOf("BreakStat");
-		// Can be null.
-		Name name = bs.target();
 
+		Name name = bs.target();
 		if (name != null) {
 			String nameStr = (String) name.visit(this);
 			// TODO: Add name option here.
@@ -609,7 +612,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String right = (String) be.right().visit(this);
 		String op = (String) be.opString();
 
-		// TODO: Add suport for string concatanation here.
+		// TODO: Add support for string concatanation here.
 
 		template.add("left", left);
 		template.add("right", right);
@@ -664,7 +667,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * DoStat TODO: I think this will crash if we do: do <oneStat> while(<expr>); Since this does not return a String[]
+	 * DoStat 
+	 * 
+	 * TODO: I think this will crash if we do: do <oneStat> while(<expr>); 
+	 * Since this does not return a String[]
+	 * 
 	 */
 	public T visitDoStat(DoStat ds) {
 		Log.log(ds.line + ": Visiting a DoStat");
@@ -696,7 +703,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		ST template = group.getInstanceOf("ForStat");
 
 		/*
-		 * TODO: this will throw nullpointer when for( ; ;) is used. do we support this??
+		 * TODO: this will throw nullpointer when for( ; ;) is used. 
+		 * do we support this??
 		 */
 		String[] initStr = null;
 		String[] incrStr = null;
@@ -714,9 +722,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String expr = (String) fs.expr().visit(this);
 		// TODO: Barriers
 
-		// Depending whether there is curly brackets it may return an array, or
-		// maybe just
-		// a single object. So we must check what it actually is!
+		/*
+		 * Depending whether there is curly brackets it may 
+		 * return an array, or maybe just a single object. 
+		 * So we must check what it actually is!
+		 */
 		Object stats = fs.stats().visit(this);
 
 		if (stats instanceof String[])
@@ -737,26 +747,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitInvocation(Invocation in) {
 		Log.log(in.line + ": Visiting Invocation (" + in.procedureName().getname() + ")");
 		return (T) createInvocation(null, in, false);
-	}
-
-	private String getQualifiedPkg(ProcTypeDecl pd) {
-		String myPkg = pd.myPackage;
-		StringBuilder qualifiedPkg = new StringBuilder();
-
-		String[] tokens = myPkg.split("\\.");
-		boolean pk_start = false;
-		for (int i = 0; i < tokens.length; i++) {
-			if (tokens[i].equals(this.originalFilename))
-				pk_start = true;
-
-			if (pk_start) {
-				qualifiedPkg.append(tokens[i]);
-
-				if (i < tokens.length - 1)
-					qualifiedPkg.append(".");
-			}
-		}
-		return qualifiedPkg.toString();
 	}
 
 	/**
@@ -793,15 +783,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			/*
 			 * Channels in ProcessJ do not require initialization but in 
 			 * Java, we need it. So, the below code makes the grammar template
-			 * do it.
+			 * do it if it has not been initialized in pj.
 			 */
-			if (ld.type().isChannelType()) {
-				template.add("channelPart", true);
-				template.add("type", typeString);
-			} else {
-				template.add("channelPart", false);
-				template.add("type", typeString);
-			}
+			template.add("isRightNull", (ld.var().init() == null));
+			template.add("channelPart", ld.type().isChannelType());
+			template.add("type", typeString);
+
 			String var = (String) ld.var().visit(this);
 			template.add("var", var);
 			template.add("procYields", _proc_yields);
@@ -865,7 +852,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (gname == null)
 			gname = name;
 
-		return (T) gname; // TODO: Fix lower case 'n';
+		return (T) gname;
 	}
 
 	/**
@@ -941,6 +928,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		_inParBlock = true;
 		_parName = "par" + ++this._parCnt;
 
+		 /*
+	     * Adding switch cases for resumption.
+	     */ 
 		for (int i=0; i<2; i++) {
 			parBlockTemplate.add("jmp" + i, _jumpCnt);
 			_switchCases.add(getLookupSwitchCase(_jumpCnt));	
@@ -961,65 +951,32 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 						stats[k] = (String) createInvocation(null, (Invocation) es.expr(), false);
 					} else if (es.expr() instanceof ChannelReadExpr) {
 						body = (String) createChannelReadExpr(null, (ChannelReadExpr) es.expr());
-						
-						if (body != null) {
-							
-							ST template = group.getInstanceOf("ParBlockStat");
-							
-							if (_parSwitchCases.size() > 0) {
-								ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
-								switchTemplate.add("cases", _switchCases);
-								
-								template.add("lookupswitch", switchTemplate.render());
-							}
-							
-							template.add("parName", _parName);
-							template.add("body", body);
-							
-							stats[k] = template.render();
-						}
 					} else {
 						body = (String) se.child(k).visit(this);
-						
-						if (body != null) {
-							
-							ST template = group.getInstanceOf("ParBlockStat");
-							
-							if (_parSwitchCases.size() > 0) {
-								ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
-								switchTemplate.add("cases", _switchCases);
-								
-								template.add("lookupswitch", switchTemplate.render());
-							}
-							
-							template.add("parName", _parName);
-							template.add("body", body);
-							
-							stats[k] = template.render();
-						}
 					}
 				} else {
 					body = (String) se.child(k).visit(this);
-					
-					if (body != null) {
-						
-						ST template = group.getInstanceOf("ParBlockStat");
-						
-						if (_parSwitchCases.size() > 0) {
-							ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
-							switchTemplate.add("cases", _switchCases);
-							
-							template.add("lookupswitch", switchTemplate.render());
-						}
-						
-						template.add("parName", _parName);
-						template.add("body", body);
-						
-						stats[k] = template.render();
-					}
 				}
+
 			} else {
 				body = null;
+			}
+			
+			if (body != null) {
+				
+				ST template = group.getInstanceOf("ParBlockStat");
+				
+				/*
+			     * Creating switch table for resumption.
+			     */
+				if (_parSwitchCases.size() > 0) {
+					template.add("lookupswitch", getParLookupSwitch(_parSwitchCases));
+				}
+				
+				template.add("parName", _parName);
+				template.add("body", body);
+				
+				stats[k] = template.render();
 			}
 		}
 
@@ -1029,6 +986,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		
 		_inParBlock = false;
 		return (T) parBlockTemplate.render();
+	}
+
+	public String getParLookupSwitch(List<String> cases) {
+		ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
+		switchTemplate.add("cases", _parSwitchCases);
+		return switchTemplate.render();
 	}
 
 	/**
@@ -1132,6 +1095,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("body", block);
 		
 		if (this._proc_yields && _switchCases.size() > 0) {
+
+			 /*
+		     * Creating switch table for resumption.
+		     */
 			ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
 			switchTemplate.add("cases", _switchCases);
 			
@@ -1166,13 +1133,19 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitSequence(Sequence se) {
 		Log.log(se.line + ": Visiting a Sequence");
 		String[] returnArray = new String[se.size()];
+		String value = null;
 
 		// Iterate through all children placing results in array.
-		for (int i = 0; i < se.size(); i++)
-			if (se.child(i) != null)
-				returnArray[i] = (String) se.child(i).visit(this);
-			else
+		for (int i = 0; i < se.size(); i++) {
+			if (se.child(i) != null) {
+				value = (String) se.child(i).visit(this);
+				if (value != null && !value.isEmpty()) {
+					returnArray[i] = value;
+				}
+			}else {
 				returnArray[i] = null;
+			}
+		}
 
 		return (T) returnArray;
 	}
@@ -1385,7 +1358,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				String myExprStr = (String) time.delay().visit(this);
 				String name = (String) altCase.guard().visit(this);
 
-				altTimeoutT.add("globalWsName", "workspace");
 				altTimeoutT.add("number", i);
 				altTimeoutT.add("name", name);
 				//What we actually do, is we use our time variable to hold the time and then we
@@ -1400,7 +1372,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				ST altChannelT = group.getInstanceOf(altChannelStr);
 				String name = (String) altCase.guard().visit(this);
 
-				altChannelT.add("globalWsName", "workspace");
 				altChannelT.add("number", i);
 				altChannelT.add("name", name);
 
@@ -1409,7 +1380,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			if (caseIsSkip(altCase) == true) {
 				ST altSkipT = group.getInstanceOf(altSkipStr);
 
-				altSkipT.add("globalWsName", "workspace");
 				altSkipT.add("number", i);
 				listOfEnableDisable[i] = altSkipT.render();
 			}
@@ -1473,6 +1443,40 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			return true;
 
 		return false;
+	}
+	
+	/**
+	 * Switch cases for runLabel switch table. 
+	 */
+	public String getLookupSwitchCase(int jmp) {
+		ST template = null;
+		if (jmp==0) {
+			template = group.getInstanceOf("LookupSwitchInitialCase");
+		} else {
+			template = group.getInstanceOf("LookupSwitchCase");
+		}
+		template.add("caseNum", jmp);
+		return template.render();
+	}
+	
+	public String getQualifiedPkg(ProcTypeDecl pd) {
+		String myPkg = pd.myPackage;
+		StringBuilder qualifiedPkg = new StringBuilder();
+
+		String[] tokens = myPkg.split("\\.");
+		boolean pk_start = false;
+		for (int i = 0; i < tokens.length; i++) {
+			if (tokens[i].equals(this.originalFilename))
+				pk_start = true;
+
+			if (pk_start) {
+				qualifiedPkg.append(tokens[i]);
+
+				if (i < tokens.length - 1)
+					qualifiedPkg.append(".");
+			}
+		}
+		return qualifiedPkg.toString();
 	}
 
 	/**

@@ -47,13 +47,6 @@ AltStat(altType, enableChannelList, waitType, disableChannelList,
 /*End of Alternative!*/
 >>
 
-NormalAltType(globalWsName) ::= "Alt(<globalWsName>)"
-TimerAltType(globalWsName) ::= "TimerAlt(<globalWsName>)"
-
-
-NormalWaitType(globalWsName) ::= "AltWait(<globalWsName>)"
-TimerWaitType(globalWsName) ::= "TimerAltWait(<globalWsName>)"
-
 AltSwitch(altEnd, caseList) ::= <<
 <! Our Switch Statement is a list of cases separated by breaks. !>
 switch( <altEnd> ){
@@ -184,12 +177,18 @@ InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
 <if(left)><left>=<endif><right>
 >>
 
-LocalDecl(type, var, procYields, constant, channelPart) ::= <<
+LocalDecl(type, var, procYields, constant, channelPart, isRightNull) ::= <<
 <! If this is channel it must be initialized! !>
 <if(procYields)>
-<var><if(channelPart)> = new <type>()<endif><\\>
+<if(channelPart)>
+<var><if(isRightNull)> = new <type>()<endif><\\>
 <else>
-<type> <var><if(channelPart)> = new <type>()<endif><\\>
+<if(!isRightNull)><var><endif>
+<endif>
+<else>
+<if(channelPart)>
+<type> <var><if(isRightNull)> = new <type>()<endif><\\>
+<endif>
 <endif>
 >>
 

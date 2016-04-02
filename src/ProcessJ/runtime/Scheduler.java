@@ -27,11 +27,11 @@ public class Scheduler extends Thread {
 		int notReadyCounter = 0;
 		while (rq.size() > 0) {
 			//       System.out.println("--------------------------------------------------");
-			System.out.println("Run Queue size: [" + rq.size() + "]");
+//			System.out.println("Run Queue size: [" + rq.size() + "]");
 			// grab the next process in the run queue
 			Process p = rq.getNext();
 
-			System.out.println("Ready to run? " + p + " " + p.isReady());
+//			System.out.println("Ready to run? " + p + " " + p.isReady());
 
 			// is it ready to run?
 			if (p.isReady()) {
@@ -46,7 +46,7 @@ public class Scheduler extends Thread {
 					// Note, it is the process' own job to
 					// set the 'ready' flag.
 					rq.insert(p);
-					//System.out.println("Ran " + p.getId() + " - Next run label is " + p.getNextRunLabel());
+//					System.out.println("Ran " + p.getId() + " - Next run label is " + p.getNextRunLabel());
 				} else {
 					// did terminate so do nothing
 					p.finalize();
@@ -61,7 +61,7 @@ public class Scheduler extends Thread {
 			}
 			// if we have seen all the processes
 			// an none were ready we have a deadlock
-			System.out.println(rq.size() + "  " + notReadyCounter + "  "+ delayQueue.isEmpty());
+//			System.out.println(rq.size() + "  " + notReadyCounter + "  "+ delayQueue.isEmpty());
 
 			if (notReadyCounter == rq.size() && rq.size() > 0 && Scheduler.delayQueue.isEmpty()) {
 				System.out.println("No processes ready to run. System is deadlocked");

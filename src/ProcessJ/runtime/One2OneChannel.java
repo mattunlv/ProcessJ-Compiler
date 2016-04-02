@@ -4,9 +4,6 @@ public class One2OneChannel<T> extends Channel<T> {
 	private Process writer = null;
 	private Process reader = null;;
 
-//	public One2OneChannel() {
-//		this.type = TYPE_ONE_TO_ONE;
-//	}
 	// calls to read and write must be 
 	// properly controlled by the channel end
 	// holders.
@@ -15,8 +12,9 @@ public class One2OneChannel<T> extends Channel<T> {
 		writer = p;
 		writer.setNotReady();
 		ready = true;
-		if (reader != null)
+		if (reader != null) {
 			reader.setReady();
+		}
 	}
 
 	synchronized public T read(Process p) {

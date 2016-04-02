@@ -1,0 +1,25 @@
+/**
+ * Testing alternatives! That is, ALT :)
+ */
+proc void alternative(chan<int>.read intChan, chan<int>.read intChan2) [yield=true]{
+  int x = 0;
+  int y = 0;
+
+  alt{
+    x = intChan.read() : {
+    	y = 10;	
+    }
+    x = intChan2.read() : {
+    	y = 20;
+    }
+  }
+
+  return;
+}
+
+proc void main(string[] args) {
+	chan<int> c1;
+	chan<int> c2;
+	
+	alternative(c1.read, c2.read);
+}

@@ -1,29 +1,38 @@
+abstract class Process {
+    Object context;
+    int runLabel = 0;
+    
+    public Process(Object context) {
+        this.context = context;
+    }
+
+    public void schedule() { run(); }
+
+    abstract void run() ;
+}
+
 public class test6 {
-    public boolean f() {
-	return true;
-    }
+	int runLabel = 0;
 
+	public void run() {
+		
+		this.runLabel = 1;
 
-    public void foo() {
-	int a = 9;
-	int b = 8;
+		new Process(this){
+			void run(){
+				System.out.println("hello " + this.runLabel);
+				this.runLabel = 5;
+				System.out.println("hello " + this.runLabel);
+			}	
+			
+		}.schedule();
 
-	Boolean b1 = true;
-	Boolean b2 = false;
-	boolean b3 = b1 && b2;
-	a = b;
+		System.out.println(this.runLabel);
 
-
-	while (a >b) {
-	    a = 9;
-	    continue;
 	}
 
-	for (int i=0; i< 100; i++ ) {
-	    continue;
-	    a = 0;
+	public static void main(String[] args) {
+		test6 o = new test6();
+		o.run();
 	}
-	     
-
-    }
 }
