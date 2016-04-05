@@ -1,0 +1,29 @@
+import std.io;
+
+proc int add(int n){
+  return n + 1;
+}
+
+proc double add(int n, int m){
+  return n + m;
+}
+
+proc double add(int n, int m, int k){
+  return n + m + k;
+}
+
+proc void myMain(){
+  int x = 5;
+  int y = 6;
+  int z = 10;
+
+  x = add(x);
+  y = add(x, y);
+  z = add(x, y, z);
+  
+  println("Value of x: " + x);
+  println("Value of y: " + y);
+  println("Value of z: " + z);
+
+  return;
+}

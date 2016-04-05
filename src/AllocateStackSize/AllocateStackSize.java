@@ -29,10 +29,14 @@ public class AllocateStackSize extends Visitor<Void>{
    * we hit a ProcDecl we know we have a new function and are looking at a new scope,
    * hence we might have a ParBlock{...} so we create a new entry in this function and
    * and set the amount to 0 from here for every statement that needs to be wrapped in
-   * a function we give it a name of the form <NameOfFunction>ParBlockStmt<counterValue>.
+   * a function we give it a name of the form <NameOfFunction>_ParBlockStmt<counterValue>.
    * Exactly how it's done in code generation.
    */
   private Hashtable<String, Integer> parBlockStmtCounts;
+  /**
+   * Same thing for Par ForStats.
+   */
+  private Hashtable<String, Integer> parForStmtCounts;
   /**
    * This table holds a list of nodes per function. The nodes have a value and a tag.
    * The value contains the size for that piece and the tag contains where it came from.
@@ -51,6 +55,7 @@ public class AllocateStackSize extends Visitor<Void>{
   private final int printfSize = 64; //ExternalCallN = 32 + 32 kernell call.
   private final int wsSize = 4;
   private final int wordSize = 4;
+
 //========================================================================================
   /**
    * Constructor for our visitor, given a HashTable it will populate it with mappings of
@@ -70,11 +75,13 @@ public class AllocateStackSize extends Visitor<Void>{
     this.sizePerFunction = sizePerFunction;
     this.suTable = suTable;
     this.parBlockStmtCounts = new Hashtable();
+    this.parForStmtCounts = new Hashtable();
     this.nodesPerFunction = new TableList();
 
     //Certain functions are built in and we define their size here: TODO: In the future
     //this should be done in a separate file and the values should be read in??
-    nodesPerFunction.addNode("println", new ValueAndTag(64, "Size of println.", true));
+    nodesPerFunction.addNode(CodeGeneratorC.printFunctionName,
+			     new ValueAndTag(64, "Size of println.", true));
     suTable.put("ccsp_kernel_call", ccspKernelCallSize);
 
     return;
@@ -118,7 +125,7 @@ public class AllocateStackSize extends Visitor<Void>{
    * in @visitInvocation() below.
    */
   public Void visitProcTypeDecl(ProcTypeDecl pd){
-    String name = (String) pd.name().getname();
+    String name = CodeGeneratorC.makeFunctionName(pd);
     Log.log(pd.line + ": Visiting a Proc Type Decl: " + name);
     int value; String tag;
 
@@ -171,21 +178,102 @@ public class AllocateStackSize extends Visitor<Void>{
    * to exist. TODO: In the future we might change this.
    */
   public Void visitInvocation(Invocation in){
-    String functionName = in.procedureName().getname();
-    Log.log(in.line + ": Visiting a Invocation: " + functionName);
-
     if(in.targetProc == null)
       Error.error("Our Invocation had a null target Proc!");
+    
+    String functionName = CodeGeneratorC.makeFunctionName(in.targetProc);
+    Log.log(in.line + ": Visiting a Invocation: " + functionName);
 
     //Check our hash table to see if this proc has had it's size set, if not do it now.
     if(nodesPerFunction.hasEntry(functionName) == false)
       in.targetProc.visit(this);
 
+    //Now visit our children in case we have function calls as our arguments.
+    in.params().visit(this);
+    
     int size = nodesPerFunction.sumEntries(functionName);
     String tag =
       String.format("Invocation call to function %s at line: %d.", functionName, in.line);
 
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+    return null;
+  }
+  //========================================================================================
+  /**
+   * If this is a parallel ForStat we have to do a lot of extra work and allocate extra
+   * memory as we expect this to run in paralle through the CCSP API. It's not too bad
+   * though, it's almost exactly like the ProcPar.
+   */
+  public Void visitForStat(ForStat fs){
+    Log.log(fs.line + ": Visiting a ForStat.");
+
+    /* This is just a regular for loop, recurse on children and move on! */
+    if(fs.isPar() == false){
+      fs.visitChildren(this);
+      return null;
+    }
+    
+    Statement stat = fs.stats();
+    final int pointerSize = 4;
+    String tag;
+    
+    //We will be calculating the size of a function that is not in the AST hence we have
+    //to save the current function and prentend we are on a new function.
+    String callerFunction = currentFunction;
+
+    //Figure out the size for the function we created. By convention, this will be the
+    //name of this function. First we add one to the entry in our hash table and get the
+    //name.
+    incrementEntry(parForStmtCounts, callerFunction, 1);
+    int nameNumber = parForStmtCounts.get(callerFunction);
+    //This must be set to the class variable current function as the .visit(this) will
+    //expect it to be! So don't change :b
+    currentFunction = callerFunction + "_ParForStmt" + nameNumber;
+
+    //Count the variables used as these will be passed as in as pointers.
+    LinkedList<NameExpr> myNames = new LinkedList();
+    stat.visit(new NameCollector(myNames));
+    int argumentCount = myNames.size();
+
+    //Every arg will be passed through a we account for that size here.
+    int argumentSize = argumentCount * pointerSize;
+    tag = "Size of arguments for function. Count: " + argumentCount;
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(argumentSize, tag));
+
+    tag = "Workspace size as extra parameter to function.";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(wsSize, tag));
+
+    int size = suTable.get(currentFunction);
+    tag = "Su table size for this function.";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+
+    //Recurse on all our children and add their values.
+    stat.visit(this);
+
+    //Add value to the function which contain this ParBlock.
+    int parStatmentSize = nodesPerFunction.sumEntries(currentFunction);
+    tag = String.format("Function %s call in parallel.", currentFunction);
+    nodesPerFunction.addNode(callerFunction, new ValueAndTag(parStatmentSize, tag));
+
+    //This line is super important! We are back to allocating for our caller function.
+    currentFunction = callerFunction;
+
+    //LightProcBarrierInit.
+    size = suTable.get("LightProcBarrierInit");
+    tag = "Procar calls LightProcBarrierInit: LightProcBarrierInit size.";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+
+    //LightProcStart.
+    size = suTable.get("LightProcStart");
+    tag = "ProcPar calls LightProcStart: LightProcStart size.";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+    
+    //LightProcBarrierWait.
+    size = suTable.get("LightProcBarrierWait");
+    tag = "ProcPar calls LightProcBarrierWait: LightProcBarrierWait size.";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
+
 
     return null;
   }
@@ -270,6 +358,8 @@ public class AllocateStackSize extends Visitor<Void>{
     final int pointerSize = 4;
     //Add nodes for the each statement as well as for function we are in.
     Sequence<Statement> stats = pb.stats();
+    //We will be calculating the size of a function that is not in the AST hence we have
+    //to save the current function and prentend we are on a new function.
     String callerFunction = currentFunction;
 
     //Iterate through statements and calculate their size:
@@ -280,7 +370,7 @@ public class AllocateStackSize extends Visitor<Void>{
       int nameNumber = parBlockStmtCounts.get(callerFunction);
       //This must be set to the class variable current function as the .visit(this) will
       //expect it to be! So don't change :b
-      currentFunction = callerFunction + "ParBlockStmt" + nameNumber;
+      currentFunction = callerFunction + "_ParBlockStmt" + nameNumber;
       String tag;
 
       //Count the variables used as these will be passed as in as pointers.
@@ -356,6 +446,47 @@ public class AllocateStackSize extends Visitor<Void>{
     tag = "ProcPar calls LightProcBarrierWait: LightProcBarrierWait size.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
 
+    return null;
+  }
+  //========================================================================================
+  /**
+   * Timeouts call the TimerDelay function! Make sure to allocate memory for that here.
+   */
+  public Void visitTimeoutStat(TimeoutStat ts){
+    Log.log(ts.line + ": Visiting an TimeoutStat!");
+    String tag;
+    int size;
+        
+    //Calls made by CCSP for timing out:
+    size = suTable.get("TimerDelay");
+    tag = "TimeoutStat call: TimerDelay().";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+    size = suTable.get("TimerRead");
+    tag = "TimeoutStat call: TimerRead().";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+    size = suTable.get("TimerWait");
+    tag = "TimeoutStat call: TimerWait().";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+    size = suTable.get("TimerWait");
+    tag = "TimeoutStat call: TimerWait().";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+
+    return null;
+  }
+  //========================================================================================
+    public Void visitSyncStat(SyncStat st) {
+    Log.log(st.line + ": Visiting a SyncStat");
+    String tag;
+    int size;
+        
+    //Call made by CCSP to wait on a barrier.
+    size = suTable.get("LightProcBarrierWait");
+    tag = "SyncStat call: LightProcBarrierWait().";
+    nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
+    
     return null;
   }
   //========================================================================================

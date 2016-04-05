@@ -42,7 +42,7 @@ public class NameCollector extends Visitor<Object>{
    */
   public Object visitNameExpr(NameExpr ne){
     String name = ne.toString();
-    String logString = "  Added NameExpr for: %s statement being visited.";
+    String logString = "   Added NameExpr for: %s statement being visited.";
     Log.log( String.format(logString, name) );
 
     //Add this

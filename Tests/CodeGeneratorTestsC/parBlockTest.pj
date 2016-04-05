@@ -37,9 +37,9 @@ proc void procMain() {
   chan<int> toDoubler;
   chan<int> toWriter;
   par{
-    source(toDoubler);
-    writer(toWriter);
-    doubler(toDoubler, toWriter);
+    source(toDoubler.write);
+    writer(toWriter.read);
+    doubler(toDoubler.read, toWriter.write);
   }
 
   return;

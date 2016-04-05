@@ -1,0 +1,26 @@
+/**
+ * Simple program to test max invocation is picked from among statements.
+ */
+import std.io;
+
+proc int f(int n){
+  return n + 1;
+}
+
+proc int f2(int n){
+  return f(n);
+}
+
+proc void myMain(){
+  int x = 0;
+  int y = 0;
+
+  par{
+    x = f(f(x));
+    y = f(f(f(f2(y))));
+  }
+  println("Value of x was: " + x);
+  println("Value of y was: " + y);
+
+  return;
+}

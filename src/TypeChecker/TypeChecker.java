@@ -493,95 +493,136 @@ public class TypeChecker extends Visitor<Type> {
   // Invocation
   public Type visitInvocation(Invocation in) {
     println(in.line + ": visiting invocation (" + in.procedureName() + ")");
-
+        
     in.params().visit(this);
-
+        
     // TODO: this should be redone!!!
     boolean firstTable = true;
     SymbolTable st = topLevelDecls;
     Sequence<ProcTypeDecl> candidateProcs = new Sequence<ProcTypeDecl>();
+    
     while (st != null) {
-
       SymbolTable procs = (SymbolTable)st.getShallow(in.procedureName().getname());
       if (procs != null)
-        for (Object pd : procs.entries.values().toArray())  {
-          ProcTypeDecl ptd = (ProcTypeDecl)pd;
-          if (ptd.formalParams().size() == in.params().size()) {
-            // TODO: this should store this somwhere
-            boolean candidate = true;
-            for (int i=0; i<in.params().size(); i++) {
-              candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
-            }
-            if (candidate) {
-              candidateProcs.append(ptd);
-              Log.log("Possible proc: " + ptd.typeName() + " " + ptd.formalParams());
-            }
-          }
-        }
+	for (Object pd : procs.entries.values().toArray())  {
+	  ProcTypeDecl ptd = (ProcTypeDecl)pd;
+	  if (ptd.formalParams().size() == in.params().size()) {
+	    // TODO: this should store this somwhere 
+	    boolean candidate = true;
+	    //System.out.println("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");
+	    for (int i=0; i<in.params().size(); i++) {
+	      candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
+	    }
+	    if (candidate) {
+	      candidateProcs.append(ptd);
+	      Log.log("Possible proc: " + ptd.typeName() + " " + ptd.formalParams());
+	    }
+	  }
+	}
 
       if (firstTable)
-        st = st.getImportParent();
+	st = st.getImportParent();
       else
-        st = st.getParent();
+	st = st.getParent();
       firstTable = false;
     }
 
-    // TODO: DO the weeding out of procs here!
-
-
-    if (candidateProcs.size() == 0)
-      Error.error(in,"No proc found",false,0000);
-    else if (candidateProcs.size() > 1)
-      Error.error(in,"more than 1 proc found",false,0000);
-
-
-
-
-    // TODO: remember to set in.targetProc;
-    /*This will not always work, but for now we need this to test the allocator. Once the type
-     *checker is completely this will alway work.*/
-    in.targetProc = candidateProcs.getElementN(0);
-    // TODO: remember to set in.type;
-
-    // mobile procedures are special ....... all the interfaces of a mobile should be considered
-
-
-
-
-
-    //println(in.line + ": invocation has type: " + in.)
-
-    return in.type;
-  }
-
-  // LocalDecl
-  // Modifier - nothing to do
-  // Name - nothing to do
-
-  /** NAMED TYPE */
-  public Type visitNamedType(NamedType nt) {
-    println(nt.line + ": visiting a named type (" + nt.name().getname() + ").");
-    // TODO: not sure how to handle error type here
-    if (nt.type() == null) {
-      // go look up the type and set the type field of nt.
-      Type t = (Type)topLevelDecls.getIncludeImports(nt.name().getname());
-      if (t == null) {
-        // check if it was a external packaged type (i.e., something with ::)
-        if (nt.name().resolvedPackageAccess != null) {
-          Log.log("FOUND IT. It was a package type accessed with ::");
-          t = (Type)nt.name().resolvedPackageAccess;
-          // TODO: the file should probably be inserted somewhere .....
-          // TODO: what about anything that types imported with :: refers to ?
-          //       how should that be handled?
-        } else
-          Error.error(nt,"Undefined named type '" + nt.name().getname() + "'.", false, 3028);
-      }
-      nt.setType(t);
+    println("Found these candidates: ");
+    println("| " + candidateProcs.size() + " candidate(s) were found:");
+    for( int i=0;i<candidateProcs.size();i++) {
+      ProcTypeDecl pd = candidateProcs.child(i);
+      print("|   " + in.procedureName().getname() + "(");
+      print(pd.signature());
+      println(" )");
     }
-    println(nt.line + ": named type has type: " + nt.type());
 
-    return nt.type();
+    System.out.println(candidateProcs.size());
+    int noCandidates = candidateProcs.size();
+                
+    if (noCandidates == 0) {
+      Error.error(in,"No suitable procedure found found",false,0000);         
+      return null;
+    } else if (noCandidates > 1) {
+      // Iterate through the list of potential candidates     
+      for (int i = 0; i<candidateProcs.size(); i++) { 
+	// Take the i'th one out
+	ProcTypeDecl ptd1 = candidateProcs.child(i);
+
+	// Tf this proc has been removed - continue.
+	if (ptd1 == null)
+	  continue;
+	// Temporarily  remove ptd from candidateprocs so we 
+	// don't find it again in the next loop
+	candidateProcs.set(i, null);
+
+	// compare to all other candidates ptd2. 
+	for (int j=0; j<candidateProcs.size(); j++) {
+	  ProcTypeDecl ptd2 = candidateProcs.child(j);
+	  // if the proc was already removed - continue on
+	  if (ptd2 == null)
+	    continue;                   
+	  //
+	  boolean candidate = true;
+	  // grab all the parameters of ptd1 and ptd2
+	  Sequence<ParamDecl> ptd1Params = ptd1.formalParams();
+	  Sequence<ParamDecl> ptd2Params = ptd2.formalParams();
+
+                    
+	  // now check is ptd2[k] :> ptd1[k] for all k. If it does remove ptd2.                          
+	  // check each parameter in turn
+	  for (int k=0; k<ptd1Params.nchildren; k++) {
+	    candidate = candidate &&
+	      Type.assignmentCompatible(((ParamDecl)ptd2Params.child(k)).type(),
+					((ParamDecl)ptd1Params.child(k)).type());
+
+                                                       
+	    if (!candidate)
+	      break;
+	  }
+	  if (candidate) {
+	    // ptd1 is more specialized than ptd2, so throw ptd2 away.                                 
+	    print("|   " +  in.procedureName().getname() + "(");
+	    print(ptd2.signature());
+	    print(" ) is less specialized than " + in.procedureName().getname() + "(");
+	    print(ptd1.signature());
+	    println(" ) and is thus thrown away!");
+	    // Remove ptd2
+	    candidateProcs.set(j, null);
+	    noCandidates--;
+	  }
+	}
+	// now put ptd1 back in to candidateProcs                                                               
+	candidateProcs.set(i, ptd1);
+      }
+    }
+    if (noCandidates != 1) {
+      // we found more than one!
+      println("| " + candidateProcs.size() + " candidate(s) were found:");
+      for( int i=0;i<candidateProcs.size();i++) {
+	ProcTypeDecl pd = candidateProcs.child(i);
+	if (pd != null) {
+	  print("|   " + in.procedureName().getname() + "(");
+	  print(pd.signature());
+	  println(" )");
+	}
+      }
+      Error.error(in,"Found more than one candidate - cannot chose between them!",false,0000);          
+      return null;
+    } else {
+      // we found just one!
+      println("| We were left with exactly one candidate to call!");
+      println("+------------- End of findMethod --------------");
+      for (int i=0; i<candidateProcs.size(); i++)
+	if (candidateProcs.child(i) != null) {
+	  in.targetProc = candidateProcs.child(i);
+	  in.type = in.targetProc.returnType();
+	}
+    }
+    println(in.line + ": invocation has type: " + in.type);
+	
+    return in.type;        
   }
+
 
   /** NAME EXPRESSION */ // ERROR TYPE OK
   public Type visitNameExpr(NameExpr ne) {

@@ -1,0 +1,26 @@
+import std.io;
+
+proc void reader(chan<int>.read readEnd){
+  int x;
+  timer t;
+  
+  x = readEnd.read();
+  println("x was: " + x);
+  
+  return;
+}
+
+proc void writer(chan<int>.write writeEnd){
+  writeEnd.write(0);
+  return;
+}
+
+proc void myMain(){
+  chan<int> c;
+  par{
+    reader(c.read);
+    writer(c.write);
+  }
+
+  return;
+}
