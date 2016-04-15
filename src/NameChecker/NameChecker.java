@@ -302,8 +302,9 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 			    Error.error(n,"Symbol '" + n.getname() + "' not found.", false, 2217);
 			else if (!(o instanceof ProtocolTypeDecl))
 			    Error.error(n, "'" + n.getname() + "' cannot be extended as a protocol as it is not of protocol type.", false, 2218);
+		        n.myDecl = (AST)o;
 		}
-		// TODO: make sure we don't repreat names in the 'extend' part.
+		// TODO: make sure we don't repreat names in the 'extend' part.		
 		return null;
 	}	
 

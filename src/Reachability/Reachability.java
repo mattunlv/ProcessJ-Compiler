@@ -205,7 +205,7 @@ public class Reachability extends Visitor<Boolean> {
 	return new Boolean(true);
     }
 
-    //ParBlock.java:public class ParBlock extends Statement {
+    // DONE
     public Boolean visitParBlock(ParBlock pb) {
 	boolean oldInParBlock = inParBlock;
 	inParBlock = true;

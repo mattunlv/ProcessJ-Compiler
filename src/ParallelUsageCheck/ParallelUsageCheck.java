@@ -67,10 +67,23 @@ public class ParallelUsageCheck extends Visitor<Object> {
 	return null;
     }	
 
+    public Object visitAltStat(AltStat as) {
+	/* TODO: 
+
+	   alt {
+	     x = c.read() : { x = 1; }
+           }
+	   causes issues!
+	 */
+	Log.log(as,"AltStat ignore in parallel usage checking.");
+	return null;
+    }
+
+
 
     public Object visitAssignment(Assignment as) {
 	if (inPar) { 
-	    Log.log(as,"Visiting an Assignment.");
+    Log.log(as,"Visiting an Assignment.");
 	    // the left hand side must go into the read set!
 	    // can be NameExpr, ArrayAccessExpr, or RecordAccess
 	    if (as.left() instanceof NameExpr) {

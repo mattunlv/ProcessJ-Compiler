@@ -970,6 +970,23 @@ public class TypeChecker extends Visitor<Type> {
     // SwitchGroup -- nothing to do - handled in SwitchStat
     // SwitchLabel -- nothing to do - handled in SwitchStat
   	
+    ProtocolCase findProtocolCase(ProtocolTypeDecl pt, String switchLabelName) {
+	for (ProtocolCase pc : pt.body() ) {
+	    String name = pc.name().getname();
+	    if (name.equals(switchLabelName))
+		return pc;
+	}
+	
+	for (int i = 0; i<pt.extend().size(); i++) {
+	    ProtocolTypeDecl pdt = (ProtocolTypeDecl)((Name)pt.extend().child(i)).myDecl;
+	    ProtocolCase r;
+	    r = findProtocolCase(pdt, switchLabelName);
+	    if (r != null)
+		return r;
+	}
+	return null;
+    }
+
     /** SWITCH STATEMENT */ 
     public Type visitSwitchStat(SwitchStat ss) {
 	println(ss.line + ": Visiting a Switch statement");
@@ -998,35 +1015,39 @@ public class TypeChecker extends Visitor<Type> {
 	ProtocolTypeDecl pt = null;	
 	for (SwitchGroup sg : ss.switchBlocks() ) {
 	    for (SwitchLabel sl : sg.labels()) {
-		if (sl.isDefault())
-		    continue;
-		lType = null;
-		if (!(sl.expr() instanceof NameExpr))
-		    lType =  resolve(sl.expr().visit(this));
-		else {
-		    pt = (ProtocolTypeDecl)eType;
-		    Boolean found = false;			    
-		    for (ProtocolCase pc : pt.body() ) {
-			String name = pc.name().getname();
-			if (name.equals(((NameExpr)sl.expr()).name().getname())) {
-			    found = true;
-			    protocolTagsSwitchedOn.put(pt.name().getname(), pc);
-			    break;
-			}
-		    }
-		    if (!found)
-			Error.error(sl,"Protocol tag '" + sl.expr() + "' not found in protocol '" + ((ProtocolTypeDecl)eType).name().getname() + "'.", false, 3060);
-			    
+		// No default case in protocol switches 
+		if (sl.isDefault()) {
+		    if (eType.isProtocolType())
+			Error.error(sl.expr(), "Default case not allowed in protocol switch.", false ,0000);
+		    else
+			continue;
 		}
-						
+		
+		lType = null;
+		
 		if ( !(sl.expr() instanceof NameExpr) && (!lType.isIntegralType() || lType.isLongType()))
-		    Error.error(sl, "Switch labels must be of type int or a protocol tag.", false, 3044);
-		if (!(sl.expr() instanceof NameExpr) && !sl.expr().isConstant())
+		    Error.error(sl, "Switch labels must be of type int or a protocol tag.", false, 3044);	       
+		else if (sl.expr() instanceof NameExpr && !eType.isProtocolType())
+		    Error.error(sl.expr(), "Switch label must be of integer type.", false ,0000);
+		else if (!(sl.expr() instanceof NameExpr) && eType.isProtocolType())
+		    Error.error(sl.expr(), "Switch label must be a protocol case name.", false ,0000);
+		else if (!(sl.expr() instanceof NameExpr) && !sl.expr().isConstant())
 		    Error.error(sl, "Switch labels must be constants.", false, 3045);
+		else {
+		    if (!(sl.expr() instanceof NameExpr))
+			lType =  resolve(sl.expr().visit(this));
+		    else {
+			pt = (ProtocolTypeDecl)eType;
+			ProtocolCase pc = findProtocolCase(pt, ((NameExpr)sl.expr()).name().getname());
+			if (pc == null)
+			    Error.error(sl,"Protocol tag '" + sl.expr() + "' not found in protocol '" + ((ProtocolTypeDecl)eType).name().getname() + "'.", false, 3060);
+		    }
+		}
+		
 	    }
 	    sg.statements().visit(this);
 	}
-		
+	
 	for (SwitchGroup sg : ss.switchBlocks() ) {
 	    for(SwitchLabel sl : sg.labels()) {
 		if (sl.isDefault()) {

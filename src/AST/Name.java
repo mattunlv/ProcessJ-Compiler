@@ -2,6 +2,8 @@ package AST;
 import Utilities.Visitor;
 
 public class Name extends AST {
+    public AST myDecl; // used for places in the the grammar where a Name is used (e.g., in extends of protocols) instead of a NameExpr.
+
 	private String id;
 	private int arrayDepth = 0; // somewhat of a hack - we keep track of 
 	// whether this name is an id in a variable declaration with [] on. 
