@@ -31,6 +31,7 @@ public class TypeChecker extends Visitor<Type> {
     boolean inSwitch = false;
     
     // other stuff
+    // Contains the protocol name and the corresponding tags currently switched on.
     Hashtable<String,ProtocolCase> protocolTagsSwitchedOn = new Hashtable<String,ProtocolCase>();
     
     public TypeChecker(SymbolTable topLevelDecls) {
@@ -1014,7 +1015,10 @@ public class TypeChecker extends Visitor<Type> {
 	
 	ProtocolTypeDecl pt = null;	
 	for (SwitchGroup sg : ss.switchBlocks() ) {
-	    for (SwitchLabel sl : sg.labels()) {
+	    // Only one protocol tag per case, so only one label per switch group. (no fall through)
+	    if (eType.isProtocolType() && sg.labels().size() > 1)
+		Error.error(sg,"Fall-through cases in protocol switch statement not allowed.", false, 0);
+	    for (SwitchLabel sl : sg.labels()) {           
 		// No default case in protocol switches 
 		if (sl.isDefault()) {
 		    if (eType.isProtocolType())
@@ -1023,6 +1027,8 @@ public class TypeChecker extends Visitor<Type> {
 			continue;
 		}
 		
+		// TODO: protocol switches should not allow fall through!!!
+
 		lType = null;
 		
 		if ( !(sl.expr() instanceof NameExpr) && (!lType.isIntegralType() || lType.isLongType()))
@@ -1041,11 +1047,20 @@ public class TypeChecker extends Visitor<Type> {
 			ProtocolCase pc = findProtocolCase(pt, ((NameExpr)sl.expr()).name().getname());
 			if (pc == null)
 			    Error.error(sl,"Protocol tag '" + sl.expr() + "' not found in protocol '" + ((ProtocolTypeDecl)eType).name().getname() + "'.", false, 3060);
+			else
+			    protocolTagsSwitchedOn.put(pt.name().getname(), pc);
 		    }
 		}
 		
 	    }
 	    sg.statements().visit(this);
+	    // No fall through in switch groups for protocol types
+	    if (eType.isProtocolType() && sg.statements().size() >0)
+		if (!(sg.statements().child(sg.statements().size()-1) instanceof BreakStat))
+		    Error.error(sg,"Fall-through cases in protocol switch statement not allowed.", false, 0);
+	    if (eType.isProtocolType())
+		protocolTagsSwitchedOn.remove(pt.name().getname());
+
 	}
 	
 	for (SwitchGroup sg : ss.switchBlocks() ) {
