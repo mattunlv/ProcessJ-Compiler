@@ -1030,19 +1030,19 @@ public class TypeChecker extends Visitor<Type> {
 		// TODO: protocol switches should not allow fall through!!!
 
 		lType = null;
-		
-		if ( !(sl.expr() instanceof NameExpr) && (!lType.isIntegralType() || lType.isLongType()))
+		if (!(sl.expr() instanceof NameExpr))
+		    lType = resolve(sl.expr().visit(this));
+     	
+		if ( (!(sl.expr() instanceof NameExpr)) && (!lType.isIntegralType() || lType.isLongType()))
 		    Error.error(sl, "Switch labels must be of type int or a protocol tag.", false, 3044);	       
 		else if (sl.expr() instanceof NameExpr && !eType.isProtocolType())
 		    Error.error(sl.expr(), "Switch label must be of integer type.", false ,0000);
-		else if (!(sl.expr() instanceof NameExpr) && eType.isProtocolType())
+		else if ((!(sl.expr() instanceof NameExpr)) && eType.isProtocolType())
 		    Error.error(sl.expr(), "Switch label must be a protocol case name.", false ,0000);
-		else if (!(sl.expr() instanceof NameExpr) && !sl.expr().isConstant())
+		else if ((!(sl.expr() instanceof NameExpr)) && !sl.expr().isConstant())
 		    Error.error(sl, "Switch labels must be constants.", false, 3045);
 		else {
-		    if (!(sl.expr() instanceof NameExpr))
-			lType =  resolve(sl.expr().visit(this));
-		    else {
+		    if (sl.expr() instanceof NameExpr) {
 			pt = (ProtocolTypeDecl)eType;
 			ProtocolCase pc = findProtocolCase(pt, ((NameExpr)sl.expr()).name().getname());
 			if (pc == null)
