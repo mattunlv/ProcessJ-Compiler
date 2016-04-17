@@ -697,7 +697,7 @@ public class TypeChecker extends Visitor<Type> {
 	    ne.myDecl instanceof ConstantDecl) {
 	    // TODO: what about ConstantDecls ???
 	    // TODO: don't think a resolve is needed here
-	    ne.type = ((VarDecl)ne.myDecl).type();
+	    ne.type = resolve(((VarDecl)ne.myDecl).type());
 	} else
 	    ne.type = Error.addError(ne,"Unknown name expression '" + ne.name().getname() + "'.", 3029);
 
