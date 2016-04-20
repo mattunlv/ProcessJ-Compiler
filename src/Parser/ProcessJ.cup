@@ -1021,12 +1021,12 @@ do_statement ::=
 
 //- ClaimStat :> Statement :> AST
 claim_statement ::=
-          CLAIM LPAREN channels:c RPAREN statement:s {: RESULT = new ClaimStat(c, s); :}
+          CLAIM LPAREN channel:c RPAREN statement:s {: RESULT = new ClaimStat(new Sequence(c), s); :}
         ;
 
 //- ClaimStat :> Statement :> AST
 claim_statement_no_short_if ::=
-          CLAIM LPAREN channels:c RPAREN statement_no_short_if:s {: RESULT = new ClaimStat(c, s); :}
+          CLAIM LPAREN channel:c RPAREN statement_no_short_if:s {: RESULT = new ClaimStat(new Sequence(c), s); :}
         ;
 
 //- Sequence[AST] :> AST
