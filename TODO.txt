@@ -1,4 +1,10 @@
 
+this passed the type checker - it should not 
+
+
+shared chan<int>.read chanEnds[] = new shared chan<int>[100];
+
+
 something funny is going on:
 
 import std.io;

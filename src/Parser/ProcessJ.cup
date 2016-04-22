@@ -1021,12 +1021,12 @@ do_statement ::=
 
 //- ClaimStat :> Statement :> AST
 claim_statement ::=
-          CLAIM LPAREN channel:c RPAREN statement:s {: RESULT = new ClaimStat(new Sequence(c), s); :}
+          CLAIM LPAREN channels:c RPAREN statement:s {: RESULT = new ClaimStat(c, s); :}
         ;
 
 //- ClaimStat :> Statement :> AST
 claim_statement_no_short_if ::=
-          CLAIM LPAREN channel:c RPAREN statement_no_short_if:s {: RESULT = new ClaimStat(new Sequence(c), s); :}
+          CLAIM LPAREN channels:c RPAREN statement_no_short_if:s {: RESULT = new ClaimStat(c, s); :}
         ;
 
 //- Sequence[AST] :> AST
@@ -1252,6 +1252,10 @@ array_creation_expression ::=
 	    {: RESULT = new NewArray(new NamedType(new Name(id)), d1, d2, null); :}
         | NEW IDENTIFIER:id dims:d array_initializer:i      
 	    {: RESULT = new NewArray(new NamedType(new Name(id)), new Sequence<Expression>(), d, i); :}
+	| NEW channel_type:ct dim_exprs:d1 dims_opt:d2
+	    {: RESULT = new NewArray(ct, d1, d2, null); :}
+	| NEW channel_type:ct dims:d array_initializer:i
+	    {: RESULT = new NewArray(ct, new Sequence<Expression>(), d, i); :}
         ;
 
 // Sequence[Expression :> AST] :> AST
@@ -1307,9 +1311,6 @@ chan_read_expression ::=
 // **************************************************
 // 10.4 Structure Access
 // **************************************************
-
-// Protocol Access ?? TODO.... Only inside switches and then done like a record
-
 
 // Expression :> AST
 record_access ::=
