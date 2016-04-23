@@ -140,6 +140,9 @@ terminal Token EXTERN;          // "extern"
 /* Boolean Literals */
 terminal Token BOOLEAN_LITERAL;	// "true" or "false"
 
+/* Null Literal */
+terminal Token NULL_LITERAL;   // null
+
 /* Other Stuff */
 terminal Token PRAGMA;          // "pragma"
 
@@ -1552,16 +1555,17 @@ literal ::=
         | CHARACTER_LITERAL:l      {: RESULT = new PrimitiveLiteral(l, PrimitiveLiteral.CharKind); :}
         | record_literal:l         {: RESULT = l; :}
         | protocol_literal:l       {: RESULT = l; :}
+	| NULL_LITERAL:l           {: RESULT = new PrimitiveLiteral(l, PrimitiveLiteral.NullKind); :}
         ;
 
 // RecordLiteral :> Literal :> Expression :> AST
 record_literal ::=
-          NEW type_name:tn LBRACE argument_list:l RBRACE {: RESULT = new RecordLiteral(tn, l); :}
+       NEW type_name:tn LBRACE argument_list:l RBRACE {: RESULT = new RecordLiteral(tn, l); :}
         ;
 
 // ProtocolLiteral :> Literal :> Expression :> AST
 protocol_literal ::=
-        NEW type_name:tn LBRACE IDENTIFIER:id2 COLON argument_list_opt:l RBRACE 
+       NEW type_name:tn LBRACE IDENTIFIER:id2 COLON argument_list_opt:l RBRACE 
 	  {: RESULT = new ProtocolLiteral(tn
 , new Name(id2), l); :}
       ;

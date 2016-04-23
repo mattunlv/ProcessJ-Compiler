@@ -106,6 +106,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private String _currentProcName = null;
 
 	private boolean _proc_yields = false;
+	private boolean _foreverLoop = false;
 	private final String MAIN_SIGNATURE = "([T;)V";
 
 	//TODO Cabel look at trying to get this name from Error.filename or from compilation.
@@ -1493,6 +1494,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		this._gvarCnt = 0;
 		this._parCnt = 0;
 		this._inParBlock = false;
+		this._foreverLoop = false;
 		this._gFormalNamesMap = new HashMap<String, String>();
 		this._gLocalNamesMap = new HashMap<String, String>();
 		this._gLocals = new ArrayList<String>();
@@ -1559,6 +1561,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			
 			template.add("lookupswitch", switchTemplate.render());
 		}
+		
+		template.add("foreverloop", _foreverLoop);
 
 		return (T) template.render();
 	}
@@ -2050,6 +2054,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		ST template = group.getInstanceOf("WhileStat");
 		String expr = (String) ws.expr().visit(this);
 		Object stats = ws.stat().visit(this);
+		
+		if (ws.foreverLoop) {
+			this._foreverLoop = true;
+		}
 
 		template.add("expr", expr);
 

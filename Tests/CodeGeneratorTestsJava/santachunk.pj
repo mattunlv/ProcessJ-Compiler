@@ -233,36 +233,3 @@ proc void santa (const int seed,
     }
 }
 
-proc void main(string[] args)[yield=true] {
-    timer tim;
-    long seed;
-    seed = tim.read();
-    seed = (seed >> 2) + 42;
-    
-    barrier just_reindeer, santa_reindeer;
-    
-    shared write chan<boolean> elves_a, elves_b;
-    chan<boolean> knock;
-    shared write chan<boolean> santa_elves_a, santa_elves_b;
-    shared write chan<int> reindeer_santa, elf_santa;
-    shared write chan<Message> report;
-    
-    par {
-	par enroll (santa_reindeer) {
-	    santa (seed + (N_REINDEER + N_ELVES), knock.read,
-		   reindeer_santa.read, elf_santa.read, santa_reindeer,
-		   santa_elves_a.write, santa_elves_b.write, report.write);
-	    par for (int i=0; i<N_REINDEER; i++) 
-		enroll (just_reindeer, santa_reindeer)
-		    reindeer (i, seed + i, just_reindeer, santa_reindeer, reindeer_santa.write, report.write);
-	}
-	par for (int i=0; i<N_ELVES; i++)
-	    elf (i, N_REINDEER + (seed + i),
-		 elves_a.write, elves_b.write,
-		 santa_elves_a.write, santa_elves_b.write,
-		 elf_santa.write, report.write);
-	display (report.read);
-	p_barrier_knock (G_ELVES, elves_a.read, elves_b.read, knock.write);
-	p_barrier (G_ELVES + 1, santa_elves_a.read, santa_elves_b.read);
-    }
-}

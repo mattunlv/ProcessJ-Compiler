@@ -301,7 +301,7 @@ NewArray(type, size) ::= "new <type>[<size>]"
 
 ParamDecl(type, name) ::= "<type> <name>"
 
-ProcTypeDeclToProcess(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, lookupswitch, body, mainMethod) ::= <<
+ProcTypeDeclToProcess(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, lookupswitch, body, mainMethod, foreverloop) ::= <<
 
 public static class <name> extends Process {
 
@@ -318,7 +318,7 @@ public static class <name> extends Process {
 	public synchronized void run() {
 		<lookupswitch>
 		<body; separator = ";\n">;
-		<if(!retstatFound)>terminate();<endif>
+		<if(!retstatFound && !foreverloop)>terminate();<endif>
 	}
 }
 
@@ -341,7 +341,7 @@ public static void main(String[] args) {
 }
 >>
 			
-ProcTypeDeclToMethod(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+ProcTypeDeclToMethod(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, body, last, foreverloop) ::= <<
 
 public static <returnType> <name>(<if(formals)><formals; separator = ", "><endif>) {
 	<body; separator = ";\n">;
