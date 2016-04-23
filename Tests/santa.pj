@@ -109,12 +109,12 @@ proc void syncronize (shared chan<boolean>.write a,
 }
 
 proc void reindeer (const int id,
-		    const int seed,
+		    const long seed,
 		    barrier just_reindeer,
 		    barrier santa_reindeer,
 		    shared chan<int>.write to_santa,
 		    shared chan<Reindeer_msg>.write report) {
-    int my_seed = seed;
+    long my_seed = seed;
     timer tim;
     long t, wait;
     for (int i=0; i<1000; i++)
@@ -142,14 +142,14 @@ proc void reindeer (const int id,
 }
 
 proc void elf (const int id,
-	       const int seed,
+	       const long seed,
 	       shared chan<boolean>.write elves_a,
 	       shared chan<boolean>.write elves_b,
 	       shared chan<boolean>.write santa_elves_a,
 	       shared chan<boolean>.write santa_elves_b,
 	       shared chan<int>.write to_santa,
 	       shared chan<Elf_msg>.write report) {
-    int my_seed = seed;
+    long my_seed = seed;
     timer tim;
     long t, wait;
     for (int i=0; i<1000; i++)
@@ -175,16 +175,15 @@ proc void elf (const int id,
 	    to_santa.write (id);
     }
 }
-proc void santa (const int seed,
-//		 chan<boolean>.read knock,
-		 chan<boolean>.read knock, // will CRASH!!!!!
+proc void santa (const long seed,
+		 chan<boolean>.read knock,
 		 chan<int>.read from_reindeer,
 		 chan<int>.read from_elf,
 		 barrier santa_reindeer,
 		 shared chan<boolean>.write santa_elves_a,
 		 shared chan<boolean>.write santa_elves_b,
 		 shared chan<Santa_msg>.write report) {
-    int my_seed = seed;
+    long my_seed = seed;
     timer tim;
     long t, wait;
     for (int i=0; i<1000; i++)

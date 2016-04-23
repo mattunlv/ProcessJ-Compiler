@@ -335,6 +335,7 @@ public class TypeChecker extends Visitor<Type> {
     /** CHANNEL TYPE */ // ERROR TYPE OK
     public Type visitChannelType(ChannelType ct) {
 	println(ct.line + ": Visiting a channel type.");
+	ct.baseType().visit(this);
 	println(ct.line + ": Channel type has type: " + ct);
 	return ct;
     }
@@ -376,6 +377,8 @@ public class TypeChecker extends Visitor<Type> {
     /** CHANNEL END TYPE */ // ERROR TYPE OK
     public Type visitChannelEndType(ChannelEndType ct) {
 	println(ct.line + ": Visiting a channel end type.");
+
+	ct.baseType().visit(this);
 	println(ct.line + ": Channel end type " + ct);
 	return ct;
     }
@@ -675,7 +678,7 @@ public class TypeChecker extends Visitor<Type> {
 		    //       how should that be handled?
 		} else
 		    Error.error(nt,"Undefined named type '" + nt.name().getname() + "'.", false, 3028);			
-	    }
+	    } 
 	    nt.setType(t);
 	}
 	println(nt.line + ": named type has type: " + nt.type());

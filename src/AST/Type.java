@@ -70,6 +70,23 @@ public abstract class Type extends AST {
 		// check if P0 and P1 are implemented/extended by P2
 		System.out.println(var + " <<>> " + val);
 		return protocolExtends((ProtocolTypeDecl)var, (ProtocolTypeDecl)val);
+	    } else if (var.isChannelEndType() && val.isChannelEndType()) {
+		System.out.println("CHAN: "+var+ "(is proto:" +((ChannelEndType)var).baseType().isProtocolType() + ")" + " <<>> " + val);
+		ChannelEndType var_end = (ChannelEndType)var;
+		ChannelEndType val_end = (ChannelEndType)val;
+		if (var_end.baseType().isNamedType() &&
+		    val_end.baseType().isNamedType()) {
+		    Type var_type = ((NamedType)var_end.baseType()).type();
+		    Type val_type = ((NamedType)val_end.baseType()).type();
+		    System.out.println("var_type: " + var_type);
+		    System.out.println("val_type: " + val_type);
+
+		    if (var_type.isProtocolType() && val_type.isProtocolType())
+			return assignmentCompatible((ProtocolTypeDecl)var_type,
+						    (ProtocolTypeDecl)val_type);
+		    else
+			return var_type.identical(val_type);
+		}
 	    }
 	    return false;
 	}
