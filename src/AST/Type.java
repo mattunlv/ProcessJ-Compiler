@@ -48,24 +48,45 @@ public abstract class Type extends AST {
 
 
 	public static boolean assignmentCompatible(Type var, Type val) {
-		if (var.identical(val)) // Same type
-			return true;
-		else if (var.isNumericType() && val.isNumericType()) {
-			// Both are numeric (primitive) types.
-			PrimitiveType pvar = (PrimitiveType)var;
-			PrimitiveType pval = (PrimitiveType)val;
-
-			// double :> float :> long :> int :> short :> byte
-			if (pvar.getKind() == PrimitiveType.CharKind)
-				return false; // do not allow assignment of numeric values to chars
-			if (pval.getKind() == PrimitiveType.CharKind)
-				return (pvar.getKind() != PrimitiveType.ByteKind &&
-				pvar.getKind() != PrimitiveType.ShortKind);
-			return (pvar.getKind() >= pval.getKind()); // ok to assign char value to none byte/short var
-		} 
-		return false;
+	    System.out.println("ASSIGNMENTCOMPATIBLE!" + var + " <<>> " + val);
+	    if (var.identical(val)) {// Same type
+		System.out.println("Yes they were identical!");
+		return true;
+	    }
+	    else if (var.isNumericType() && val.isNumericType()) {
+		// Both are numeric (primitive) types.
+		PrimitiveType pvar = (PrimitiveType)var;
+		PrimitiveType pval = (PrimitiveType)val;
+		
+		// double :> float :> long :> int :> short :> byte
+		if (pvar.getKind() == PrimitiveType.CharKind)
+		    return false; // do not allow assignment of numeric values to chars
+		if (pval.getKind() == PrimitiveType.CharKind)
+		    return (pvar.getKind() != PrimitiveType.ByteKind &&
+			    pvar.getKind() != PrimitiveType.ShortKind);
+		return (pvar.getKind() >= pval.getKind()); // ok to assign char value to none byte/short var
+	    } else if (var.isProtocolType() && val.isProtocolType()) {
+		// if P2 extends P1 and P0 then a variable of type P0 and P1 may hold a reference to a value of type P2.
+		// check if P0 and P1 are implemented/extended by P2
+		System.out.println(var + " <<>> " + val);
+		return protocolExtends((ProtocolTypeDecl)var, (ProtocolTypeDecl)val);
+	    }
+	    return false;
 	}
 
+    public static boolean protocolExtends(ProtocolTypeDecl sup, ProtocolTypeDecl sub) {
+	if (sup.identical(sub))
+	    return true;
+	else {
+	    boolean b = false;
+	    for (int i=0; i<sub.extend().size(); i++) {
+		b = b || protocolExtends(sup, (ProtocolTypeDecl)sub.extend().child(i).myDecl);
+	    }
+	    return b;
+	}
+    }
+
+    
 	public boolean isIntegerType() {
 	    return (this instanceof PrimitiveType && ((PrimitiveType)this).getKind() == PrimitiveType.IntKind);
 

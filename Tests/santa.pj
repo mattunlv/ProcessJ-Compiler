@@ -1,3 +1,5 @@
+import std.io;
+
 protocol Reindeer_msg {
  holiday:    { int id; }
  deer_ready: { int id; }
@@ -25,15 +27,35 @@ protocol Santa_msg {
  goodbye:        { int id; }
 }
 
+protocol Message extends Reindeer_msg, Elf_msg, Santa_msg;
+
 proc void display (chan<Message>.read in) {
   Message msg;
   while (true) {
     msg = in.read();
-    //println(msg);
+    switch (msg) {
+    case holiday:  
+      println("                                                        Reindeer " + msg.id + ": on holiday ... wish you were here");
+      break;
+    
+    case deer_ready:
+      println("                                                        Reindeer " + msg.id + ": back from holiday ... ready for work");
+      break;
+    
+
+    case elf_ready:
+      println("                            Elf: " + msg.id + ": need to consult Santa, ;(");
+      break;
+
+
+    case mush_mush:
+      println("Santa: mush mush ...");
+      break;
+    }
   }
 }
 
-protocol Message extends Reindeer_msg, Elf_msg, Santa_msg;
+
 
 const int N_REINDEER = 9;
 const int G_REINDEER = N_REINDEER;
