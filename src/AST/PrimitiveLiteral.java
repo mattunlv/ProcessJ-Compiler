@@ -17,7 +17,7 @@ public class PrimitiveLiteral extends Literal {
 	public final static int DoubleKind  = 7; // 64 bit IEEE 754-1985. min: 5e-324   max: 1.7976931348623157e+308    
 
 	public final static int StringKind  = 8;
-	public final static int NullKind    = 9;
+    public final static int NullKind    = 9; // null
 
 	public final static int BarrierKind = 10; // No literal exists of this type;
 	public final static int TimerKind   = 11; // No literal exists of this type;

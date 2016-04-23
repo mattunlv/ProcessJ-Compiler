@@ -175,6 +175,9 @@ StringEscape  =   \\([btnfr\"\'\\]|[0-3]?{OctDigit}?{OctDigit}|u{HexDigit}{HexDi
   "true"      { return token(sym.BOOLEAN_LITERAL); } 
   "false"     { return token(sym.BOOLEAN_LITERAL); } 
 
+  /* null Literal */
+  "null"      { return token(sym.NULL_LITERAL); }
+
   /* Other stuff */
   "#pragma"    { return token(sym.PRAGMA); }
 

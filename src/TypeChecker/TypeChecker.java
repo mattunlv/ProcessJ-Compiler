@@ -505,25 +505,19 @@ public class TypeChecker extends Visitor<Type> {
 	println(in.line + ": visiting invocation (" + in.procedureName() + ")");
 	
 	in.params().visit(this);
-	
-
 
 	// TODO: this should be redone!!!
 	boolean firstTable = true;
 	SymbolTable st = topLevelDecls;
 	Sequence<ProcTypeDecl> candidateProcs = new Sequence<ProcTypeDecl>();
 
-
-
-
-
 	// transfer in.candidates to candidateProcs.
-	if (in.candidateMethods != null)
+	/*	if (in.candidateMethods != null && false)
 	    for (Object pd : in.candidateMethods.entries.values().toArray()) {
 		ProcTypeDecl ptd = (ProcTypeDecl)pd;
 		if (ptd.formalParams().size() == in.params().size()) {
 		    boolean candidate = true;
-		    //System.out.println("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");                                                                                                            
+		    System.out.println("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");                                                                                                            
 		    for (int i=0; i<in.params().size(); i++) {
 			candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
 		    }
@@ -533,7 +527,7 @@ public class TypeChecker extends Visitor<Type> {
 		    }
 		}
 	    }
-	
+	*/
 
 	while (st != null) {
 	    
@@ -547,7 +541,7 @@ public class TypeChecker extends Visitor<Type> {
 		    if (ptd.formalParams().size() == in.params().size()) {
 			// TODO: this should store this somwhere 
 			boolean candidate = true;
-			//System.out.println("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");
+			System.out.println(" checking if Assignment Compatible proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");
 			for (int i=0; i<in.params().size(); i++) {
 			    candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
 			}
@@ -774,12 +768,12 @@ public class TypeChecker extends Visitor<Type> {
 	// Remember that the constants in PrimitiveType are defined from the ones                                                      
 	// in Literal, so its it ok to just use li.kind! -- except for the null literal.                                               
 
-	if (pl.getKind() == PrimitiveLiteral.NullKind)
-	    pl.type = null; // new NullType(li); TODO: Perhaps we need a null type and a null value too ??
-	else {
+	//	if (pl.getKind() == PrimitiveLiteral.NullKind)
+	//    pl.type = null; // new NullType(li); TODO: Perhaps we need a null type and a null value too ??
+	//else {
 	    System.out.println("Setting Primitive Literal Type");
 	    pl.type = new PrimitiveType(pl.getKind());
-	}
+	    //}
 	                                                                                                                       
 
 	println(pl.line + ": Primitive literal has type: " + pl.type);
@@ -973,12 +967,14 @@ public class TypeChecker extends Visitor<Type> {
     // SwitchLabel -- nothing to do - handled in SwitchStat
   	
     ProtocolCase findProtocolCase(ProtocolTypeDecl pt, String switchLabelName) {
-	for (ProtocolCase pc : pt.body() ) {
-	    String name = pc.name().getname();
-	    if (name.equals(switchLabelName))
-		return pc;
-	}
-	
+	System.out.println("fpc" +  pt );
+	if (pt.body() != null)
+	    for (ProtocolCase pc : pt.body() ) {
+		String name = pc.name().getname();
+		if (name.equals(switchLabelName))
+		    return pc;
+	    }
+
 	for (int i = 0; i<pt.extend().size(); i++) {
 	    ProtocolTypeDecl pdt = (ProtocolTypeDecl)((Name)pt.extend().child(i)).myDecl;
 	    ProtocolCase r;
@@ -1031,19 +1027,19 @@ public class TypeChecker extends Visitor<Type> {
 		// TODO: protocol switches should not allow fall through!!!
 
 		lType = null;
-		
-		if ( !(sl.expr() instanceof NameExpr) && (!lType.isIntegralType() || lType.isLongType()))
+		if (!(sl.expr() instanceof NameExpr))
+		    lType = resolve(sl.expr().visit(this));
+     	
+		if ( (!(sl.expr() instanceof NameExpr)) && (!lType.isIntegralType() || lType.isLongType()))
 		    Error.error(sl, "Switch labels must be of type int or a protocol tag.", false, 3044);	       
 		else if (sl.expr() instanceof NameExpr && !eType.isProtocolType())
 		    Error.error(sl.expr(), "Switch label must be of integer type.", false ,0000);
-		else if (!(sl.expr() instanceof NameExpr) && eType.isProtocolType())
+		else if ((!(sl.expr() instanceof NameExpr)) && eType.isProtocolType())
 		    Error.error(sl.expr(), "Switch label must be a protocol case name.", false ,0000);
-		else if (!(sl.expr() instanceof NameExpr) && !sl.expr().isConstant())
+		else if ((!(sl.expr() instanceof NameExpr)) && !sl.expr().isConstant())
 		    Error.error(sl, "Switch labels must be constants.", false, 3045);
 		else {
-		    if (!(sl.expr() instanceof NameExpr))
-			lType =  resolve(sl.expr().visit(this));
-		    else {
+		    if (sl.expr() instanceof NameExpr) {
 			pt = (ProtocolTypeDecl)eType;
 			ProtocolCase pc = findProtocolCase(pt, ((NameExpr)sl.expr()).name().getname());
 			if (pc == null)
