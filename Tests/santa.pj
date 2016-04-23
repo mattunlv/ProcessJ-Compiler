@@ -1,3 +1,5 @@
+import std.io;
+
 protocol Reindeer_msg {
  holiday:    { int id; }
  deer_ready: { int id; }
@@ -29,7 +31,7 @@ proc void display (chan<Message>.read in) {
   Message msg;
   while (true) {
     msg = in.read();
-    //println(msg);
+    println(msg);
   }
 }
 

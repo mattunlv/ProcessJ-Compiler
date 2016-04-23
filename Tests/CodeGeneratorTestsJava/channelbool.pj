@@ -8,7 +8,7 @@ proc void reader(chan<boolean>.read c)[yield=true] {
 	boolean x = c.read();
 }
 
-proc void test() [yield=false]{
+proc void test() [yield=true]{
 	chan<boolean> c;
 	writer(c.write);
 	reader(c.read);

@@ -1,0 +1,21 @@
+import std.io;
+
+proc void foo()[yield=true] {
+			
+	timer t;
+	
+	int x = 10;
+	t.timeout(10000);
+
+	println("10 secs has passed!" + 11);
+
+	/* TODO:
+	* Timer read expr that gets
+	* visited in ChannelReadExpr
+	*/
+	//t.read();
+}
+
+proc void main(string[] args)[yield=true]{
+	foo();
+}

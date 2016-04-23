@@ -1,0 +1,88 @@
+import std.io;
+
+//mutual recursion --------
+proc void a(int n)[yield=true] {
+	println("a:" + n);
+	if (n==0)
+		return;
+
+	b(n-1);
+	p(n-1);
+} 
+proc void b(int n)[yield=true] {
+	println("b:" + n);
+	if (n==0)
+		return;
+	a(n-1);
+	k(n-1);
+	return;
+}
+
+
+proc void c(int n)[yield=true] {
+	println("c:" + n);
+	if (n==0)
+		return;
+	d(n-1);
+	m(n-1);
+	return;
+}
+proc void d(int i)[yield=true] {
+	println("d:" + i);
+	if (i==0)
+		return;
+	c(i-1);
+	n(i-1);
+	return;
+}
+
+proc void p(int n)[yield=true] {
+	println("p:" + n);
+	if (n==0)
+		return;
+	k(n-1);
+	return;
+}
+proc void k(int n)[yield=true] {
+	println("k:" + n);
+	if (n==0)
+		return;
+	p(n-1);
+	return;
+}
+proc void m(int i)[yield=true] {
+	println("m:" + i);
+	if (i==0)
+		return;
+	n(i-1);
+	return;
+}
+proc void n(int i)[yield=true] {
+	println("n:" + i);
+	if (i==0)
+		return;
+	m(i-1);
+	return;
+}
+//----------------
+
+//recursion on invocation parameter
+/*proc int invRec(int n){
+	println("invRec:" + n);
+	if (n==0)
+		return n;
+	foo(invRec(n-1));
+	return n;
+		
+}
+proc void foo(int n) {
+	println("foo:" + n);
+}
+*/
+
+proc void main(string[] args)[yield=true]{
+//proc void main(string[] args){
+  a(10);
+  c(20);
+  //invRec(10);
+}

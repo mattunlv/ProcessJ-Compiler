@@ -1,17 +1,27 @@
+protocol P {
+ a: { int a; int b; }
+ b: { int a; }
+}
 
-proc void P5000() {
-     int a;
+proc void SwitchTest() {
+  P p;
+  P r;   
 
-     switch (a) {
-       case 4: 
-	   a++; 
-	   a = a + 5;
-	   break;
-       case 5:
-       case 6: {  
-	   a = a + 4;
-	   return;
-	   a++;
-       }
-     }
+    switch(r) {
+    case a: { 
+    p = r;
+  switch(p) { 
+   
+    case a: skip;
+    case b: {
+          int m = p.b;
+
+
+    }
+    break;   
+    //    case t: skip;
+    default: skip;
+  }
+}
+}
 }

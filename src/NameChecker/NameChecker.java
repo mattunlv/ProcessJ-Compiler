@@ -302,8 +302,9 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 			    Error.error(n,"Symbol '" + n.getname() + "' not found.", false, 2217);
 			else if (!(o instanceof ProtocolTypeDecl))
 			    Error.error(n, "'" + n.getname() + "' cannot be extended as a protocol as it is not of protocol type.", false, 2218);
+		        n.myDecl = (AST)o;
 		}
-		// TODO: make sure we don't repreat names in the 'extend' part.
+		// TODO: make sure we don't repreat names in the 'extend' part.		
 		return null;
 	}	
 
@@ -357,6 +358,17 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 	// SuspendStat - nothing to do (always resumes a procedure of the same name!)
 	// SwitchGroup -- nothing to do
 	// SwitchLabel - nothing to do
+    public T visitSwitchLabel(SwitchLabel sl) {
+	Log.log(sl.line + ": Visiting SwitchLabel (" + sl.expr() + ").");
+	// A SwitchLabel should be a PrimitiveLiteral OR a NameExpression
+	if (!sl.isDefault())
+	    if (!(sl.expr() instanceof PrimitiveLiteral) && !(sl.expr() instanceof NameExpr))
+		Error.error(sl,"Switch label must be constant or a protocol tag.", false, 2224);
+	return null;
+    }
+
+	
+    
 	// SwitchStat - nothing to do
 	// SyncStat - nothing to do
 	// Ternary - nothing to do

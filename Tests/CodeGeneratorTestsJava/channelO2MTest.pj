@@ -13,7 +13,7 @@ proc void reader2(chan<int>.read chanR) [yield=true]{
     int y = chanR.read();
 }
 
-proc void main(string[] args) {
+proc void main(string[] args) [yield=true] {
 	int x;
 	int y = 5;
 	int z = y;

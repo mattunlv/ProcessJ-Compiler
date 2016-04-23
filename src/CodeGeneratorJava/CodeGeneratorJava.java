@@ -7,14 +7,21 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.stringtemplate.v4.ST;
 import org.stringtemplate.v4.STGroup;
 import org.stringtemplate.v4.STGroupFile;
 
+import AST.AST;
 import AST.AltCase;
 import AST.AltStat;
 import AST.ArrayAccessExpr;
@@ -30,7 +37,9 @@ import AST.ChannelEndType;
 import AST.ChannelReadExpr;
 import AST.ChannelType;
 import AST.ChannelWriteStat;
+import AST.ClaimStat;
 import AST.Compilation;
+import AST.ConstantDecl;
 import AST.ContinueStat;
 import AST.DoStat;
 import AST.ExprStat;
@@ -39,15 +48,22 @@ import AST.ForStat;
 import AST.IfStat;
 import AST.Invocation;
 import AST.LocalDecl;
-import AST.Modifier;
 import AST.Name;
 import AST.NameExpr;
+import AST.NamedType;
 import AST.NewArray;
 import AST.ParBlock;
 import AST.ParamDecl;
 import AST.PrimitiveLiteral;
 import AST.PrimitiveType;
 import AST.ProcTypeDecl;
+import AST.ProtocolCase;
+import AST.ProtocolLiteral;
+import AST.ProtocolTypeDecl;
+import AST.RecordAccess;
+import AST.RecordLiteral;
+import AST.RecordMember;
+import AST.RecordTypeDecl;
 import AST.ReturnStat;
 import AST.Sequence;
 import AST.SkipStat;
@@ -55,6 +71,7 @@ import AST.Statement;
 import AST.SwitchGroup;
 import AST.SwitchLabel;
 import AST.SwitchStat;
+import AST.SyncStat;
 import AST.Ternary;
 import AST.TimeoutStat;
 import AST.Type;
@@ -62,8 +79,8 @@ import AST.UnaryPostExpr;
 import AST.UnaryPreExpr;
 import AST.Var;
 import AST.WhileStat;
-import Utilities.Error;
 import Utilities.Log;
+import Utilities.SymbolTable;
 import Utilities.Visitor;
 
 public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
@@ -79,11 +96,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private List<String> _gLocals = null;
 	private List<String> _switchCases = null;
 	private List<String> _parSwitchCases = null;
+	private List<String> _parforSwitchCases = null;
+	private SymbolTable _topLevelDecls = null;
 	private int _gvarCnt = 0;
-	private int _jumpCnt = 0;
+	private int _jumpCnt = 1;
 	private int _parCnt = 0;
 	private boolean _inParBlock = false;
 	private String _parName = null;
+	private String _currentProcName = null;
 
 	private boolean _proc_yields = false;
 	private final String MAIN_SIGNATURE = "([T;)V";
@@ -91,7 +111,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	//TODO Cabel look at trying to get this name from Error.filename or from compilation.
 	private String originalFilename = null;
 
-	public CodeGeneratorJava() {
+	public CodeGeneratorJava(SymbolTable topLevelDecls) {
 		Log.log("==========================================");
 		Log.log("* C O D E   G E N E R A T O R  ( Java )  *");
 		Log.log("*        F I R S T  P A S S              *");
@@ -101,106 +121,177 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 * Load StringTemplate grammar template.
 		 */
 		this.group = new STGroupFile(grammarStFile);
+		this._topLevelDecls = topLevelDecls;
 	}
 
 	public void setOriginalFilename(String n) {
 		this.originalFilename = n;
 	}
 
-	/**
-	 * AltCase
-	 * 
-	 * FIXME: incomplete
+	/*
+	 * All ALT items
 	 */
+	
+	boolean _inAlt = false;
+	
 	public T visitAltCase(AltCase ac) {
 		Log.log(ac.line + ": Visiting an AltCase");
 		ST template = group.getInstanceOf("AltCase");
-
-		// TODO preconditions.
+		
 		Statement caseExprStmt = ac.guard().guard();
 		Statement stat = ac.stat();
-//		int caseNumber = ac.getCaseNumber();
 		String caseExprStr;
 
-		// We treat TimeoutStat differently:
-		if (caseExprStmt instanceof TimeoutStat)
-			caseExprStr = "/*Timeout do nothing here!*/";
-		else
-			// Two more posibilities for myExpr: SkipStat | ExprStat (Channel)
-			caseExprStr = (String) caseExprStmt.visit(this);
-
-		// Make the actual block of statements to run, we know this must always
-		// be a block so,
-		// no need to check what is returned.
-		String[] statementList = (String[]) stat.visit(this);
-
-//		template.add("number", caseNumber);
-		template.add("guardToDo", caseExprStr);
-		template.add("statementList", statementList);
-
+		
 		return (T) template.render();
 	}
 
-	/**
-	 * AltStat 
-	 * FIXME: incomplete and think about PRIALT as well.
-	 */
 	public T visitAltStat(AltStat as) {
 		Log.log(as.line + ": Visiting an AltStat");
+		
+		this._inAlt = true;
+
 		ST template = group.getInstanceOf("AltStat");
+
 		Sequence<AltCase> altCaseList = as.body();
-		int count = altCaseList.size();
-		boolean hasTimeout = false;
+		int caseCount = altCaseList.size();
+		
+		/*
+		 * Creating boolean guards array. Refactor this.
+		 */
+		ST altBGArrTemplate = group.getInstanceOf("AltBooleanGuardsArr");
+		String[] constants = new String[caseCount];
+		List<String> tempExprs = new ArrayList<String>(); 
+		for(int i=0; i < caseCount; i++) {
+			AltCase ac = altCaseList.child(i);
+			if (ac.precondition() == null) {
+				constants[i] = String.valueOf(true);
+			} else if (ac.precondition().isConstant()) {
+				constants[i] = (String)ac.precondition().visit(this);
+			} else {
+				String tempVar = "bTemp" + i;
+				Name n = new Name(tempVar);
+				tempExprs.add((String)new LocalDecl(new PrimitiveType(PrimitiveType.BooleanKind), new Var(n, ac.precondition()), false).visit(this));
+				constants[i] = (String)n.visit(this); 
+			}
+		}
+		altBGArrTemplate.add("tempExprs", tempExprs);
+		altBGArrTemplate.add("constants", constants);
+		//------------------------------------------------------
+		
+		/*
+		 * Creating actual guards array
+		 */
+		ST altGuardArrTemplate = group.getInstanceOf("AltGuardsArr");
+		String[] guards = new String[caseCount];	
+		List<String> timers = new ArrayList<String>();
+		List<String> timerNames = new ArrayList<String>();
+		List<String> altCases = new ArrayList<String>();
+		
+		List<String> statementList = null;
 
-		//If the alt uses timeout we must use a different function to invoke the alt.
-		for (int i = 0; i < count; i++) {
-			AltCase altCase = altCaseList.child(i);
-			hasTimeout = caseIsTimeout(altCase);
+		for(int i=0; i < caseCount; i++) {
+			
+			ST altCase = group.getInstanceOf("AltCase");
 
-			if (hasTimeout == true)
-				break;
+			statementList = new ArrayList<String>();
+			AltCase ac = altCaseList.child(i);
+			Statement caseExprStmt = ac.guard().guard();
+
+			if (caseExprStmt instanceof TimeoutStat) {
+				TimeoutStat ts = (TimeoutStat) caseExprStmt;
+				String tn = (String)ts.timer().visit(this);//name of timer
+				guards[i] = tn;
+				timerNames.add(tn);
+
+				timers.add((String)ts.visit(this));
+				
+				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the timer
+
+			} else if (caseExprStmt instanceof ExprStat){ //Channel
+				Expression e = ((ExprStat) caseExprStmt).expr();
+				ChannelReadExpr cr = null;
+				if (e instanceof ChannelReadExpr) {
+					cr = (ChannelReadExpr) e;
+				} else if (e instanceof Assignment) {
+					cr = (ChannelReadExpr)((Assignment)e).right();
+				}
+				guards[i] = (String) cr.channel().visit(this); //name of channel
+				
+				String chanRead = (String)caseExprStmt.visit(this);
+				statementList.add(chanRead);
+				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
+				
+			} else if (caseExprStmt instanceof SkipStat){
+				guards[i] = "Alt.SKIP_GUARD";
+				
+				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
+			} else {
+				System.out.println("Unknown statement in guards!!!");
+			}	
+			
+			
+			altCase.add("number", i);
+			altCase.add("statementList", statementList);
+			
+			altCases.add(altCase.render());
+		}
+		
+		/*
+		 * Collecting timers and generating start and kill code
+		 */
+		List<String> timerStarts = new ArrayList<String>();
+		List<String> timerKills = new ArrayList<String>();
+		for (String t : timerNames) {
+			ST timerStart = group.getInstanceOf("AltTimerStart");
+			timerStart.add("timer", t);
+
+			timerStarts.add(timerStart.render());
+			
+			ST timerKill = group.getInstanceOf("AltTimerKill");
+			timerKill.add("timer", t);
+			
+			timerKills.add(timerKill.render());
+		}	
+		//----------------
+		
+		/*
+		 * Creating timer start cases
+		 */
+		if ( timerStarts.size() > 0) {
+			ST altCase = group.getInstanceOf("AltCase");
+			altCase.add("number", -1);
+			altCase.add("statementList", timerStarts);
+			altCases.add(altCase.render());
+		}
+		//---------------
+		
+		
+		ST altSwitchGroup = group.getInstanceOf("AltSwitchGroup");
+		altSwitchGroup.add("cases", altCases);
+
+		if (guards.length > 0) {
+			altGuardArrTemplate.add("guards", guards);
 		}
 
-		//Create the Alt() and AltWait().
-		String altTypeStr = "NormalAltType";
-		String waitTypeStr = "NormalWaitType";
-		if (hasTimeout == true) {
-			altTypeStr = "TimerAltType";
-			waitTypeStr = "TimerWaitType";
-		}
+		//--------------------
+		
+		template.add("timers", timers);
+		template.add("caseCount", caseCount);
+		template.add("altSwitchGroup", altSwitchGroup.render());
+		template.add("initBoolGuards", altBGArrTemplate.render());
+		template.add("initGuards", altGuardArrTemplate.render());
+		template.add("timerKills", timerKills);
 
-		ST altTypeTemplate = group.getInstanceOf(altTypeStr);
-		ST waitTypeTemplate = group.getInstanceOf(waitTypeStr);
-
-		//These lists hold our strings representing the {"AltEnablechannel(<name>)",...}
-		//for our alt statement.
-		String[] enableList = createEnableDisable(altCaseList, true);
-		String[] disableList = createEnableDisable(altCaseList, false);
-
-		//Only thing left to do is to make the switch statement holding our cases to run.
-		ST altSwitchTemplate = group.getInstanceOf("AltSwitch");
-
-		//Create AltEnd part.
-
-		//Iterate over our children setting their number.
-		for (int i = 0; i < count; i++) {
-			AltCase altCase = altCaseList.child(i);
-//			altCase.setCaseNumber(i);
-		}
-
-		//Create all the case statements.
-		String[] caseList = (String[]) altCaseList.visit(this);
-
-		//Now make our switch string.
-		altSwitchTemplate.add("caseList", caseList);
-		String altSwitchStr = altSwitchTemplate.render();
-
-		//Make final string!
-		template.add("altType", altTypeTemplate.render());
-		template.add("enableChannelList", enableList);
-		template.add("waitType", waitTypeTemplate.render());
-		template.add("disableChannelList", disableList);
-		template.add("switchStatement", altSwitchStr);
+		template.add("jmp1", _jumpCnt);
+		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+		_jumpCnt++;
+		
+		template.add("jmp2", _jumpCnt);
+		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+		_jumpCnt++;
+		
+		this._inAlt = false;
 
 		return (T) template.render();
 	}
@@ -250,7 +341,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			default: typeString = "One2OneChannel";
 		}
 		
-		return (T) (typeString + "<" + getWrapperType(ct.baseType()) + ">");
+		Type t = ct.baseType();
+		String type = null;
+		if (t.isNamedType()) {
+			type = (String)((NamedType) t).visit(this);
+		} else {
+			//FIXME maybe do a check for primitive type...and rename the below method.
+			type = getWrapperType(t);
+		}
+
+//		return (T) (typeString + "<" + getWrapperType(ct.baseType()) + ">");
+		return (T) (typeString + "<" + type + ">");
 	}
 
 	/**
@@ -270,7 +371,19 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitChannelEndType(ChannelEndType ct) {
 		Log.log(ct.line + ": Visiting a Channel End Type!");
 
-		return (T) ("Channel<" + getWrapperType(ct.baseType()) + ">");
+		Type t = ct.baseType();
+		String type = null;
+		if (t.isNamedType()) {
+			type = (String)((NamedType) t).visit(this);
+		} else {
+			//FIXME maybe do a check for primitive type...and rename the below method.
+			type = getWrapperType(t);
+		}
+
+//		return (T) (typeString + "<" + getWrapperType(ct.baseType()) + ">");
+		return (T) ("Channel<" + type + ">");
+		
+//		return (T) ("Channel<" + getWrapperType(ct.baseType()) + ">");
 	}
 
 	/**
@@ -349,6 +462,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	
 	/**
 	 * Compilation
+	 * TODO add the pragmas, packageName and imports later!
 	 */
 	public T visitCompilation(Compilation c) {
 		Log.log(c.line + ": Visiting the Compilation");
@@ -356,39 +470,91 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		ST template = group.getInstanceOf("Compilation");
 
 		/*
-		 * We add our function prototypes here as the Java program will need them.
+		 * Visiting type decls will be done in ordered sequence
+		 * of RecordTypeDecls, ProtocolTypeDecls and ProcTypeDecls
+		 * so that forward-referencing for NamedType can be done.
 		 */
+		List<String> typeDeclsStr = new ArrayList<String>();
+		Sequence<Type> individualDecls = new Sequence<Type>();
+		Sequence<Type> extendedDecls = new Sequence<Type>();
+		
 		Sequence<Type> typeDecls = c.typeDecls();
 
 		/*
-		 * Iterate over the sequence only collecting the procType arguments. This is needed to know the name of the last
-		 * functions.
+		 * Collect RecordTypeDecls.
 		 */
-		//		for (Type type : typeDecls) {
-		//			if (type instanceof ProcTypeDecl) {
-		//				ProcTypeDecl current = (ProcTypeDecl) type;
-		//				// TODO look into aux method
-		//				String prototypeName = getPrototypeString(current);
-		//				prototypes.add(prototypeName);
-		//			}
-		//		}
+		Iterator<Type> it1 = typeDecls.iterator();
+		while(it1.hasNext()) {
+			AST temp = it1.next();
+			if (temp instanceof ConstantDecl)
+				continue;
+//			Type type = (Type)it1.next();
+			Type type = (Type)temp;
+			if (type instanceof RecordTypeDecl) {
+				RecordTypeDecl rd = (RecordTypeDecl) type;
+				if( rd.extend() == null || rd.extend().size() == 0) {
+					individualDecls.append(rd);
+				} else {
+					extendedDecls.append(rd);
+				}
+				it1.remove();
+			}
+		}
+		
+		/*
+		 * Visit non-extended and then extended records.
+		 */
+		Collections.sort((List<Type>) extendedDecls.children, new Comparator<Type>() {
+			@Override
+			public int compare(Type o1, Type o2) {
+				return ((RecordTypeDecl)o1).extend().size() - ((RecordTypeDecl)o2).extend().size();
+			}
+		});	
+		typeDeclsStr.addAll(Arrays.asList((String[])individualDecls.visit(this)));
+		typeDeclsStr.addAll(Arrays.asList((String[])extendedDecls.visit(this)));
 
-		// TODO add the pragmas, packageName and imports later!
+		individualDecls.clear();
+		extendedDecls.clear();
 
 		/*
-		 * Recurse to all children getting strings needed for this Class template.
+		 * Collect ProtocolTypeDecls.
 		 */
-		String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
+		Iterator<Type> it2 = typeDecls.iterator();
+		while(it2.hasNext()) {
+			AST temp = it2.next();
+			if (temp instanceof ConstantDecl)
+				continue;
+//			Type type = (Type)it2.next();
+			Type type = (Type)temp;
+			if (type instanceof ProtocolTypeDecl) {
+				ProtocolTypeDecl pd = (ProtocolTypeDecl) type;
+				if( pd.extend() == null || pd.extend().size() == 0) {
+					individualDecls.append(pd);
+				} else {
+					extendedDecls.append(pd);
+				}
+				it2.remove();
+			}
+		}
 
 		/*
-		 * This is where functions are created as they are procedure type.
+		 * Visit non-extended and then extended protocols.
 		 */
-		//		template.add("prototypes", prototypes);
-
+		Collections.sort((List<Type>) extendedDecls.children, new Comparator<Type>() {
+			@Override
+			public int compare(Type o1, Type o2) {
+				return ((ProtocolTypeDecl)o1).extend().size() - ((ProtocolTypeDecl)o2).extend().size();
+			}
+		});
+		
+		typeDeclsStr.addAll(Arrays.asList((String[])individualDecls.visit(this)));
+		typeDeclsStr.addAll(Arrays.asList((String[])extendedDecls.visit(this)));
+		
 		/*
-		 * cds: might need to uncomment this to take in account for other Types. this was commented when adding logic to
-		 * create individual files for each proc.
+		 * Visit remaining items on the list which are all ProcTypeDecls.
 		 */
+		typeDeclsStr.addAll(Arrays.asList((String[])typeDecls.visit(this)));
+
 		template.add("typeDecls", typeDeclsStr);
 		template.add("packageName", this.originalFilename);
 
@@ -401,6 +567,56 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log("Output written to file " + this.originalFilename);
 
 		return (T) finalOutput;
+	}
+	
+	public T visitClaimStat(ClaimStat cs) {
+		Log.log(cs.line + ": Visiting an ClaimStat");
+		ST template = null;
+		
+//		Sequence<AST> channels = cs.channels();
+
+		List<String> claimparts = new ArrayList<String>();
+		String[] channels = (String[])cs.channels().visit(this);
+		List<String> claimed = new ArrayList<String>();
+//		for(int i=0; i<channels.length; i++) {
+//			template = group.getInstanceOf("ClaimStatClaimPart");
+//			
+//			String c = channels[i];
+//
+//			template.add("unclaims", claimed);
+//			template.add("c", c);
+//			template.add("jmp", _jumpCnt);
+//			_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+//			_jumpCnt++;
+//			claimparts.add(template.render());
+//
+//			//list of channels that next channel needs
+//			//to unclaim if that channel claim fails.
+//			claimed.add(c);
+//		}
+
+//		String stat = (String)cs.stat().visit(this);
+		
+		
+		Object stats = null;
+		if (cs.stat() instanceof Block) {
+			Block b = (Block) cs.stat();
+			stats = (String[]) b.visit(this);
+		} else {
+			stats = (String) cs.stat().visit(this);
+		}
+		
+		template = group.getInstanceOf("ClaimStat");
+
+		template.add("channels", channels);
+		template.add("stats", stats);
+		
+		template.add("jmp", _jumpCnt);
+		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+		_jumpCnt++;
+		
+
+		return (T) template.render();
 	}
 
 	/**
@@ -428,21 +644,50 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 	
 	public T createInvocation(String left, Invocation in, boolean isParamInvocation) {
-		Log.log(in.line + ": Creating Invocation ("+ in.procedureName().getname() + ") with LHS as " + left);
+		return createInvocation(left, in, null, isParamInvocation);
+	}
 
-		ST template = null;
-		ProcTypeDecl pd = in.targetProc;
-		String qualifiedPkg = getQualifiedPkg(pd);
-		String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
+	public T createInvocation(String left, Invocation in, List<String> barriers, boolean isParamInvocation) {
+		String invocationProcName = in.procedureName().getname();
+		Log.log(in.line + ": Creating Invocation ("+ invocationProcName + ") with LHS as " + left);
+
+	    ST template = null;
+	    ProcTypeDecl pd = in.targetProc;
+	    String qualifiedPkg = getQualifiedPkg(pd, invocationProcName);
+	    String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
 
 		List<String> paramLst = new ArrayList<String>();
 		List<String> paramBlocks = new ArrayList<String>();
 
+		boolean yields = isYieldingProc(pd);
+		/*
+		 * For any invocation of yielding proc that's not inside
+		 * par block, we will, as inefficient as it, wrap it in
+		 * a par that has single exprstat. By cheating this way,
+		 * we are able to make all recursions work out of the box
+		 * at the expense of spawning new process for each recursive
+		 * call. There is a better way of doing it by wrapping all
+		 * recursive calls in a procedure block and running them in
+		 * the same thread as the caller process. Which also means
+		 * that all the procedure has to yield on the same 'ready' 
+		 * flag of the caller process. It's a bit tricky. So, if you 
+		 * are the next guy doing this, it is onto you. :P 
+		 */
+		if (yields && !_inParBlock) {
+			return (new ParBlock(new Sequence(new ExprStat(in)), new Sequence())).visit(this);
+		}
+		
+		boolean emptyBarriers = (barriers == null);
+		
 		/*
 		 * Generate param code.
 		 */
 		Sequence<Expression> params = in.params();
 		for(int i = 0; i < params.size(); i++) {
+			
+			if (emptyBarriers)
+				barriers = new ArrayList<String>();
+
 			Expression e = params.child(i);
 			if (e != null) {
 				if (e instanceof ChannelReadExpr) {
@@ -466,7 +711,28 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 					paramLst.add(tempVar);
 
 				} else {
-					paramLst.add((String)e.visit(this));
+					String name = (String) e.visit(this);
+					paramLst.add(name);
+					
+					if (e instanceof NameExpr) {
+						NameExpr ne = (NameExpr) e;
+					
+						Type t = null;
+
+						if (ne.myDecl instanceof LocalDecl) {
+							t = ((LocalDecl) ne.myDecl).type();
+						} else if (ne.myDecl instanceof ParamDecl) {
+							t = ((ParamDecl) ne.myDecl).type();
+						}
+						
+						if (emptyBarriers) {
+							if (t.isBarrierType()) {
+								barriers.add(name);
+							}
+							
+						}
+						
+					}
 				}
 			}
 		}
@@ -477,16 +743,21 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("par", _inParBlock);
 		template.add("parName", _parName);
 		
+		template.add("barriers", barriers);
+		
+		
 		/*
 		 * If target proc (pd) is a yielding proc, ie. it is a process,
 		 * instead of normal invocation, we need to instantiate the process
 		 * and schedule it.
 		 */
-		template.add("isProcess", isYieldingProc(pd));
+		template.add("isProcess", yields);
 		
 		if (left != null || !paramBlocks.isEmpty()) {
 
 			String invocationBlock = template.render();
+			//TODO change name of template as this is true for any invocation with
+			//another invocation as params.
 			template = group.getInstanceOf("InvocationWithChannelReadExprParam");
 			
 			template.add("paramBlocks", paramBlocks);
@@ -533,7 +804,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			 * TimerReadExpr and its own visitor in the future.
 			 */
 			template = group.getInstanceOf("TimerReadExpr");
-			//TODO: complete this.
+			template.add("left", left);
+			template.add("timer", channelNameExpr.visit(this));
+			System.out.println("Found Timer Read Expression!!!");
+			return (T) template.render();
 		} else { 
 			Type baseType = null;
 
@@ -555,35 +829,58 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				baseType = chanType.baseType();
 			}
 
-			if (baseType.isIntegerType() || baseType.isBooleanType()) {
+//			if (baseType.isIntegerType() || baseType.isBooleanType() || baseType.isProtocolType()) {
 				
-				template = group.getInstanceOf("ChannelReadExpr");
-				
-				/*
-			     * Adding switch cases for resumption.
-			     */
-				for (int i=0; i<2; i++) {
-					if (_inParBlock) {
-						_parSwitchCases.add(getLookupSwitchCase(_jumpCnt));	
-					} else {
-						_switchCases.add(getLookupSwitchCase(_jumpCnt));	
-					}
-					template.add("jmp" + i, _jumpCnt);
-					_jumpCnt++;
+				//EXTENDED RENDEZVOUS
+				Block b = cr.extRV();
+				String[] extRv = null;
+				if (b != null) {
+					extRv = (String[])b.visit(this);
+//					System.out.println(Arrays.asList(extRv));
 				}
-					
+				//-------
+
+				if (extRv == null) {
+					template = group.getInstanceOf("ChannelReadExpr");
+				} else {
+					template = group.getInstanceOf("ChannelReadExprExtRv");
+					template.add("extRv", extRv);
+				}
+				
+				//Since channel read in Alts are handled differently, i.e. w/o
+				//yields in the generated code but rather in Alt class,
+				//we don't want to increment and add jumpCnts to runlabel switch.
+				if (!_inAlt) {
+					/*
+				     * Adding switch cases for resumption.
+				     */
+					for (int i=0; i<2; i++) {
+						if (_inParBlock && !inParFor) {
+							_parSwitchCases.add(getLookupSwitchCase(_jumpCnt));	
+						} else if (inParFor){
+							_parforSwitchCases.add(getLookupSwitchCase(_jumpCnt));	
+						} else {
+							_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+						}
+						template.add("jmp" + i, _jumpCnt);
+						_jumpCnt++;
+					}
+				}
+
 				template.add("channel", channel);
 				template.add("left", left);
-			} else {
-				String errorMsg = "Unsupported type: %s for Channel!";
-				String error = String.format(errorMsg, baseType.toString());
-				Error.error(cr, error);
-			}
+				template.add("alt", _inAlt);
+
+//			} else {
+//				String errorMsg = "Unsupported type: %s for Channel!";
+//				String error = String.format(errorMsg, baseType.toString());
+//				Error.error(cr, error);
+//			}
 		}
 
 		return (T)template.render();
 	}
-
+	
 	/**
 	 * BreakStat 
 	 * TODO: Add identifier option.
@@ -695,44 +992,100 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) es.expr().visit(this);
 	}
 
+	boolean inParFor = false;
 	/**
 	 * ForStat
 	 */
 	public T visitForStat(ForStat fs) {
 		Log.log(fs.line + ": Visiting a ForStat");
+		
 		ST template = group.getInstanceOf("ForStat");
 
-		/*
-		 * TODO: this will throw nullpointer when for( ; ;) is used. 
-		 * do we support this??
-		 */
 		String[] initStr = null;
 		String[] incrStr = null;
+		String expr = null;
 
+		//init can be null
 		Sequence<Statement> init = fs.init();
-
-		// Check for null >:(
-		if (init != null)
+		if (init != null) {
 			initStr = (String[]) init.visit(this);
+		}
 
+		//incr can be null
 		Sequence<ExprStat> incr = fs.incr();
-		if (incr != null)
+		if (incr != null) {
 			incrStr = (String[]) incr.visit(this);
+		}
 
-		String expr = (String) fs.expr().visit(this);
+		//expr can be null
+		Expression e = fs.expr();
+		if (e != null) {
+			expr = (String) fs.expr().visit(this);
+		}
+
 		// TODO: Barriers
+		Sequence<Expression> bs = fs.barriers();
+		String[] barriers = null;
+		if (bs != null) {
+			barriers = (String[]) bs.visit(this);
+		}
+		//----------------
 
-		/*
-		 * Depending whether there is curly brackets it may 
-		 * return an array, or maybe just a single object. 
-		 * So we must check what it actually is!
-		 */
-		Object stats = fs.stats().visit(this);
+		if (fs.isPar()) {
+			inParFor = true;
 
-		if (stats instanceof String[])
-			template.add("stats", (String[]) stats);
-		else
-			template.add("stats", (String) stats);
+			template = group.getInstanceOf("ParForStat");
+			
+			_parforSwitchCases = new ArrayList<String>();
+			
+			Object stats = null;
+			if (fs.stats() instanceof Block) {
+				Block b = (Block) fs.stats();
+				stats = (String[]) b.visit(this);
+			} else {
+				stats = (String) fs.stats().visit(this);
+			}
+
+			String parName = "par" + ++this._parCnt;
+			if (stats != null) {
+				ST bodyTemplate = group.getInstanceOf("AnonymousProcess");
+				bodyTemplate.add("parName", parName);
+				bodyTemplate.add("lookupswitch", makeLookupSwitch(_parforSwitchCases));
+				bodyTemplate.add("body", stats);
+				bodyTemplate.add("parfor", true);
+
+				//TODO: fix for empty forstat block
+				template.add("stats", bodyTemplate.render());
+			}
+
+			template.add("parName", parName);
+			template.add("barriers", barriers);
+			
+			/*
+			 * Adding resumption points
+			 */
+			for (int i=0; i<2; i++) {
+				template.add("jmp" + i, _jumpCnt);
+				_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+				_jumpCnt++;
+			}
+			
+			inParFor = false;
+
+		} else {
+			template = group.getInstanceOf("ForStat");
+			/*
+			 * Depending whether there is curly brackets (block) it
+			 * may return an array, or maybe just a single object. 
+			 */
+			Object stats = fs.stats().visit(this);
+
+			if (stats instanceof String[])
+				template.add("stats", (String[]) stats);
+			else
+				template.add("stats", (String) stats);
+		}
+		
 
 		template.add("init", initStr);
 		template.add("incr", incrStr);
@@ -749,6 +1102,26 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) createInvocation(null, in, false);
 	}
 
+	public void modifyLocalDeclName(Name name) {
+		String modified = globalize(name.getname(), false);
+		_gLocalNamesMap.put(name.getname(), modified);
+		name.setName(modified);
+	}
+	
+	//public LocalDecl(Type type, Var var, boolean constant) {
+	public T visitConstantDecl(ConstantDecl cd) {
+		Log.log(cd.line + ": Visting ConstantDecl (" + cd.type().typeName() + " "
+				+ cd.var().name().getname() + ")");
+		
+		ST template = group.getInstanceOf("ConstantDecl");
+		
+		template.add("type", cd.type().visit(this));
+		template.add("var", cd.var().visit(this));
+//		return (T)(new LocalDecl(cd.type(), cd.var(), true)).visit(this);
+		
+		return (T) template.render();
+	}
+
 	/**
 	 * LocalDecl
 	 */
@@ -756,46 +1129,71 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(ld.line + ": Visting LocalDecl (" + ld.type().typeName() + " "
 				+ ld.var().name().getname() + ")");
 
-		/*
-		 * cds: TODO: should the const keyword with localdecl be taken care of?? 
-		 * in java, probably no need as compiler generated code is not going to overwrite any
-		 * var whether or not constant.
-		 */
-
+		modifyLocalDeclName(ld.var().name());
+		
 		String typeString = (String) ld.type().visit(this);
-		
-		String name = ld.var().name().getname();
-		String gname = globalize(name, false);
-		ld.var().name().setName(gname);
+		String name = (String)ld.var().name().visit(this);
 
-		if (_gLocalNamesMap != null) {
-			_gLocalNamesMap.put(name, gname);
-			_gLocals.add(typeString + " " + ld.var().name().getname());
+		_gLocals.add(typeString + " " + name);
+
+		ST template = null;
+		if (_proc_yields) {
+			template = group.getInstanceOf("LocalDeclYieldingProc");
+		} else {
+			/*
+			 * There's really no need to set chanType and barrierType for
+			 * this as the use of those would make the proc a yielding one.
+			 * But we have it anyway just to accommodate any declaration
+			 * that might be put in by the pjammers.
+			 */
+			template = group.getInstanceOf("LocalDeclNormalProc");
 		}
-
-		ST template = group.getInstanceOf("LocalDecl");
 		
+		/*
+		 * We want to handle channel reads and invocations
+		 * differently as they will have extra code for
+		 * yields before the actual declaration/assignment.
+		 */
 		Expression right = ld.var().init();
+
 		if(right instanceof ChannelReadExpr || right instanceof Invocation){
 			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), right, Assignment.EQ).visit(this);
 			return (T) assignment;
 		} else {
 			/*
-			 * Channels in ProcessJ do not require initialization but in 
-			 * Java, we need it. So, the below code makes the grammar template
-			 * do it if it has not been initialized in pj.
+			 * Resolve type. 
 			 */
-			template.add("isRightNull", (ld.var().init() == null));
-			template.add("channelPart", ld.type().isChannelType());
-			template.add("type", typeString);
+			Type t = ld.type();
+			
+			boolean isProtocolOrRecordType = false;
+			if (t instanceof NamedType) { //Protocol or Record type
+				isProtocolOrRecordType = isProtocolOrRecordType((NamedType)t);
+			}
+			
+			boolean barrierType = false;
+			if (t instanceof PrimitiveType && t.isBarrierType()) {
+				barrierType = true;
+			}
+			
+			boolean channelType = t.isChannelType();
+
+			template.add("chanType", channelType);
+			template.add("protoOrRecType", isProtocolOrRecordType);
+			template.add("barrierType", barrierType);
+			template.add("rEmpty", (ld.var().init() == null));
 
 			String var = (String) ld.var().visit(this);
 			template.add("var", var);
-			template.add("procYields", _proc_yields);
+			template.add("typeStr", typeString);
 			
 			return (T) template.render();
 		}
 		
+	}
+	
+	public boolean isProtocolOrRecordType(NamedType nt) {
+		return _gProtoNameMap.containsKey(nt.name().getname()) 
+				|| _gRecordNameMap.containsKey(nt.name().getname());
 	}
 	
 	/**
@@ -805,7 +1203,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * if it only has one element.
 	 */
 	public T visitIfStat(IfStat is) {
-		Log.log(is.line + ": Visiting a ifStat");
+		Log.log(is.line + ": Visiting a IfStat");
 		ST template = group.getInstanceOf("IfStat");
 
 		String expr = (String) is.expr().visit(this);
@@ -838,7 +1236,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * Name
 	 */
 	public T visitName(Name na) {
-		Log.log(na.line + ": Visiting a Name");
+		Log.log(na.line + ": Visiting a Name (" + na.getname() + ")");
 
 		String name = na.getname();
 		String gname = null;
@@ -848,11 +1246,25 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		if (_gLocalNamesMap != null && gname == null)
 			gname = _gLocalNamesMap.get(name);
+		
+		if(_gProtoNameMap != null && gname == null)
+			gname = _gProtoNameMap.get(name);
+
+		if(_gRecordNameMap != null && gname == null)
+			gname = _gRecordNameMap.get(name);
 
 		if (gname == null)
 			gname = name;
 
+//		System.out.println("name=" + name + " || gname=" + gname);
+
 		return (T) gname;
+	}
+	
+	public T visitNamedType(NamedType nt) {
+		Log.log(nt.line + ": Visiting NamedType (" + nt.name().getname() + ")");
+		
+		return (T) nt.name().visit(this);
 	}
 
 	/**
@@ -868,7 +1280,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * NewArray
 	 */
 	public T visitNewArray(NewArray ne) {
-		Log.log(ne.line + ": Visiting a NewArray!");
+		Log.log(ne.line + ": Visiting a NewArray");
 
 		ST template = group.getInstanceOf("NewArray");
 		String myType = (String) ne.baseType().visit(this);
@@ -894,7 +1306,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * ParamDecl
 	 */
 	public T visitParamDecl(ParamDecl pd) {
-		// TODO: is constant?
 		Log.log(pd.line + ": Visiting a ParamDecl");
 
 		ST template = group.getInstanceOf("ParamDecl");
@@ -929,68 +1340,94 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		_parName = "par" + ++this._parCnt;
 
 		 /*
-	     * Adding switch cases for resumption.
+	     * Adding switch cases for Par resumption.
 	     */ 
 		for (int i=0; i<2; i++) {
 			parBlockTemplate.add("jmp" + i, _jumpCnt);
-			_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+			if (inParFor) {
+				_parforSwitchCases.add(getLookupSwitchCase(_jumpCnt));	
+			} else {
+				_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+			}
 			_jumpCnt++;
-		}
+		}	
+		
 
+		//BARRIER ------------------
+		List<String> barriers = null;
+
+		Sequence<Expression> bs = pb.barriers();
+		if (bs != null) {
+			barriers = new ArrayList<String>();
+			barriers.addAll(Arrays.asList((String[]) bs.visit(this)));
+		}
+		
 		Sequence<Statement> se = pb.stats();
 		String[] stats = new String[se.size()];
 
 		for (int k = 0; k < se.size(); k++) {
-			String body = null;
+			Object body = null;
 			_parSwitchCases = new ArrayList<String>();
 
-			if (se.child(k) != null) {
-				if (se.child(k) instanceof ExprStat) {
-					ExprStat es = (ExprStat) se.child(k);
-					if (es.expr() instanceof Invocation) {
-						stats[k] = (String) createInvocation(null, (Invocation) es.expr(), false);
-					} else if (es.expr() instanceof ChannelReadExpr) {
-						body = (String) createChannelReadExpr(null, (ChannelReadExpr) es.expr());
-					} else {
-						body = (String) se.child(k).visit(this);
-					}
-				} else {
-					body = (String) se.child(k).visit(this);
-				}
+			Statement st = se.child(k);
 
-			} else {
-				body = null;
-			}
-			
-			if (body != null) {
-				
-				ST template = group.getInstanceOf("ParBlockStat");
-				
-				/*
-			     * Creating switch table for resumption.
-			     */
-				if (_parSwitchCases.size() > 0) {
-					template.add("lookupswitch", getParLookupSwitch(_parSwitchCases));
+			if (st != null) {
+				if (st instanceof ExprStat && ((ExprStat) st).expr() instanceof Invocation) {
+
+					ExprStat es = (ExprStat) st; 
+					
+					stats[k] = (String) createInvocation(null, (Invocation) es.expr(), barriers, false);
+					
+				} else {
+					if (st instanceof ExprStat && ((ExprStat) st).expr() instanceof ChannelReadExpr) {
+						ExprStat es = (ExprStat) st;
+						body = createChannelReadExpr(null, (ChannelReadExpr) es.expr());
+					} else {
+						body = st.visit(this);
+					}
+					
+					if (body != null) {
+						
+						ST template = group.getInstanceOf("AnonymousProcess");
+						
+						/*
+					     * Creating switch table for resumption.
+					     */
+						if (_parSwitchCases.size() > 0) {
+							template.add("lookupswitch", makeLookupSwitch(_parSwitchCases));
+						}
+						
+						/*
+						 * Depending on if it is a single statement or
+						 * block, body could be String or String Array.
+						 */
+						if (body instanceof String[]) {
+							template.add("body", (String[]) body);
+						} else {
+							template.add("body", (String) body);
+						}
+						
+						template.add("parName", _parName);
+						template.add("barriers", barriers);
+							
+						stats[k] = template.render();
+					}
 				}
-				
-				template.add("parName", _parName);
-				template.add("body", body);
-				
-				stats[k] = template.render();
 			}
 		}
 
 		parBlockTemplate.add("parCnt", stats.length);
 		parBlockTemplate.add("stats", stats);
+		parBlockTemplate.add("barriers", barriers);
 		parBlockTemplate.add("parName", _parName);
 		
 		_inParBlock = false;
 		return (T) parBlockTemplate.render();
 	}
 
-	public String getParLookupSwitch(List<String> cases) {
+	public String makeLookupSwitch(List<String> cases) {
 		ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
-		switchTemplate.add("cases", _parSwitchCases);
+		switchTemplate.add("cases", cases);
 		return switchTemplate.render();
 	}
 
@@ -1026,15 +1463,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(py.line + ": Visiting a Primitive Type");
 
 		String typeString = py.toString();
-		// Here we list all the primitive types that don't perfectly translate
-		// to Java.
-		if (py.isStringType() == true)
+		/*
+		 * Here we list all the primitive types 
+		 * that don't perfectly translate to Java.
+		 */
+		if (py.isStringType()) {
 			typeString = "String";
-		if (py.isTimerType() == true)
+		} else if (py.isTimerType()) {
 			typeString = "Timer";
-		if (py.isBooleanType() == true)
-			typeString = "boolean";
-		// TODO: add barrier, timer.
+		} else if (py.isBarrierType()) {
+			typeString = "Barrier";
+		}
 		return (T) typeString;
 	}
 
@@ -1042,46 +1481,50 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * ProcTypeDecl
 	 */
 	public T visitProcTypeDecl(ProcTypeDecl pd) {
-		String name = (String) pd.name().visit(this);
+		this._currentProcName = (String) pd.name().visit(this);
 
-		Log.log(pd.line + ": Visiting a Proc Type Decl: " + name);
-
-		ST template = null;
-
-		this._proc_yields = isYieldingProc(pd);
-
-		if ("main".equals(name) && MAIN_SIGNATURE.equals(pd.signature())) {
-			template = group.getInstanceOf("ProcTypeDeclToMain");
-		} else if (this._proc_yields) {
-			template = group.getInstanceOf("ProcTypeDeclToProcess");
-		} else {
-			template = group.getInstanceOf("ProcTypeDeclToMethod");
-		}
+		Log.log(pd.line + ": Visiting a ProcTypeDecl **(" + _currentProcName + ")**");
 
 		/*
 		 * Initializing global var count for new class.
 		 */
-		_jumpCnt = 0;
-		_gvarCnt = 0;
-		_parCnt = 0;
-		_inParBlock = false;
-		_gFormalNamesMap = new HashMap<String, String>();
-		_gLocalNamesMap = new HashMap<String, String>();
-		_gLocals = new ArrayList<String>();
-		_switchCases = new ArrayList<String>();
+		this._proc_yields = isYieldingProc(pd);
+		this._jumpCnt = 1;
+		this._gvarCnt = 0;
+		this._parCnt = 0;
+		this._inParBlock = false;
+		this._gFormalNamesMap = new HashMap<String, String>();
+		this._gLocalNamesMap = new HashMap<String, String>();
+		this._gLocals = new ArrayList<String>();
+		this._switchCases = new ArrayList<String>();
 
+		String qualifiedPkg = getQualifiedPkg(pd, null);
+		String qualifiedProc = qualifiedPkg + "." + _currentProcName;
+
+		ST template = null;
 		
-		// TODO: Modifiers?
-		Sequence<Modifier> modifiers = pd.modifiers();
-
+		if (this._proc_yields) {
+			template = group.getInstanceOf("ProcTypeDeclToProcess");
+		} else {
+			template = group.getInstanceOf("ProcTypeDeclToMethod");
+		}
+		
 		String returnType = (String) pd.returnType().visit(this);
 		String[] formals = (String[]) pd.formalParams().visit(this);
 		String[] block = (String[]) pd.body().visit(this);
 		
+		Statement lastStat = null;
+		if (pd.body().stats().size() > 0) {
+			lastStat = pd.body().stats().child(pd.body().stats().size()-1);
+		}
+		if (lastStat != null && lastStat instanceof ReturnStat) {
+			template.add("retstatFound", true);
+		}
+		
 		template.add("packageName", this.originalFilename);
 		template.add("returnType", returnType);
 
-		template.add("name", name);
+		template.add("name", _currentProcName);
 
 		if (formals.length != 0) {
 			template.add("formals", formals);
@@ -1090,15 +1533,27 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			template.add("formalNames", _gFormalNamesMap.values());
 		}
 		if (_gLocals.size() != 0) {
+//			System.out.println("------------- gLocals ----------------");
+//			System.out.println(_gLocals);
 			template.add("globals", _gLocals.toArray(new String[_gLocals.size()]));
 		}
 		template.add("body", block);
 		
+		boolean isMain = "main".equals(_currentProcName) && MAIN_SIGNATURE.equals(pd.signature());
+		if (isMain && this._proc_yields) {
+			ST mainTemplate = group.getInstanceOf("ProcTypeDeclToMain");
+			mainTemplate.add("qualifiedProc", qualifiedProc);
+			
+			template.add("mainMethod", mainTemplate.render());
+		}
+		
+		/*
+		 * FIXME: figure out that proc_yields check is needed. if
+		 * needed figure out if it is needed in other areas.
+		 * 
+	     * Creating switch table for resumption.
+	     */
 		if (this._proc_yields && _switchCases.size() > 0) {
-
-			 /*
-		     * Creating switch table for resumption.
-		     */
 			ST switchTemplate= group.getInstanceOf("LookupSwitchTable");
 			switchTemplate.add("cases", _switchCases);
 			
@@ -1107,6 +1562,190 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		return (T) template.render();
 	}
+	
+	//--------------------------------------------------------------------------
+	/**
+	 * Protocol Literal
+	 */
+	public T visitProtocolLiteral(ProtocolLiteral pl) {
+		Log.log(pl.line + ": Visiting a ProtocolLiteral");
+		ST template = group.getInstanceOf("ProtocolLiteral");
+		
+		String protocolName = (String) pl.name().visit(this);
+		String tag = (String)pl.tag().visit(this);
+		String tagName = _gProtoCaseNameMap.get(tag);
+		String[] params = (String[]) pl.expressions().visit(this);
+
+		template.add("protocolName", protocolName);
+		template.add("tagName", tagName);
+		template.add("tag", tag);
+		template.add("params", params);
+		return (T) template.render();
+	}
+
+	String _protoTypeDeclName = null;
+	List<String> _gRecMemNames = null;
+	//TODO change this to tagNames maybe
+	Set<String> _caseNames = null;
+	Map<String, Set<String>> _caseMap = new HashMap<String, Set<String>>();
+	Map<String, String> _gProtoNameMap = new HashMap<String, String>();
+	//TODO maybe change this to tagnamemap 
+	Map<String, String> _gProtoCaseNameMap = new HashMap<String, String>();
+	Map<String, String> _gRecordNameMap = new HashMap<String, String>();
+	
+	public void modifyProtocolName(Name name) {
+		String modified = "Protocol_"+name.getname(); 
+		_gProtoNameMap.put(name.getname(), modified);
+		name.setName(modified);
+	}
+	/**
+	 * Protocol Declaration
+	 */
+	public T visitProtocolTypeDecl(ProtocolTypeDecl pd) {
+		Log.log(pd.line + ": Visiting a ProtocolTypeDecl **(" + pd.name().getname() + ")**");
+
+		ST template = group.getInstanceOf("ProtocolTypeDecl");
+		
+		modifyProtocolName(pd.name());
+		
+		_protoTypeDeclName = (String) pd.name().visit(this);
+
+		_caseNames = new HashSet<String>();
+			
+		String[] cases = null;
+		if (pd.body() != null) {
+			cases = (String[]) pd.body().visit(this);
+		}
+
+		_protoTypeDeclName = null;
+		
+		Set<String> temp = null;
+		for(Name n: pd.extend()) {
+
+			modifyProtocolName(n);
+
+			temp = _caseMap.get(n.visit(this));
+			if (temp != null) {
+				_caseNames.addAll(temp);
+			}
+		}
+		
+		template.add("name", pd.name().getname());
+		template.add("cases", cases);
+		template.add("caseNames", _caseNames);
+		
+		_caseMap.put(pd.name().getname(), _caseNames);
+		return (T) template.render();
+	}
+	
+	public void modifyProtocolCaseName(Name name) {
+		String modified = _protoTypeDeclName + "_" + name.getname();
+		_gProtoCaseNameMap.put(name.getname(), modified);
+		name.setName(modified);
+	}
+	/**
+	 * Protocol Case
+	 */
+	public T visitProtocolCase(ProtocolCase pc) {
+		Log.log(pc.line + ": Visiting a ProtocolCase");
+
+		ST template = group.getInstanceOf("ProtocolCase");
+		_gRecMemNames = new ArrayList<String>();
+
+		_caseNames.add(pc.name().getname());
+
+		//name: Protocol_A_a1
+		modifyProtocolCaseName(pc.name());
+		
+		template.add("name", pc.name().getname());
+
+		//recordMembers: int x; int y
+		String[] rms = (String[]) pc.body().visit(this);
+		template.add("recMems", rms);
+		template.add("recMemNames", _gRecMemNames);
+		return (T) template.render();
+	}
+	
+	public void modifyRecordName(Name name) {
+		String modified =  "Record_" + name.getname();
+		_gRecordNameMap.put(name.getname(), modified);
+		name.setName(modified);
+	}
+	
+	public T visitRecordTypeDecl(RecordTypeDecl rt) {
+		Log.log(rt.line + ": Visiting a RecordTypeDecl (" + rt.name().getname() + ")");
+		ST template = group.getInstanceOf("RecordTypeDecl");
+
+		_gRecMemNames = new ArrayList<String>();
+
+		modifyRecordName(rt.name());
+		
+		List<String> rms = new ArrayList<String>();
+		rms.addAll(Arrays.asList((String[])rt.body().visit(this)));
+		
+		for(Name name: rt.extend()) {
+			Type t = (Type)_topLevelDecls.get((String)name.visit(this));
+			if (t instanceof RecordTypeDecl) {
+				RecordTypeDecl tt = (RecordTypeDecl) t;
+				rms.addAll(Arrays.asList((String[])tt.body().visit(this)));
+			}
+		}
+
+		template.add("name", rt.name().visit(this));
+		template.add("recMems", rms);
+		template.add("recMemNames", _gRecMemNames);
+
+		return (T)template.render();
+	}
+	
+	public T visitRecordMember(RecordMember rm) {
+		Log.log(rm.line + ": Visiting a RecordMember");
+		ST template = group.getInstanceOf("RecordMember");
+
+		_gRecMemNames.add((String)rm.name().visit(this));
+
+		template.add("type", rm.type().visit(this));
+		template.add("name", rm.name().visit(this));
+		return (T) template.render();
+	}
+	
+	public T visitRecordAccess(RecordAccess ra) {
+		Log.log(ra.line + ": Visiting a RecordAccess = " + ra.toString());
+		
+		ST template = group.getInstanceOf("RecordAccess");
+
+		Type tType = ra.record().type;
+
+		if (tType.isRecordType()) {
+			System.out.println("found a record type");
+		} else if (tType.isProtocolType()) {
+			ProtocolTypeDecl pt = (ProtocolTypeDecl)ra.record().type;
+			String caseName = _gProtoCaseNameMap.get(protocolTagsSwitchedOn.get(pt.name().getname()));
+			String protocolName = caseName.substring(0, caseName.lastIndexOf("_"));
+
+			template.add("protocolName", protocolName);
+			template.add("caseName", caseName);
+			template.add("record", ra.record().visit(this));
+			template.add("field", ra.field().visit(this));
+		}
+
+		return (T) template.render();
+	}
+	
+	public T visitRecordLiteral(RecordLiteral rl) {
+		Log.log(rl.line + ": Visiting a RecordLiteral");
+
+		ST template = group.getInstanceOf("RecordLiteral");
+		
+		String name = (String) rl.name().visit(this);
+		String[] params = (String[]) rl.members().visit(this);
+
+		template.add("name", name);
+		template.add("params", params);
+		
+		return (T) template.render();
+	}
+	//--------------------------------------------------------------------------
 
 	/**
 	 * ReturnStat
@@ -1123,7 +1762,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			exprStr = (String) expr.visit(this);
 			template.add("expr", exprStr);
 		}
-
+		template.add("procYields", _proc_yields);
+		
 		return (T) template.render();
 	}
 
@@ -1185,6 +1825,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) template.render();
 	}
 
+//	String currentProtocolName = null;
+//	boolean isProtocolExpr = false;
+
+    // Contains the protocol name and the corresponding tags currently switched on.
+    HashMap<String,String> protocolTagsSwitchedOn = new HashMap<String,String>();
+
 	/**
 	 * SwitchStat
 	 */
@@ -1192,13 +1838,105 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(st.line + ": Visiting a SwitchStat");
 
 		ST template = group.getInstanceOf("SwitchStat");
-		String expr = (String) st.expr().visit(this);
-		String[] switchGroups = (String[]) st.switchBlocks().visit(this);
+		
+		boolean isProtocolExpr = st.expr().type.isProtocolType();
 
+		String expr = (String) st.expr().visit(this);
+		
+		List<String> switchGroups = new ArrayList<String>();
+		if (isProtocolExpr) {
+
+			ProtocolTypeDecl pt = (ProtocolTypeDecl) st.expr().type;
+
+			for (SwitchGroup sg : st.switchBlocks()) {
+				SwitchLabel sl = sg.labels().child(0);
+//				ProtocolCase pc = findProtocolCase(pt, ((NameExpr)sl.expr()).name().getname());
+				
+				protocolTagsSwitchedOn.put(pt.name().getname(), ((NameExpr)sl.expr()).name().getname());
+
+				String label = (String)sl.visit(this);
+				String[] stmts = (String[]) sg.statements().visit(this);
+
+				ST template1 = group.getInstanceOf("SwitchGroup");
+				template1.add("labels", label);
+				template1.add("stmts", stmts);
+
+				switchGroups.add(template1.render());
+			}
+		} else {
+			switchGroups = Arrays.asList((String[])st.switchBlocks().visit(this));
+		}
+
+		template.add("isProtocolExpr", isProtocolExpr);
 		template.add("expr", expr);
 		template.add("switchGroups", switchGroups);
 
+		isProtocolExpr = false;
+		
 		return (T) template.render();
+	}
+	
+	public T visitSyncStat(SyncStat st) {
+		Log.log(st.line + ": Visiting a SyncStat");
+		ST template = group.getInstanceOf("SyncStat");
+
+		template.add("barrier", st.barrier().visit(this));
+		template.add("jmp", _jumpCnt);
+
+		//FIXME: maybe create a method for this and do the 
+		//adding to different lists based on boolean in that
+		//method. also look into if adding it to the same list
+		//always but swap the lists in different nodes as needed
+		//rather than using different lists.
+		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+		_jumpCnt++;
+
+		return (T) template.render();
+	}
+
+//	public void findSyncedOn(Statement stat, List<String> syncedOn) {
+//		
+//		if (stat instanceof ExprStat) {
+//			if (((ExprStat)stat).expr() instanceof Invocation) {
+//				Invocation in = (Invocation) ((ExprStat)stat).expr();
+//				findSyncedOn(in.targetProc.body(), syncedOn);
+//			} else if (((ExprStat)stat).expr() instanceof ChannelReadExpr) {
+//				//Probably nothing to do here.
+//			}
+//		} else if(stat instanceof Block) {
+//			Block b = (Block) stat;
+//			boolean x = false;
+//			for (Statement st: b.stats()) {
+//				findSyncedOn(st, syncedOn);
+//			}
+//		} else {
+//			if (stat instanceof SyncStat) {
+//				SyncStat syncStat = (SyncStat) stat;
+//				String bn = (String)((NameExpr)syncStat.barrier()).name().visit(this);
+//				syncedOn.add(bn);
+//			}
+//		}
+//	}
+
+	public ProtocolCase findProtocolCase(ProtocolTypeDecl pt, String switchLabelName) {
+
+		String modifiedName = _gProtoCaseNameMap.get(switchLabelName);
+		for (ProtocolCase pc : pt.body() ) {
+		    String name = pc.name().getname();
+		    System.out.println("name=" + name + "  " + "switchLabelName=" + modifiedName);
+		    if (name.equals(modifiedName))
+		    	return pc;
+		}
+			
+		for (int i = 0; i<pt.extend().size(); i++) {
+		    ProtocolTypeDecl pdt = (ProtocolTypeDecl)((Name)pt.extend().child(i)).myDecl;
+		    ProtocolCase pc;
+		    pc = findProtocolCase(pdt, switchLabelName);
+		    if (pc != null) 
+		    	return pc;
+		}
+
+		return null;
 	}
 
 	/**
@@ -1215,6 +1953,24 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("expr", expr);
 		template.add("trueBranch", trueBranch);
 		template.add("falseBranch", falseBranch);
+
+		return (T) template.render();
+	}
+	
+	/**
+	 * TimeoutStat
+	 */
+	public T visitTimeoutStat(TimeoutStat ts) {
+		Log.log(ts.line + ": Visiting a TimeoutStat");
+		ST template = group.getInstanceOf("TimeoutStat");
+		
+		template.add("alt", _inAlt);
+		template.add("name", ts.timer().visit(this));
+		template.add("delay", ts.delay().visit(this));
+		template.add("jmp", _jumpCnt);
+
+		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+		_jumpCnt++;
 
 		return (T) template.render();
 	}
@@ -1254,7 +2010,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 * Var
 	 */
 	public T visitVar(Var va) {
-		Log.log(va.line + ": Visiting a Var (" + va.name().getname() + ").");
+		Log.log(va.line + ": Visiting a Var: " + va.name().getname() );
 
 		ST template = group.getInstanceOf("Var");
 		String name = (String) va.name().visit(this);
@@ -1304,89 +2060,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			template.add("stat", (String) stats);
 
 		return (T) template.render();
-	}
-
-	/**
-	 * Auxillary function, given a protocol it will create the appropriate protoype needed by the equivalent c program.
-	 * This is used to create all the function protoypes that need to be declared at the top.
-	 */
-	private String getPrototypeString(ProcTypeDecl procedure) {
-		ST template = group.getInstanceOf("Prototype");
-		String name = procedure.name().getname();
-		String[] formals = (String[]) procedure.formalParams().visit(this);
-
-		template.add("name", name);
-		if (formals != null && formals.length != 0)
-			template.add("formals", formals);
-
-		return template.render();
-	}
-
-	/**
-	 * This function creates an array of {"AltEnableChannel(...)", ... } or {"AltDisableChannel(...)", ... } based on
-	 * the boolean passed in using templates.
-	 * 
-	 * @param altCaseList
-	 *            : Sequence of AltCase to create the strings for.
-	 * @param enable
-	 *            : Whether to create Enables or Disables.
-	 * @return : our array of strings.
-	 */
-	String[] createEnableDisable(Sequence<AltCase> altCaseList, boolean enable) {
-		/* These strings decide which template we grab, either the disable or the enable one. */
-		String altTimeoutStr = "AltEnableTimeout";
-		String altChannelStr = "AltEnableChannel";
-		String altSkipStr = "AltEnableSkip";
-
-		if (enable == false) {
-			altTimeoutStr = "AltDisableTimeout";
-			altChannelStr = "AltDisableChannel";
-			altSkipStr = "AltDisableSkip";
-		}
-
-		int count = altCaseList.size();
-		String[] listOfEnableDisable = new String[count];
-
-		//Iterate over our children making their statements.
-		for (int i = 0; i < count; i++) {
-			AltCase altCase = altCaseList.child(i);
-
-			if (caseIsTimeout(altCase) == true) {
-				ST altTimeoutT = group.getInstanceOf(altTimeoutStr);
-				//Get expression from the Timeout:
-				TimeoutStat time = (TimeoutStat) altCase.guard().guard();
-				String myExprStr = (String) time.delay().visit(this);
-				String name = (String) altCase.guard().visit(this);
-
-				altTimeoutT.add("number", i);
-				altTimeoutT.add("name", name);
-				//What we actually do, is we use our time variable to hold the time and then we
-				//pass this number in as this is needed by the CCSP API. Therefore this is
-				//acutally a compound statement. See the grammarTemplate.stg file for details...
-				if (enable == true)
-					altTimeoutT.add("time", myExprStr);
-
-				listOfEnableDisable[i] = altTimeoutT.render();
-			}
-			if (caseIsChannel(altCase) == true) {
-				ST altChannelT = group.getInstanceOf(altChannelStr);
-				String name = (String) altCase.guard().visit(this);
-
-				altChannelT.add("number", i);
-				altChannelT.add("name", name);
-
-				listOfEnableDisable[i] = altChannelT.render();
-			}
-			if (caseIsSkip(altCase) == true) {
-				ST altSkipT = group.getInstanceOf(altSkipStr);
-
-				altSkipT.add("number", i);
-				listOfEnableDisable[i] = altSkipT.render();
-			}
-
-		}
-
-		return listOfEnableDisable;
 	}
 
 	public boolean isYieldingProc(ProcTypeDecl pd) {
@@ -1450,23 +2123,39 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public String getLookupSwitchCase(int jmp) {
 		ST template = null;
-		if (jmp==0) {
-			template = group.getInstanceOf("LookupSwitchInitialCase");
-		} else {
-			template = group.getInstanceOf("LookupSwitchCase");
-		}
+		template = group.getInstanceOf("LookupSwitchCase");
 		template.add("caseNum", jmp);
 		return template.render();
 	}
 	
-	public String getQualifiedPkg(ProcTypeDecl pd) {
+	/*
+	 * FIXME: for now this only works for invocations
+	 * of target found in the same file. We haven't considered
+	 * imported file invocations.
+	 * 
+	 * Atleast for lib imports, e.g: include.JVM.std.io, it
+	 * seems like if we keep the last two pkgs, that is enough.
+	 * (though this too has not been implemented below.)
+	 * 
+	 * But need to make sure it works always.
+	 * 
+	 * And for god's sake, find a better way to do this.
+	 */
+	public String getQualifiedPkg(ProcTypeDecl pd, String invName) {
 		String myPkg = pd.myPackage;
 		StringBuilder qualifiedPkg = new StringBuilder();
 
+		String startPkg = null;
+		 if("println".equals(invName)){
+			 startPkg = "std";
+		 } else {
+			 startPkg = this.originalFilename;
+		 }
+		 
 		String[] tokens = myPkg.split("\\.");
 		boolean pk_start = false;
 		for (int i = 0; i < tokens.length; i++) {
-			if (tokens[i].equals(this.originalFilename))
+			if (tokens[i].equals(startPkg))
 				pk_start = true;
 
 			if (pk_start) {
@@ -1516,17 +2205,16 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String gname = "";
 		if (name != null && !name.isEmpty()) {
 			if (formals) {
-				gname = "_pd_" + name;
+				gname = "_pd$" + name;
 			} else {
-				gname = "_ld" + _gvarCnt++ + "_" + name;
+				gname = "_ld" + _gvarCnt++ + "$" + name;
 			}
 		}
 		return gname;
 	}
 
 	/**
-	 * Given a string it will write to the file as the final output of the compiler. TODO: Should probably figure out a
-	 * way to let user specify name of output file. as of now it always writes to "codeGenerated.c"
+	 * Given a string it will write to the file as the final output of the compiler.
 	 */
 	private void writeToFile(String finalOutput, String filename) {
 		Writer writer = null;

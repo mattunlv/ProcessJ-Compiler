@@ -17,9 +17,13 @@ proc void bar(int y) [yield=false]{
 	y = y+10;
 }
 
-proc void main(string[] args) {
+proc void main(string[] args)[yield=true] {
 	foo(5);
 }
+
+//proc void main(string[] args) {
+//	compute3(10);
+//}
 
 proc int compute3(int x) {
 	x = 5;
@@ -51,10 +55,10 @@ proc void foo(int x) [yield=true]{
   bar(10); 
   p2(c.write, x);
   
- /* par {
+ par {
   	int p = p3(4);
   	int k = p4(5);
   	if(x ==5)
   		x = 10;
-  }*/
+  }
 }

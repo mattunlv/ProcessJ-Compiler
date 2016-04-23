@@ -17,7 +17,7 @@ proc void alternative(chan<int>.read intChan, chan<int>.read intChan2) [yield=tr
   return;
 }
 
-proc void main(string[] args) {
+proc void main(string[] args)[yield=true] {
 	chan<int> c1;
 	chan<int> c2;
 	

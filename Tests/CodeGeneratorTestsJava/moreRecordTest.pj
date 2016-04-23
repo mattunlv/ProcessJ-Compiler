@@ -2,8 +2,8 @@
 //import t3.*;
 
 public record R1 { 
-int h;
-R1 x;
+ int h;
+ R1 x;
 }
 
 public record R extends R1, F1.R2, P1.F2.R3, A.B.C.D {  // check for	qualified names longer than 3! can do in parser!

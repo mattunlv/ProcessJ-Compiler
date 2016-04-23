@@ -1,6 +1,7 @@
 package ProcessJ.runtime;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ProcessJ code will have something of this sort:
@@ -16,22 +17,40 @@ import java.util.ArrayList;
  *X: ...                                                                                                                           
 */
 public class Barrier {
-	ArrayList<Process> proc = new ArrayList<Process>();
-	int count = 0;
-	int procCounter = 0;
+	
+	List<Process> pool = new ArrayList<Process>();
+	int enrolled = 0;
 
-	synchronized void addProc(Process p) {
-		proc.add(p);
-		procCounter++;
-		count++;
+	/*
+	 * Any process that declares a barrier
+	 * is itself enrolled on it; so count is 1.
+	 */
+	public Barrier() {
+		this.enrolled = 1;
 	}
 
-	synchronized void decrement() {
-		count--;
-		if (count == 0) {
-			for (int i = 0; i < procCounter; i++)
-				proc.get(i).setReady();
-			count = procCounter;
+	public synchronized void enroll(int m) {
+		this.enrolled = this.enrolled + m - 1;
+	}
+	
+	public synchronized void resign() {
+		/*
+		 * So that last guy doesn't decrement
+		 * the count. We want the declarer
+		 * to still be enrolled.
+		 */
+		if (this.enrolled > 1) { 
+			this.enrolled = this.enrolled - 1;
+		}
+	}
+
+	public synchronized void sync(Process process) {
+		process.setNotReady();
+		pool.add(process);
+		if (pool.size() == enrolled) {
+			for(Process p : pool) {
+				p.setReady();
+			}
 		}
 	}
 }

@@ -204,7 +204,7 @@ proc void myMain()[yield=true]{
   chan<boolean> a0, a1, a2, a3, a4, a5, a6, a7;
   chan<boolean> b0, b1, b2, b3, b4, b5, b6, b7;
   chan<boolean> r0, r1, r2, r3, r4, r5, r6, r7;
-  chan<boolean> inCarry, outCarry;
+  chan<boolean> inCarry, outCarry; 
   //Our number to add.
  /* boolean p0=false, p1=false, p2=false, p3=false, p4=false, p5=false, p6=false, p7=false;
   boolean q0=false, q1=false, q2=false, q3=false, q4=false, q5=false, q6=false, q7=false;
@@ -221,20 +221,20 @@ proc void myMain()[yield=true]{
   
   //Choose numbers here!
   p7 = false;
-  p6 = false;
+  p6 = true;
   p5 = false;
   p4 = false;
   p3 = false;
-  p2 = false;
+  p2 = true;
   p1 = false;
   p0 = false;
 
   q7 = true;
-  q6 = true;
+  q6 = false;
   q5 = true;
-  q4 = true;
+  q4 = false;
   q3 = true;
-  q2 = true;
+  q2 = false;
   q1 = true;
   q0 = true;
   inC= true;
@@ -254,7 +254,7 @@ proc void myMain()[yield=true]{
     b6.write(q6);
     b5.write(q5);
     b4.write(q4);
-    b3.write(q4);
+    b3.write(q3);
     b2.write(q2);
     b1.write(q1);
     b0.write(q0);
@@ -271,6 +271,7 @@ proc void myMain()[yield=true]{
     f1 = r1.read();
     f2 = r2.read();
     f3 = r3.read();
+    
     f4 = r4.read();
     f5 = r5.read();
     f6 = r6.read();
@@ -278,20 +279,20 @@ proc void myMain()[yield=true]{
 
     c = outCarry.read();
   }
-  //println("  " + p7 + p6 + p5 + p4 + p3 + p2 + p1 + p0 + " (In Carry: " + inC + ")");
-  //println("+ " + q7 + q6 + q5 + q4 + q3 + q2 + q1 + q0);
-  //println("----------");
-  //println("  " + f7 + f6 + f5 + f4 + f3 + f2 + f1 + f0);
+  println("  " + p7 + p6 + p5 + p4 + p3 + p2 + p1 + p0 + " (In Carry: " + inC + ")");
+  println("+ " + q7 + q6 + q5 + q4 + q3 + q2 + q1 + q0);
+  println("----------");
+  println("  " + f7 + f6 + f5 + f4 + f3 + f2 + f1 + f0);
 
-  //println("Carry was: " + c);
+  println("Carry was: " + c);
 
 	/*
-			System.out.println("  " + $(_ld33_p7) + $(_ld32_p6) + $(_ld31_p5) + $(_ld30_p4) + $(_ld29_p3) + $(_ld28_p2) + $(_ld27_p1) + $(_ld26_p0) + " (In Carry: " + $(_ld51_inC) + ")");
-			System.out.println("+ " + $(_ld41_q7) + $(_ld40_q6) + $(_ld39_q5) + $(_ld38_q4) + $(_ld37_q3) + $(_ld36_q2) + $(_ld35_q1) + $(_ld34_q0));
+			System.out.println("  " + $(_ld33$p7) + $(_ld32$p6) + $(_ld31$p5) + $(_ld30$p4) + $(_ld29$p3) + $(_ld28$p2) + $(_ld27$p1) + $(_ld26$p0) + " (In Carry: " + $(_ld51$inC) + ")");
+			System.out.println("+ " + $(_ld41$q7) + $(_ld40$q6) + $(_ld39$q5) + $(_ld38$q4) + $(_ld37$q3) + $(_ld36$q2) + $(_ld35$q1) + $(_ld34$q0));
 			System.out.println("----------");
-			System.out.println("  " + $(_ld49_f7) + $(_ld48_f6) + $(_ld47_f5) + $(_ld46_f4) + $(_ld45_f3) + $(_ld44_f2) + $(_ld43_f1) + $(_ld42_f0));
+			System.out.println("  " + $(_ld49$f7) + $(_ld48$f6) + $(_ld47$f5) + $(_ld46$f4) + $(_ld45$f3) + $(_ld44$f2) + $(_ld43$f1) + $(_ld42$f0));
 
-			System.out.println("Carry was: " + $(_ld50_c));
+			System.out.println("Out Carry was: " + $(_ld50$c));
 			
 			public static int $(boolean b) {
 				return b?1:0;
@@ -301,7 +302,11 @@ proc void myMain()[yield=true]{
   //return;
 }
 
-proc void main(string[] args) {
+proc int $(boolean b) {
+	return b?1:0;
+}
+			
+proc void main(string[] args)[yield=true] {
 	myMain();
 }
 //========================================================================================

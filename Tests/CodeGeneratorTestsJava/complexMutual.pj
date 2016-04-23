@@ -1,0 +1,35 @@
+import std.io;
+
+proc void a1(chan<int>.write c, int n)[yield=true]{
+	c.write(n);
+}
+
+proc void b1(chan<int>.read c, string s)[yield=true]{
+	int val = c.read();
+	println(s +":"+ val);
+}
+
+proc void a(chan<int>.write out, chan<int>.read in, int n, string s)[yield=true]{
+	if (n > 0) {
+		a1(out, n);	
+		b(in, out,n-1, s); 
+	}
+}
+
+proc void b(chan<int>.read in, chan<int>.write out, int n, string s)[yield=true]{
+	if (n>0) {
+		b1(in, s);	
+		a(out, in, n-1, s);	
+	}	
+}
+
+proc void main(string[] args)[yield=true]{
+	chan<int> c1, c2;
+	
+	par {
+		a(c1.write, c2.read, 10, "a");	
+		b(c1.read, c2.write, 10, "b");
+	}
+	
+}
+

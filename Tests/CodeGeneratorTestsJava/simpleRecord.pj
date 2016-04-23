@@ -1,0 +1,13 @@
+record P extends K{
+	int x;
+	int y;
+}
+
+record K extends P {
+	int z;
+	//foo foo;
+}
+
+proc void foo() {
+	P myRecord = new P{1, 2, 3};
+} 

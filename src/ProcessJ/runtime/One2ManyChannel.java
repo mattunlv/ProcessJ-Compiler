@@ -7,9 +7,9 @@ public class One2ManyChannel<T> extends Channel<T> {
 	private Process writer = null;
 	private LinkedList<Process> readers = new LinkedList<Process>();
 
-//	public One2ManyChannel() {
-//		this.type = TYPE_ONE_TO_MANY;
-//	}
+	public One2ManyChannel() {
+		this.type = TYPE_ONE2MANY;
+	}
 
 	synchronized public void write(Process p, T item) {
 		data = item;
@@ -26,15 +26,33 @@ public class One2ManyChannel<T> extends Channel<T> {
 	synchronized public T read(Process p) {
 		ready = false;
 		reservedForReader = null;
+		//might not be reserved at all. doesn't hurt do it.
+		reservedForAlt = false;
 		writer.setReady();
 		//TODO why are we not making writer/reader
 		//null?
 		T myData = data;
 		data = null;
+
 		return myData;
 	}
+	
+	synchronized public T readPreRendezvous() {
+		T myData = data;
+		data = null;
+		return myData;
+	}
+	
+	synchronized public void readPostRendezvous() {
+		ready = false;
+		reservedForReader = null;
+		reservedForAlt = false;
+		writer.setReady();
+	}
+
 
 	synchronized public void addReader(Process p) {
 		readers.add(p);
 	}
+	
 }

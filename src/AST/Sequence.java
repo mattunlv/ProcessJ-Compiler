@@ -35,6 +35,10 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
 	public Iterator<T> iterator() {
 		return children.iterator();
 	}
+	
+	public void clear() {
+		children.clear();
+	}
 
 	public <S extends T> Sequence<T> merge(S other) {
 		children.add(other);

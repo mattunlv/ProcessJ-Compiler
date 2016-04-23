@@ -1,26 +1,26 @@
 package ProcessJ.runtime;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.DelayQueue;
 
 public class TimerQueue {
-	private BlockingQueue queue;
+//	private BlockingQueue queue;
+	public static BlockingQueue<Timer> delayQueue = new DelayQueue<Timer>();
 
-	public TimerQueue(BlockingQueue queue) {
-		super();
-		this.queue = queue;
-	}
-
-	public synchronized void kill() {
-		timerThread.interrupt();
-	}
-
+//	public TimerQueue(BlockingQueue queue) {
+//		super();
+//		this.queue = queue;
+//	}
+	
 	private Thread timerThread = new Thread(new Runnable() {
 		public void run() {
 			try {
 				while (true) {
-					// Take elements out from the DelayQueue object.
-					Timer timer = (Timer) queue.take();
+					//Take out timedout Timer objects from delay queue.
+					//Thread will wait here until one is available.
+					Timer timer = (Timer) delayQueue.take();
 
+					timer.stopped = true;
 					Process p = timer.getProcess();
 					if (p != null)
 						p.setReady();
@@ -30,9 +30,21 @@ public class TimerQueue {
 			}
 		}
 	});
+	
+	public synchronized void insert(Timer timer) throws InterruptedException {
+		this.delayQueue.offer(timer);
+	}
+	
+	public synchronized boolean isEmpty() {
+		return this.delayQueue.isEmpty();
+	}
+	
+	public synchronized void kill() {
+		this.timerThread.interrupt();
+	}
 
 	public void start() {
-		System.out.println("Timer Queue Running");
+		System.err.println("[Timer] Timer Queue Running");
 		this.timerThread.start();
 	}
 }

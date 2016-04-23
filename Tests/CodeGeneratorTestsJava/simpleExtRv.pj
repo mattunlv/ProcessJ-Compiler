@@ -1,0 +1,11 @@
+proc void foo() [yield=true]{
+
+	chan<int> c;
+	chan<int> report;
+	
+	int id = c.read({
+			int x = 5;
+		    report.write (10);
+	});
+
+}

@@ -184,7 +184,7 @@ public class ProcessJc {
 				c.visit(new CodeGeneratorC<AST>());
 			else if (Settings.targetLanguage.equals("JVM"))
 //				c.visit(new CodeGeneratorJava<AST>());
-				generateCodeJava(c, argv[i]);
+				generateCodeJava(c, argv[i], globalTypeTable);
 			else {
 				System.out.println("Unknown target language selected");
 				System.exit(1);
@@ -194,8 +194,8 @@ public class ProcessJc {
 		}
 	}
 
-	private static void generateCodeJava(Compilation c, String filename) {
-		CodeGeneratorJava<Object> generator = new CodeGeneratorJava<Object>();
+	private static void generateCodeJava(Compilation c, String filename, SymbolTable topLevelDecls) {
+		CodeGeneratorJava<Object> generator = new CodeGeneratorJava<Object>(topLevelDecls);
 		/*
 		 * Ignoring the path and .pj extension and getting just the filename.
 		 */

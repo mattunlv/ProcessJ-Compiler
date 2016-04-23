@@ -6,13 +6,14 @@ Info() ::= <<
  to generate our Java equivalent code.
 >>
 
-Compilation(pragmas, packageName, imports, typeDecls, prototypes, parBlockPrototypes,
+Compilation(pragmas, packageName, imports, typeDecls,
   parBlockProcs) ::= <<
 <! TODO pragmas, packageName, imports !>
 
 package Generated<if(packageName)>.<packageName><endif>;
 import java.util.*;
 import ProcessJ.runtime.Process;
+import ProcessJ.runtime.Timer;
 import ProcessJ.runtime.*;
 
 public class <packageName> { <! add and use className and extends/implements if needed. !>
@@ -21,60 +22,78 @@ public class <packageName> { <! add and use className and extends/implements if 
 }
 >>
 
-AltCase(number, guardToDo, statementList) ::= <<
-case <number>:
-  <guardToDo>;
-  <statementList; separator = ";\n">;
-  break;
->>
+AltStat(caseCount, altSwitchGroup, timers, initBoolGuards, initGuards, jmp1, jmp2, timerKills) ::= <<
+final Alt alt = new Alt(<caseCount>, this);	
+<timers>
+<initGuards>
+<initBoolGuards>
 
-AltStat(altType, enableChannelList, waitType, disableChannelList,
-        switchStatement) ::= <<
-<! This is the main statement to create our AltCase, we have auxillary functions
-   to fill the rest of it in... !>
-/*Start of Alternative!*/
-<altType>;
+boolean bRet = alt.setGuards(boolGuards, guards);
 
-<enableChannelList; separator = ";\n">;
-
-/*Do waiting here! */
-<waitType>;
-
-<disableChannelList; separator = ";\n">;
-
-<switchStatement>
-
-/*End of Alternative!*/
->>
-
-AltSwitch(altEnd, caseList) ::= <<
-<! Our Switch Statement is a list of cases separated by breaks. !>
-switch( <altEnd> ){
-  <caseList; separator ="\n">
-  default:
-    System.out.println("Reached default case of switch statement from Alt\n");
-    System.out.println("This should never happen... dying now X(\n");
+if (!bRet) {
+	System.out.println("RuntimeException: One of the boolean guards needs to be true!!");
+	System.exit(1);
 }
+
+label(<jmp1>);	
+
+int chosen = alt.getReadyGuardIndex();
+<if(altSwitchGroup)><altSwitchGroup><endif>
+
+if (chosen == -1) {
+	this.runLabel = <jmp1>;
+	yield();	
+} else {
+	<if(timerKills)><timerKills; separator=";\n"><endif>
+	this.runLabel = <jmp2>;
+	yield();
+}
+
+label(<jmp2>);
 >>
 
-AltEnableTimeout(globalWsName, number, time, name) ::= <<
-<! This statement is funny as we actually need a variable to hold our time. !>
-Time <name> = TimerRead(<globalWsName>) + <time>;
-AltEnableTimer(<globalWsName>, <number>, <name>)
+AltSwitchGroup(cases) ::= <<
+<if(cases)>
+switch(chosen) {
+	<cases; separator=";\n">;
+}
+<endif>
 >>
 
-AltEnableSkip(globalWsName, number) ::= "AltEnableSkip(<globalWsName>, <number>)"
-AltEnableChannel(globalWsName, number, name) ::= "AltEnableChannel(<globalWsName>, <number>, <name>)"
-
-
-AltDisableTimeout(globalWsName, number, name) ::= <<
-AltDisableTimer(<globalWsName>, <number>, <name>)
+AltCase(number, statementList) ::= <<
+case <number>: 
+  	<if(statementList)><statementList; separator = ";\n">;<endif>
+	break
 >>
 
+AltBooleanGuardsArr(tempExprs, constants) ::= <<
+<if(tempExprs)><tempExprs; separator=";\n">;<endif>
+<if(constants)>boolean[] boolGuards = {<constants; separator=", ">};<endif>	
+>>
 
-AltDisableChannel(globalWsName, number, name) ::= "AltDisableChannel(<globalWsName>, <number>, <name>)"
-AltDisableSkip(globalWsName, number) ::= "AltDisableSkip(<globalWsName>, <number>)"
+AltGuardsArr(guards) ::= <<
+<if(guards)>Object[] guards = {<guards; separator=", ">};<endif>
+>>
 
+AltTimerKill(timer) ::= <<
+<if(timer)>
+if (<timer>.started && !<timer>.stopped) {
+	<timer>.kill();
+}	
+<endif>
+>>
+
+AltTimerStart(timer) ::= <<
+<if(timer)>	
+if (!<timer>.started) {
+	try {
+		<timer>.start();
+	} catch (InterruptedException e) {
+		System.out.println("InterruptedException!");
+	}
+}
+<endif>
+>>
 
 Assignment(left, right, op) ::= "<left> <op> <right>"
 
@@ -95,18 +114,21 @@ label(<jmp0>);
 if (<channel>.isReadyToWrite()) {
 	<channel>.write(this, <expr>);
 	this.runLabel = <jmp1>;
-	yield(<jmp1>);
+	yield();
 } else {
 	<if(shared)><channel>.addWriter(this);<endif>
 	setNotReady();
 	this.runLabel = <jmp0>;
-	yield(<jmp0>);
+	yield();
 }
 	
 label(<jmp1>)
 >>
 
-ChannelReadExpr(left, channel, jmp0, jmp1) ::= <<
+ChannelReadExpr(left, channel, alt, jmp0, jmp1) ::= <<
+<if(alt)>
+<left> = <channel>.read(this);
+<else>
 label(<jmp0>);
 if(<channel>.isReadyToRead(this)) {
 <if(left)>
@@ -115,18 +137,73 @@ if(<channel>.isReadyToRead(this)) {
 	<channel>.read(this);
 <endif>
 	this.runLabel = <jmp1>;
-	yield(<jmp1>);
+	yield();
 } else {
 	setNotReady();
 	<channel>.addReader(this);
 	this.runLabel = <jmp0>;
-	yield(<jmp0>);
+	yield();
 }
-label(<jmp1>)
+label(<jmp1>)<\\>
+<endif>
 >>
 
-TimerReadExpr(timer) ::= <<
-<timer>.read()
+ChannelReadExprExtRv(left, channel, alt, extRv, jmp0, jmp1) ::= <<
+<if(alt)>
+<left> = <channel>.readPreRendezvous(this);
+<extRv; separator=";\n">
+<channel>.readPostRendezvous(this);
+<else>
+label(<jmp0>);
+if(<channel>.isReadyToRead(this)) {
+<if(left)>
+	<left> = <channel>.readPreRendezvous(this);
+	<extRv; separator=";\n">;
+	<channel>.readPostRendezvous(this);
+<else>
+	<channel>.readPreRendezvous(this);
+	<extRv; separator=";\n">;
+	<channel>.readPostRendezvous(this);
+<endif>
+	this.runLabel = <jmp1>;
+	yield();
+} else {
+	setNotReady();
+	<channel>.addReader(this);
+	this.runLabel = <jmp0>;
+	yield();
+}
+label(<jmp1>)<\\>
+<endif>
+>>
+
+ConstantDecl(type, var) ::= "public static final <type> <var>;"
+
+ClaimStat(stats, channels, jmp) ::= <<
+label(<jmp>);
+<if(channels)>if(<channels:{c | !<c>.claim() }; separator = "||">) {
+	<channels: {uc | <uc>.unclaim();}; separator="\n">
+	this.runLabel = <jmp>;
+	yield();
+}
+<endif>
+<stats; separator=";\n">;
+<channels:{c | <c>.unclaim()}; separator = ";\n">;
+>>
+
+ClaimStatClaimPart(c, unclaims, jmp) ::= <<
+label(<jmp>);
+if (!<c>.claim()) {
+	<c>.awaitClaim(this);
+	<unclaims: {uc | <uc>.unclaim();}; separator="\n">
+	setNotReady();
+	this.runLabel = <jmp>;
+	yield();
+}
+>>
+
+TimerReadExpr(left, timer) ::= <<
+<left> = <timer>.read()
 >>
 
 ContinueStat() ::= "continue"
@@ -137,15 +214,35 @@ do {
 } while( <expr> )
 >>
 
-ExternPrint(string, argumentList, argumentCount) ::= <<
-<! cds-TODO: change this into normal java println !>
-System.out.printf("<string>"<if(argumentList)>, <argumentList; separator = ", "><endif>)
->>
-
-ForStat(init, expr, incr, barriers, stats) ::= <<
+ForStat(init, expr, incr, stats) ::= <<
 for(<init; separator = ",">; <expr>; <incr>){
   <stats; separator = ";\n">;
 }
+>>
+
+ParForStat(parName, init, expr, incr, barriers, stats, jmp0, jmp1) ::= <<
+label(<jmp0>);	
+final Par <parName> = new Par(-1, this);
+int cnt = 0;	
+List\<Process> pp = new LinkedList\<Process>(); 
+
+for(<init; separator = ",">; <expr>; <incr>){
+	cnt++;
+	pp.add(
+		<stats; separator=";\n">
+	);
+}
+//set the process count	
+<parName>.setProcessCount(cnt);
+
+//schedule all the processes
+for(Process p : pp) {
+	p.schedule();
+}
+setNotReady();
+this.runLabel = <jmp1>;
+yield();
+label(<jmp1>)
 >>
 
 IfStat(expr, thenPart, elsePart) ::= <<
@@ -156,16 +253,15 @@ if( <expr> ) {
 }<endif>
 >>
 
-InvocationNormal(qualifiedProc, procParams, isProcess, par, parName) ::= <<
+InvocationNormal(qualifiedProc, procParams, isProcess, par, parName, barriers) ::= <<
 <if(isProcess)>
 <if(par)>
 (new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
   public void finalize() {
     <parName>.decrement();    
+	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
   }
 }).schedule()<\\>
-<else>
-(new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)).schedule()<\\>
 <endif>
 <else>
 <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
@@ -177,31 +273,35 @@ InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
 <if(left)><left>=<endif><right>
 >>
 
-LocalDecl(type, var, procYields, constant, channelPart, isRightNull) ::= <<
-<! If this is channel it must be initialized! !>
-<if(procYields)>
-<if(channelPart)>
-<var><if(isRightNull)> = new <type>()<endif><\\>
+LocalDeclNormalProc(typeStr, var, chanType, protoOrRecType, barrierType, rEmpty) ::= <<
+<if(chanType)>
+<typeStr> <var><if(rEmpty)> = new <typeStr>()<endif><\\>
+<elseif(protoOrRecType)>
+<typeStr> <var><if(rEmpty)> = null<endif><\\>
+<elseif(barrierType)>
+<typeStr> <var><if(rEmpty)> = new Barrier()<endif><\\>
 <else>
-<if(!isRightNull)><var><endif>
-<endif>
-<else>
-<if(channelPart)>
-<type> <var><if(isRightNull)> = new <type>()<endif><\\>
-<endif>
+<typeStr> <var><\\>
 <endif>
 >>
 
-GlobalDecl(type, name, constant, channelPart) ::= <<
-<! If this is channel it must be initialized! !>
-<type> <name><if(channelPart)> = new <type>()<endif>
+LocalDeclYieldingProc(typeStr, var, chanType, protoOrRecType, barrierType, rEmpty) ::= <<
+<if(chanType)>
+<var><if(rEmpty)> = new <typeStr>()<endif><\\>
+<elseif(protoOrRecType)>
+<var><if(rEmpty)> = null<endif><\\>
+<elseif(barrierType)>
+<var><if(rEmpty)> = new Barrier()<endif><\\>
+<else>
+<if(!rEmpty)><var><endif><\\>
+<endif>
 >>
 
 NewArray(type, size) ::= "new <type>[<size>]"
 
 ParamDecl(type, name) ::= "<type> <name>"
 
-ProcTypeDeclToProcess(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, lookupswitch, body) ::= <<
+ProcTypeDeclToProcess(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, lookupswitch, body, mainMethod) ::= <<
 
 public static class <name> extends Process {
 
@@ -215,22 +315,24 @@ public static class <name> extends Process {
     }
 
 	@Override
-	public void run() {
+	public synchronized void run() {
 		<lookupswitch>
 		<body; separator = ";\n">;
-      	terminate();
+		<if(!retstatFound)>terminate();<endif>
 	}
 }
+
+<if(mainMethod)><mainMethod><endif>
 >>
 
-ProcTypeDeclToMain(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
-
+ProcTypeDeclToMain(qualifiedProc) ::= <<
 public static void main(String[] args) {
 	Scheduler scheduler = new Scheduler();
+
 	Process.scheduler = scheduler;
 	System.out.println("Added _main process to scheduler...");
 		
-	<body; separator = ";\n">;
+	(new <qualifiedProc>(args)).schedule();
 	
 	System.out.println("Starting the scheduler...");
 	Process.scheduler.start();
@@ -239,22 +341,62 @@ public static void main(String[] args) {
 }
 >>
 			
-ProcTypeDeclToMethod(modifiers, returnType, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
+ProcTypeDeclToMethod(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, body, last) ::= <<
 
 public static <returnType> <name>(<if(formals)><formals; separator = ", "><endif>) {
 	<body; separator = ";\n">;
 }
 >>
 
+ProtocolLiteral(protocolName, tagName, params, tag) ::= <<
+new <protocolName>(new <protocolName>.<tagName>(<if(params)><params; separator=", "><endif>), <protocolName>.Tag.<tag>)
+>>
+
+ProtocolCase(name, recMems, recMemNames) ::= <<
+public static class <name> extends ProtocolCase {
+	<if(recMems)><recMems:{n | public <n>}; separator=";\n">;<endif>
+	public <name>(<if(recMems)><recMems; separator=", "><endif>) {
+    	<if(recMemNames)><recMemNames:{n | this.<n> = <n>}; separator = ";\n">;<endif>
+	}
+}
+>>
+
+ProtocolTypeDecl(name, cases, caseNames) ::= <<
+public static class <name> {
+	<if(caseNames)>public enum Tag { <caseNames; separator=", "> };<endif>
+	<cases; separator = "\n">
+	ProtocolCase data;
+    Tag tag;
+    public <name>(ProtocolCase data, Tag tag) {
+		this.data = data;
+		this.tag = tag;
+   }
+}
+>>
+
+RecordTypeDecl(name, recMems, recMemNames) ::= <<
+public static class <name> {
+	<if(recMems)><recMems:{n | public <n>}; separator=";\n">;<endif>
+	public <name>(<if(recMems)><recMems; separator=", "><endif>) {
+    	<if(recMemNames)><recMemNames:{n | this.<n> = <n>}; separator = ";\n">;<endif>
+	}
+}
+>>
+
+RecordMember(type, name) ::= "<type> <name>"
+
+RecordAccess(protocolName, caseName, record, field) ::= "((<protocolName>.<caseName>) <record>.data).<field>"
+
+RecordLiteral(name, params) ::= <<
+new <name>(<if(params)><params; separator=", "><endif>)
+>>
+
 LookupSwitchTable(cases) ::= <<
 <if(cases)>
 switch(this.runLabel) {
+	case 0: break;
     <cases; separator = ";\n">;
 }<endif>
->>
-
-LookupSwitchInitialCase(caseNum) ::= <<
-case <caseNum>: break
 >>
 
 LookupSwitchCase(caseNum) ::= <<
@@ -270,37 +412,44 @@ ProcGetParam(type, name, number) ::= <<
 <type> <name> = ProcGetParam(<number>, <type>)
 >>
 
-ParBlock(parCnt, parName, stats, jmp0, jmp1) ::= <<
+ParBlock(parCnt, parName, stats, barriers, jmp0, jmp1) ::= <<
 label(<jmp0>);	
 final Par <parName> = new Par(<parCnt>, this);
+<if(barriers)><barriers:{b | <b>.enroll(<parCnt>)}; separator = ";\n">;<endif>
 	
 <stats; separator=";\n">;
 	
 setNotReady();
 this.runLabel = <jmp1>;
-yield(<jmp1>);
+yield();
 label(<jmp1>)
 >>
 
-ParBlockStat(parName, lookupswitch, body) ::= <<
+AnonymousProcess(parName, lookupswitch, body, barriers, parfor) ::= <<
 new Process(){
-	public void run() {
+	public synchronized void run() {
 		<lookupswitch>
-		<body; separator = ";\n">;
+		<if(body)><body; separator = ";\n">;<endif>
       	terminate();
 	}
 	
+	<if(parName)>
 	public void finalize() {
 		<parName>.decrement();	
+		<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
 	}
-}.schedule()
+	<endif>
+}<if(!parfor)>.schedule()<endif>
 >>
 
-Prototype(name, formals) ::= <<
-void <name>(<if(formals)>, <formals; separator = ", "><endif>)
+ReturnStat(expr, procYields) ::= <<
+<if (procYields)>
+terminate();
+return<\\>
+<else>
+return<if(expr)> <expr><endif><\\>
+<endif>
 >>
-
-ReturnStat(expr) ::= "return<if(expr)> <expr><endif>"
 
 SwitchLabel(constExpr, defaultExpr) ::= <<
 <if(constExpr)>case <constExpr><endif><if(defaultExpr)><defaultExpr><endif>:
@@ -311,19 +460,45 @@ SwitchGroup(labels, stmts) ::= <<
     <stmts; separator = ";\n">;
 >>
 
-SwitchStat(expr, switchGroups) ::= <<
+SwitchStat(expr, isProtocolExpr, switchGroups) ::= <<
+<if(isProtocolExpr)>
+switch( <expr>.tag ){
+<else>
 switch( <expr> ){
+<endif>
   <switchGroups; separator = "\n">
 }
 >>
 
+SyncStat(barrier, jmp) ::= <<
+<barrier>.sync(this);
+this.runLabel = <jmp>;
+yield();
+label(<jmp>)
+>>
+
 Ternary(expr, trueBranch, falseBranch) ::= "<expr> ? <trueBranch> : <falseBranch>"
+
+TimeoutStat(alt, name, delay, jmp) ::= <<
+<name> = new Timer(this, <delay>);
+<if(!alt)>
+try {
+	<name>.start();
+	setNotReady();
+	this.runLabel = <jmp>;
+	yield();
+} catch (InterruptedException e) {
+	System.out.println("Timer Interrupted Exception!");
+}
+label(<jmp>)<\\>
+<endif>
+>>
 
 UnaryPostExpr(expr, op) ::= "<expr><op>"
 
 UnaryPreExpr(expr, op) ::= "<op><expr>"
 
-Var(name, init) ::= "<if(name)><name><endif><if(name && init)>=<endif><if(init)><init><endif>"
+Var(name, init) ::= "<if(name)><name><endif><if(name && init)> = <endif><if(init)><init><endif>"
 
 WhileStat(expr, stat) ::= <<
 while( <expr> ) {

@@ -1,0 +1,40 @@
+//try claiming 2 chan ends
+proc void foo(chan<int>.read c) [yield=true] {
+	int x = 10;
+	chan<int> b;
+	chan<int> a;
+	
+	claim(a.read, b.read, c)
+		x = c.read();	
+		
+	/*	
+	shared chan<int> c;
+	shared chan<int>.read cr = c.read;
+	shared chan<int>.read chanEnds[] = new shared chan<int>[100];
+	
+	claim(shared chan<int>.read ccr = chanEnds[34]) {
+	
+	}
+	
+	claim(chan<int> v = (c)) {
+	
+	}
+	*/
+}
+
+proc void bar(chan<int>.write c) [yield=true] {
+
+}
+
+proc chan<int>.read getChan() [yield=true] {
+	chan<int> c;
+	return c.read;
+}
+
+proc void main()[yield=true] {
+	chan<int> c;
+	par {
+		foo(c.read);	
+		bar(c.write);
+	}
+}

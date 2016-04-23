@@ -29,7 +29,7 @@ proc void procMain() [yield=true]{
   }
 }
 
-proc void main(string[] args){
+proc void main(string[] args)[yield=true]{
 	procMain();
 }
 

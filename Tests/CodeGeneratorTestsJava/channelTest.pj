@@ -42,8 +42,6 @@ proc int getValue() {
 	return 5;	
 }
 
-//having the line below breaks typechecker
-//proc void getValue(){}
 proc void anonymous()[yield=true] {
 	shared chan<int> a;
 	int x = 0;
@@ -51,7 +49,7 @@ proc void anonymous()[yield=true] {
     x = a.read.read();
 }
 
-proc void main(string[] args) {
+proc void main(string[] args)[yield=true] {
 	chan<int> intChan;
     writer(intChan.write);
     reader(intChan.read);

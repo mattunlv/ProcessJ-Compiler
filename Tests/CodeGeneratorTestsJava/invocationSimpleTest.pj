@@ -1,0 +1,16 @@
+proc void writer(chan<int>.write c) [yield=true] {
+	c.write(10);
+}
+proc int compute1(int z, int y) {
+	return z + 10;
+}
+proc void foo() [yield=true] {
+	chan<int> c;
+	
+	compute1(1,2);
+
+	writer(c.write);
+	
+	int x = c.read();
+
+}

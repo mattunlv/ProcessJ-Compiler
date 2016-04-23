@@ -1,12 +1,23 @@
 package ProcessJ.runtime;
 
+import java.util.LinkedList;
+import java.util.List;
+
 public abstract class Channel<T> {
+	
+	protected final static int TYPE_ONE2ONE = 0; 
+	protected final static int TYPE_ONE2MANY = 1; 
+	protected final static int TYPE_MANY2ONE = 2; 
+	protected final static int TYPE_MANY2MANY = 3; 
 	
 	// the data item communicated on the channel
 	protected T data;
 	// is there any data?
 	public boolean ready = false;
 	protected boolean reservedForAlt = false;
+	public int type;
+	protected boolean claimed = false;
+	protected LinkedList<Process> claimQueue = new LinkedList<Process>();
 
 	Process reservedForReader = null;
 
@@ -17,11 +28,39 @@ public abstract class Channel<T> {
 		return null;
 	}
 
+	synchronized public T readPreRendezvous(Process p) {
+		return null;
+	}
+
+	synchronized public void readPostRendezvous(Process p) {
+	}
+	
 	synchronized public void addReader(Process p) {
 	}
 
 	synchronized public void addWriter(Process p) {
 	}
+
+	synchronized public boolean claim() {
+		boolean success = false;
+		if (!this.claimed) {
+			this.claimed = true;
+			success = true;
+		}
+		return success;
+	}
+	
+	synchronized public void unclaim() {
+		this.claimed = false;
+//		if (claimQueue.size() > 0) {
+//			Process p = claimQueue.removeFirst();
+//			p.setReady();
+//		}
+	}
+	
+//	synchronized public void awaitClaim(Process p) {
+//		claimQueue.add(p);
+//	}
 
 	/*
 	  All calls to isReadyToRead and to read() must happen in the same 
@@ -76,7 +115,9 @@ public abstract class Channel<T> {
 			 * 
 			 * New update:
 			 * channels inside alt will not add themselves in the list. they only
-			 * reserve?? check this one.
+			 * reserve?? check this one. 04.11.2016: yes this is true. channels in
+			 * alt do not commit to read by adding itself to reader list. so, the
+			 * freaking long paragraph above has serious holes. dammit!
 			 * 
 			 * Alt is continuously running. so when a channel guard is ready, that
 			 * means there actually is data to be read. so maybe channel
@@ -111,15 +152,28 @@ public abstract class Channel<T> {
 			 */
 			reservedForAlt = true;
 			return true;
-		} else
+		} else {
 			return false;
+		}
 	}
 
 	synchronized public void unreserve() {
 		reservedForAlt = false;
 	}
-
+	
 	synchronized public boolean isReadyToWrite() {
 		return !ready;
+	}
+
+	public boolean isSharedRead() {
+		return (this.type == Channel.TYPE_ONE2MANY || this.type == Channel.TYPE_MANY2MANY);
+	}
+	
+	public boolean isSharedWrite() {
+		return (this.type == Channel.TYPE_MANY2ONE || this.type == Channel.TYPE_MANY2MANY);
+	}
+	
+	public int getType() {
+		return this.type;
 	}
 }
