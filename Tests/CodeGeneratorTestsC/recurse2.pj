@@ -1,0 +1,13 @@
+import std.io;
+
+proc int f(int n){
+  if(n == 0){
+    return 0;
+  }
+  return f(f(n - 1)) + 1;
+}
+
+proc void main(){
+  int x = f(5);
+  println("Depth of f(5): " + x);
+}

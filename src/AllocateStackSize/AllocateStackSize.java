@@ -167,12 +167,13 @@ public class AllocateStackSize extends Visitor<Void>{
   }
   //========================================================================================
   /**
-   * Our ProcType has an invocation to another function as of now there are two cases:
+   * Our ProcType has an invocation to another function as of now there are three cases:
    * 1) This is another function in this file.
    * 2) This is a function in another file: Like println.
+   * 3) Recursion.
    * Case 1: We check our hashtable and see if we have calculated this value, if we haven't
    * we recurse on the Proc of this invocation. Fetch the ProcType belonging to this invocation
-   * and recurse on it to allocate it's size.
+   * and recurse on it to allocate it's size. TODO: Will die on mutual recursion.
    * Case 2: All functions that do not have an explicit tree because they're built in (like
    * println) are added to the table above with their correct size and therefore are guaranteed
    * to exist. TODO: In the future we might change this.
@@ -180,9 +181,15 @@ public class AllocateStackSize extends Visitor<Void>{
   public Void visitInvocation(Invocation in){
     if(in.targetProc == null)
       Error.error("Our Invocation had a null target Proc!");
-    
+
     String functionName = CodeGeneratorC.makeFunctionName(in.targetProc);
     Log.log(in.line + ": Visiting a Invocation: " + functionName);
+
+    //Recursive case! We do no want to allocate memory the usual way.
+    if(functionName.equals(currentFunction)){
+      //TODO.
+      return null;
+    }
 
     //Check our hash table to see if this proc has had it's size set, if not do it now.
     if(nodesPerFunction.hasEntry(functionName) == false)
@@ -190,7 +197,7 @@ public class AllocateStackSize extends Visitor<Void>{
 
     //Now visit our children in case we have function calls as our arguments.
     in.params().visit(this);
-    
+
     int size = nodesPerFunction.sumEntries(functionName);
     String tag =
       String.format("Invocation call to function %s at line: %d.", functionName, in.line);
@@ -213,11 +220,11 @@ public class AllocateStackSize extends Visitor<Void>{
       fs.visitChildren(this);
       return null;
     }
-    
+
     Statement stat = fs.stats();
     final int pointerSize = 4;
     String tag;
-    
+
     //We will be calculating the size of a function that is not in the AST hence we have
     //to save the current function and prentend we are on a new function.
     String callerFunction = currentFunction;
@@ -268,7 +275,7 @@ public class AllocateStackSize extends Visitor<Void>{
     size = suTable.get("LightProcStart");
     tag = "ProcPar calls LightProcStart: LightProcStart size.";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag));
-    
+
     //LightProcBarrierWait.
     size = suTable.get("LightProcBarrierWait");
     tag = "ProcPar calls LightProcBarrierWait: LightProcBarrierWait size.";
@@ -456,7 +463,7 @@ public class AllocateStackSize extends Visitor<Void>{
     Log.log(ts.line + ": Visiting an TimeoutStat!");
     String tag;
     int size;
-        
+
     //Calls made by CCSP for timing out:
     size = suTable.get("TimerDelay");
     tag = "TimeoutStat call: TimerDelay().";
@@ -481,12 +488,12 @@ public class AllocateStackSize extends Visitor<Void>{
     Log.log(st.line + ": Visiting a SyncStat");
     String tag;
     int size;
-        
+
     //Call made by CCSP to wait on a barrier.
     size = suTable.get("LightProcBarrierWait");
     tag = "SyncStat call: LightProcBarrierWait().";
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
-    
+
     return null;
   }
   //========================================================================================
@@ -502,7 +509,7 @@ public class AllocateStackSize extends Visitor<Void>{
 
     int size = 0;
     String tag = null;
-    
+
     //If the alt uses timeout we must use a different function to invoke the alt.
     for(int i = 0; i < count; i++){
       AltCase altCase = altCaseList.getElementN(i);
@@ -532,7 +539,7 @@ public class AllocateStackSize extends Visitor<Void>{
       size = suTable.get("TimerRead");
       tag = "AltStat call: TimerRead";
       nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
-      
+
     }else{
       size = suTable.get("Alt");
       tag = "AltStat call: Alt";
@@ -545,7 +552,7 @@ public class AllocateStackSize extends Visitor<Void>{
     nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
 
     boolean hasChannelCase = false;
-    
+
     //If we have any Channel alt cases we make this:
     for(AltCase altCase : altCaseList)
       if(CodeGeneratorC.caseIsChannel(altCase) == true)
@@ -556,7 +563,7 @@ public class AllocateStackSize extends Visitor<Void>{
       size = suTable.get("AltEnableChannel");
       tag = "AltStat call: AltEnableChannel";
       nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
-      
+
       size = suTable.get("AltDisableChannel");
       tag = "AltStat call: AltDisableChannel";
       nodesPerFunction.addNode(currentFunction, new ValueAndTag(size, tag, true));
@@ -564,10 +571,10 @@ public class AllocateStackSize extends Visitor<Void>{
 
     //Now visit our children:
     altCaseList.visit(this);
-    
+
     //TODO: finish implementing!!!
     return null;
-    
+
   }
   //========================================================================================
   /**

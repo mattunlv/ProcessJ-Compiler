@@ -1,0 +1,19 @@
+import std.io;
+
+proc int collatz(int n, int counter){
+  if(n == 1)
+    return counter;
+
+  println("Recurse on: " + n);
+  if(n % 2 == 0)
+    return collatz(n / 2, counter + 1);
+  else
+    return collatz(3 * n + 1, counter + 1);
+}
+
+proc void main(){
+  int x = collatz(100, 0);
+  println("Collatz of 100: " + x);
+
+  return;
+}

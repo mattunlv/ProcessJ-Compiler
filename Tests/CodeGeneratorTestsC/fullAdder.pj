@@ -247,7 +247,7 @@ proc void myMain(){
     b6.write(q6);
     b5.write(q5);
     b4.write(q4);
-    b3.write(q4);
+    b3.write(q3);
     b2.write(q2);
     b1.write(q1);
     b0.write(q0);

@@ -1,0 +1,26 @@
+import std.io;
+
+proc void f(barrier b){
+  println("Waiting at f...");
+  sync(b);
+  println("Done waiting f!");
+  
+}
+
+proc void g(barrier b){
+  for(int i = 0; i < 5; i++)
+    println("Hello from g!");
+
+  sync(b);
+}
+
+proc void main(){
+  barrier b;
+  
+  par enroll(b){
+    f(b);
+    g(b);
+  }
+  
+  return;
+}

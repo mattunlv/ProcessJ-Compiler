@@ -1,0 +1,22 @@
+import std.io;
+
+proc int fib(int n){
+  if(n == 1 || n == 2)
+    return 1;
+  else
+    return fib(n - 1) + fib(n - 2);
+}
+
+proc void main(){
+  int fibResult = fib(5);
+  println("Fib(5) = " + fibResult);
+
+  fibResult = fib(7);
+  println("Fib(7) = " + fibResult);
+
+  fibResult = fib(8);
+  println("Fib(8) = " + fibResult);
+
+  fibResult = fib(fib(7));
+  println("fib(fib(7)) = " + fibResult);
+}

@@ -51,6 +51,13 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    */
   private Hashtable<String, Integer> parForStmtCounts;
   /**
+   * Very similar to the table above. A recursive function must be wrapped in a function
+   * as it will run in a call to CCSP. Therefore we guarantee this wrapper function will
+   * have a unique name in case of multiple recursives in a function. The names will
+   * always be of the form: <NameOfFunction>Recursive<counterValue>.
+   */
+  private Hashtable<String, Integer> recursiveStmtCounts;
+  /**
    * We must know when we are inside a par as this means we have to do eveything
    * with pointers to NameExpr instead of actual variales.
    */
@@ -76,6 +83,15 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
   /** This table is used to allocate the stack size needed per function. */
   Hashtable<String, Integer> sizePerFunction;
+
+  /**
+   * If we are trying to make a recursive function we will call createParProc. Par proc
+   * needs to visit our invocation so we can do a normal call to the function (without the
+   * CCSP API). This variable holds the current function we are creating the recursion for
+   * to avoid infinite recursion.
+   */
+  String makingRecursionFunction = "";
+  String returnName = "__return";
   //====================================================================================
   /**
    * This is the constructor to be called the first time around to create the initial
@@ -92,6 +108,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Create hashtables!
     this.parBlockStmtCounts = new Hashtable();
     this.parForStmtCounts = new Hashtable();
+    this.recursiveStmtCounts = new Hashtable();
 
     this.parPrototypes = new LinkedList();
     this.parProcs = new LinkedList();
@@ -118,6 +135,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //Create hashtables!
     this.parBlockStmtCounts = new Hashtable();
     this.parForStmtCounts = new Hashtable();
+    this.recursiveStmtCounts = new Hashtable();
 
     this.parPrototypes = new LinkedList();
     this.parProcs = new LinkedList();
@@ -607,7 +625,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       //Create a new function to wrap this ParFor Statement!
       int functionNumber = incrementEntry(parForStmtCounts, currentFunction);
       String functionName = currentFunction + "_ParForStmt" + functionNumber;
-      String indexName = "__i";
+      String indexName = "[__i]";
       String arrayName = "__functionWsArray";
 
       //Turn our set into a Sequece so we can pass it to our createParameters function!
@@ -615,11 +633,10 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       for(NameExpr ne : myNames)
 	params.append(ne);
       //Create invocations statements and parameters.
-      
-      ArrayList<String> procParams = paramPassingParFor(params, indexName, arrayName);
+      ArrayList<String> procParams = paramPassing(params, indexName, arrayName, 1);
       
       //Now create actual function!
-      parProcs.add( createParProc(functionName, myStat, myNames, false) );
+      parProcs.add( createParProc(functionName, myStat, myNames, false, null) );
       parPrototypes.add( getSimplePrototypeString(functionName) );
       int stackSize = getSizeOfFunction(sizePerFunction, functionName);
 
@@ -760,8 +777,13 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     //Recursion. Dynamically allocate space for function on the heap and run it through
     //the CCSP API.
-    if(simpleName.equals(currentFunction))
-      Error.error("Recursion!");
+    if(simpleName.equals(currentFunction) &&
+       ! makingRecursionFunction.equals(currentFunction)){
+      makingRecursionFunction = currentFunction;
+      String results = makeRecursiveFunction(functionName, in);
+      makingRecursionFunction = "";
+      return (T) results;
+    }
 
     //Print statements are treated differently. TODO: In the future this will change.
     if(functionName.equals(printFunctionName))
@@ -891,7 +913,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     int i = 0;
 
     for(Statement myStat : stats){
-      //This set contains all the NameExpr for this statement.
+      //This list contains all the NameExpr for this statement.
       LinkedList<NameExpr> myNames = new LinkedList();
       //Visit our NameCollector for our current statement to get all the NameExpr's!
       myStat.visit(new NameCollector(myNames));
@@ -902,7 +924,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       //Create invocations statements.
       statList.add( createInvocationPar(functionName, myNames, procParList, i) );
       //Now create actual function!
-      parProcs.add( createParProc(functionName, myStat, myNames, true) );
+      parProcs.add( createParProc(functionName, myStat, myNames, true, null) );
 
       //Add this to our ParBlockPrototypes.
       parPrototypes.add( getSimplePrototypeString(functionName) );
@@ -1398,63 +1420,31 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   }
   //====================================================================================
   /**
-   * This is only used for paramater passing to functions inside ParBlocks.
-   * Given a Sequence<Expression> holding the parameters for a function it will return
-   * the parameters as strings in the following format:
-   * ProcParam(globalWsName, parWs[i], 0, &a);
-   * ProcParam(globalWsName, parWs[i], 1, &b);
-   * Where a and b are the paramters that are acutally needed, wordPointer is the name
-   * of the "global" Workspace, parWsis the name of that function's workspace and the
-   * 0 and 1 are parameter number.
-   * @param params: Our Parameters to pass in.
-   * @param index: index for our wsName.
-   * @return list of our ProcParam statements.
-   */
-  private ArrayList<String> paramPassingParBlock(Sequence<Expression> params, int index){
-    Log.log("   Creating parameters for ParBlock Statement!");
-    ArrayList<String> paramList = new ArrayList();
-
-    for(int i = 0; i < params.size(); i++){
-      ST template = group.getInstanceOf("ProcParamParBlock");
-      template.add("globalWsName", globalWorkspace);
-      template.add("parWsName", parWsName);
-      template.add("index", index);
-      template.add("paramNumber", i);
-
-      //Visit the ith parameters and turn into into an appropriate string.
-      Expression paramExpr = params.getElementN(i);
-      String paramAsString = (String) paramExpr.visit(this);
-
-      //For ParBlocks we always want to pass the arguments as pointers.
-      template.add("param", "&" + paramAsString);
-      //Create string and add to our list.
-      paramList.add(template.render());
-    }
-
-    return paramList;
-  }
-  //====================================================================================
-    /**
-   * This is only used for paramater passing to functions inside par for.
+   * Generate ProcParam calls for CCSP API.
    * Given a Sequence<Expression> holding the parameters for a function and the name of
-   * our word, it will return the parameters as strings in the following format:
-   * ProcParam(globalWsName, parWs[i], 0, &a);
-   * ProcParam(globalWsName, parWs[i], 1, &b);
-   * Where a and b are the paramters that are acutally needed, wordPointer is the name
-   * of the "global" Workspace, parWsis the name of that function's workspace and the
-   * 0 and 1 are parameter number.
-   * @param params: Our Parameters to pass in.
+   * our worksapce, it will return the parameters as strings in the following format:
+   * ProcParam(globalWsName, parWs[i], 0, a);
+   * ProcParam(globalWsName, parWs[i], 1, b);
+   * Where a and b are the paramters that are acutally needed, parWs[i] is the name of
+   * that function's workspace and the 0 and 1 are parameter number.
+   * This function is used in differen places for similar reasons, so an integer must
+   * be passed 0 | 1 | 2 for the type of param passing we want.
+   * @param params: Our parameters to pass in.
    * @param index: index for our wsName.
    * @param wsNames: name of workspace to use.
-   * @return list of our ProcParam statements.
+   * @param type:
+   *          0: Par Block.
+   *          1: Par For.
+   *          2: Recursive Invocation.
+   * @return list of our procParam statements.
    */
-  private ArrayList<String> paramPassingParFor(Sequence<Expression> params, String index,
-						String wsName){
-    Log.log("   Creating parameters for Par For Statement!");
+  private ArrayList<String> paramPassing(Sequence<Expression> params, String index,
+					       String wsName, int type){
+    Log.log("   Creating parameters for invocation!");
     ArrayList<String> paramList = new ArrayList();
     
     for(int i = 0; i < params.size(); i++){
-      ST template = group.getInstanceOf("ProcParamParFor");
+      ST template = group.getInstanceOf("ProcParam");
       template.add("globalWsName", globalWorkspace);
       template.add("parWsName", wsName);
       template.add("index", index);
@@ -1463,12 +1453,21 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       //Visit the ith parameters and turn into into an appropriate string.
       Expression paramExpr = params.getElementN(i);
       String paramAsString = (String) paramExpr.visit(this);
+      String addition = "";
 
-      //If the argument is being passed then we expect it to not be shared among the
-      //parallel computations. Therefore we pass it by value. Hack: we pass it's
-      //value as a void*...
-      template.add("param", "(void*)" + paramAsString);
+      if(type == 0){
+	//For ParBlocks we always want to pass the arguments as pointers.
+	addition = "&";
+      }
+      else if(type == 1){
+	//If the argument is being passed then we expect it to not be shared among the
+	//parallel computations. Therefore we pass it by value. Hack: we pass it's
+	//value as a void*...
+	addition = "(void*)";
+      }
+      
       //Create string and add to our list.
+      template.add("param", addition + paramAsString);
       paramList.add(template.render());
     }
 
@@ -1549,7 +1548,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //appending a "*" to our statements. So we tell it not to.
     this.inParallel = false;
     //Array list for ProcParams for this invocation.
-    ArrayList<String> procParams = paramPassingParBlock(params, index);
+    String indexName = "[" + Integer.toString(index) + "]";
+    ArrayList<String> procParams = paramPassing(params, indexName, parWsName, 0);
 
     this.inParallel = true;
     int stackSize = getSizeOfFunction(sizePerFunction, functionName);
@@ -1700,10 +1700,13 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    * @param functionName: name to call our function.
    * @param myStat: Single statement to run in parallel.
    * @param myNames: LinkedList of elements which are our parameters.
+   * @param parBlock: Is this a parallel block?
+   * @param extraParam: For recursive call we want to save the results of the computation
+   * to a variable called __return.
    * @return: String with our entire Proc.
    */
   String createParProc(String functionName, Statement myStat,
-		       LinkedList<NameExpr> myNames, boolean parBlock){
+		       LinkedList<NameExpr> myNames, boolean parBlock, String extraParam){
     Log.log("   Creating Par Proc for Statement named: " + functionName);
     ST template = group.getInstanceOf("ParBlockProc");
     //We will create a sequence of ParamDecl so we can use our already existing
@@ -1721,10 +1724,17 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 	template.add("body", (String) stats);
 
     ArrayList<String> getParameters = createProcGetParams(paramDeclList, parBlock);
+    
+    //If we have a return add it here for recursive functions.
+    if(extraParam != null){
+      template.add("return", returnName);
+      getParameters.add(extraParam);
+    }
 
     template.add("name", functionName);
     template.add("paramWorkspaceName", globalWorkspace);
     template.add("getParameters", getParameters);
+    
 
     return template.render();
   }
@@ -1800,6 +1810,79 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     }
 
     return barrierInits;
+  }
+  //====================================================================================
+  /**
+   * When we hit an invocation that is called from within the body of it's own function
+   * we create a recursive calll.
+   * @param functionName: long name of function for C code.
+   * @param in: invocation node from AST.
+   * @return: recursive call to function.
+   */
+  String makeRecursiveFunction(String functionName, Invocation in){
+    Log.log("   Creating recursive call to function!");
+    ST template = group.getInstanceOf("Recursion");
+    String newFunctionName = functionName + "_Recursive";
+    int functionNumber = incrementEntry(this.recursiveStmtCounts, newFunctionName);
+    newFunctionName += functionNumber;
+    //Possible return variable if this function has a return type.
+    String extraProcGetParam = null;
+    //No index used for a recursive function, we do not use an array as it is a single
+    //command.
+    String noIndex = "";
+    
+    //This list contains all the NameExpr for this invocation.
+    LinkedList<NameExpr> myNames = new LinkedList();
+    //Visit our NameCollector for our invocation to get all the NameExpr's!
+    in.visit(new NameCollector(myNames));
+
+    //Create parameters for function:
+    //Turn our set into a Sequece so we can pass it to our createParameters function!
+    Sequence<Expression> params = new Sequence();
+    for(NameExpr ne : myNames)
+      params.append(ne);
+
+    //Array list for ProcParams for this invocation.
+    ArrayList<String> procParams = paramPassing(params, noIndex, parWsName, 2);
+    String returnType = (String) in.targetProc.returnType().visit(this);
+
+    //If we have a return type then we add a call to return that type here.
+    if(!returnType.equals("void")){
+      //Create ProcGetParam for function wrapper.
+      ST template2 = group.getInstanceOf("ProcGetParam");
+      template2.add("type", returnType + "*");
+      template2.add("name", returnName);
+      template2.add("number", procParams.size());
+      template2.add("globalWsName", globalWorkspace);
+      extraProcGetParam = template2.render();
+
+      //Create ProcParam fall invocation call:
+      template2 = group.getInstanceOf("ProcParam");
+      template2.add("globalWsName", globalWorkspace);
+      template2.add("parWsName", parWsName);
+      template2.add("index", noIndex);
+      template2.add("paramNumber", procParams.size());
+      template2.add("param", "&" + returnName);
+      procParams.add(template2.render());
+
+      template.add("returnType", returnType);
+    }
+
+    //Create the function to wrap this invocation in:
+    parProcs.add(createParProc(newFunctionName, new ExprStat(in), myNames,
+			       false, extraProcGetParam));
+    int stackSize = getSizeOfFunction(sizePerFunction, functionName);
+    parPrototypes.add(getSimplePrototypeString(newFunctionName));
+    
+    //Create invocation, i.e. actual function call.
+    template.add("globalWsName", globalWorkspace);
+    template.add("paramNumber", myNames.size());
+    template.add("stackSize", stackSize);
+    template.add("functionName", newFunctionName);
+    template.add("wsName", parWsName);
+    template.add("procParams", procParams);
+
+    return template.render();
   }
   //====================================================================================
 }
