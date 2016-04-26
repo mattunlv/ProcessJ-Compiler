@@ -1,0 +1,14 @@
+// P5010.pj. 
+//
+// Reachability 
+//
+// Error: 5010
+// Continue-statement inside par-block is not legal. 
+//
+proc void P5010() {
+  while (true) {
+    par {
+      continue;
+    }
+  }
+}

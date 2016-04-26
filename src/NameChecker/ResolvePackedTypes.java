@@ -7,176 +7,103 @@ import Utilities.Visitor;
 import AST.*;
 import Utilities.Error;
 import Utilities.SymbolTable;
+import Utilities.Settings;
 import java.util.Hashtable;
 import Utilities.Log;
 
 
 public class ResolvePackedTypes extends Visitor<AST> {
 
-
     public ResolvePackedTypes() {
-		Log.log("==============================================================");
-		Log.log("*       P A C K A G E D   T Y P E   R E S O L U T I O N      *");
-		Log.log("==============================================================");
-	}
+        Log.logHeader("==============================================================");
+        Log.logHeader("*       P A C K A G E D   T Y P E   R E S O L U T I O N      *");
+        Log.logHeader("*       -----------------------------------------------      *");
+        Log.logHeader("*       File: " + Error.fileName);
+        Log.logHeader("==============================================================");
+    }
 
-	public static Hashtable<String, Compilation> alreadyImportedFiles = new Hashtable<String,Compilation>();
-	            
-	public static Compilation importFile(Name na, String fileName) {
-	    System.out.println("attempting to IMPORT " + fileName);
-	    Compilation c = alreadyImportedFiles.get(fileName);
-		if (c != null) {
-			System.out.println("Import of '" + fileName + "' already done before!");
-			return c;
-		} 
-		try {
-			System.out.println("---=== Starting import of " + fileName);
-			Scanner s1 = new Scanner( new java.io.FileReader(fileName) );
-			parser p1 = new parser(s1);
-			java_cup.runtime.Symbol r = p1.parse();           
-			alreadyImportedFiles.put(fileName,(Compilation)r.value);
-			return (Compilation)r.value;
-		} catch (java.io.FileNotFoundException e) {
-			Error.error(na, "File not found : " + fileName, true, 2104);
-		} catch (Exception e) {
-			Error.error(na, "Something went wrong while trying to parse " + fileName, true, 2105);
-		}
-		return null;
+    // X.Y.Z::f, pa is X.Y.Z and we get that turned into X/Y/Z.pj
+    private String makeImportFileName(Sequence<Name> pa) {
+	String path ="";
+	int i = 0;
+	for (Name n : pa) {
+	    path = path + n.getname();
+	    if (i<pa.size()-1)
+		path = path + "/";              
+	    i++;
+	}       
+        return path + ".pj";
+    }
+                    
+    public void resolveTypeOrConstant(Name na) {
+        Log.log("ResolvePackagedTypes: Resolving `" + na + "'");
+        Sequence<Name> pa = na.packageAccess();
+        String fileName = "", oldCurrentFileName = "";
+	Compilation comp = null;
+        // pa is the sequence of names before the :: (if any)
+	// if there is no package access then the name must be a
+	// name declared locally or in an imported file - both will
+	// be correctly resolved at name checking time.
+        if (pa.size() > 0) {
+	    oldCurrentFileName = Error.fileName;	    
+	    // Turn X.Y.Z::f into X/Y/Z.pj
+	    fileName = Settings.absolutePath + makeImportFileName(pa);	    
+	    // Does X/Y/Z.pj exist?
+	    if (new File(fileName).isFile())  // Yes it did - so it is a non-libtary file.
+		; // don't do anything just continue after the if.
+	    else { // No, it was not a local file so now try the library directory
+		fileName = new File(Utilities.Settings.includeDir).getAbsolutePath() + "/" + 
+		    Utilities.Settings.targetLanguage + "/" + makeImportFileName(pa);
+		if (new File(fileName).isFile()) { // Yes it is a library file.
+		    // don't do anything just continue after the if.		
+		} else  // It was neither a local nor a library file - throw an error...
+		    Error.error(pa,"Cannot resolve file `" + makeImportFileName(pa) + "' as a local or library file.", true, 2150);
+	    }
+	    Error.setFileName(fileName);	    
+	    // Now import it
+	    comp = TopLevelDecls.importFile(pa.child(0), fileName);	    
+	    
+	    SymbolTable st = new SymbolTable();
+	    if (comp.visited == false) {
+		comp.visited = true;
+		comp.visit(new TopLevelDecls<AST>(st));
+		comp.visit(new ResolvePackedTypes());
+		comp.visit(new NameChecker<AST>(st));
+		// TODO: should we type check here?                                                                          
+	    }
+	    Error.setFileName(oldCurrentFileName);
+	    st = SymbolTable.hook;
+	    // TODO: this should do a proper find if its a symb ol table that comes back
+	    // but we probably need Type checking for that !
+	    // so for now - SymbolTable implements TopLevelDecl as well!
+	    TopLevelDecl td = (TopLevelDecl)st.getShallow(na.simplename());
+	    if (td != null) { // Yes, we found something 
+		na.c = comp;
+		na.resolvedPackageAccess = td;
+		Log.log(na.line + " Resolved `" + na + "' to `" + td + "'");
+	    } else {
+		;// TODO: don't error out now - the NameChecker will do that!
+		//Error.error(na,"Constant or Type '" + na + "' not declared.", false, 0000);
+	    } 
 	}
-	
-	public void resolveTypeOrConstant(Name na) {
-	    Log.log("ResolvePackagedTypes: resolveTypeOrConstant(): " + na);
-	    Sequence<Name> pa = na.packageAccess();
-	    String fileName = "";
-	    Log.log("pa.size() == " + pa.size());
-	    if (pa.size() > 0) {
-		if (pa.size() == 1) {
-		    // Try local file first (this can't be a library file!)
-		    fileName = new File("").getAbsolutePath() + "/" + pa.child(0).getname() + ".pj";
-		    Log.log("reolveTypeOrConstant(): " + fileName);
-		    if (new File(fileName).isFile()) {
-			System.out.println("Success: ready to resolve '" + fileName + "'.");
-			Compilation comp = importFile(pa.child(0), fileName);
-			// Now top level visit it
-			SymbolTable st = new SymbolTable();
-			String oldCurrentFileName = TopLevelDecls.currentFileName;
-			TopLevelDecls.currentFileName = fileName;
-			comp.visit(new TopLevelDecls<AST>(st));
-			TopLevelDecls.currentFileName = oldCurrentFileName;
-			st = SymbolTable.hook;
-			// TODO: this should do a proper find if its a symb ol table that comes back
-			// but we probably need Type checking for that !
-			// so for now - SymbolTable implements TopLevelDecl as well!
-			TopLevelDecl td = (TopLevelDecl)st.getShallow(na.simplename());
-			if (td == null) {
-			    ;// TODO: don't error out now - the NameChecker will do that!
-			    //Error.error(na,"Constant or Type '" + na + "' not declared.", false, 0000);
-			} else {
-			    
-			    na.c = comp;
-			    na.resolvedPackageAccess = td;
-			    Log.log("What have we here:"+(Type)td);
-			    ((Type)td).visit(this);
-			}
-		    } else {
-			// It must be a local - it cannot be a package cause no package name
-			// was given
-			Log.log("Huh");
-			; // don't error out now - the NameChecker will do that!
-			// Error.error(pa, "Cannot resolve file '" + pa.child(0).getname() + "' for type or constant import.");
-		    }
-		} else {
-		    System.out.println("not a local file name!");
-		    String path ="";
-		    int i = 0;
-		    for (Name n : pa) {
-			path = path + n.getname();
-			System.out.println(i + " == " + n.getname());
-			if (i<pa.size()-1)
-			    path = path + "/";		
-			i++;
-		    }	
-		    
-		    
-		    // try local first
-		    fileName = new File("").getAbsolutePath() + "/" + path + ".pj";
-		    
-		    System.out.println("Package file name is : " + fileName);
-		    
-		    // is it a local file 
-		    if (new File(fileName).isFile()) {	
-			// yes, so add it to the fileList
-			System.out.println("Success: ready to resolve '" + fileName + "'.");
-			Compilation comp = importFile(na, fileName);
-			// Now top level visit it
-			SymbolTable st = new SymbolTable();
-			comp.visit(new TopLevelDecls<AST>(st));
-			st = SymbolTable.hook;
-			// TODO: this should do a proper find if its a symb ol table that comes back
-			// but we probably need Type checking for that !
-			// so for now - SymbolTable implements TopLevelDecl as well!
-			TopLevelDecl td = (TopLevelDecl)st.getShallow(na.simplename());
-			if (td == null) {
-			    ; // don't error out now - the NameChecker will do that!
-			    // Error.error(na,"Constant or Type '" + na + "' not declared.", false, 0000);
-			} else {
-			    na.c = comp;
-			    na.resolvedPackageAccess = td;
-			    Log.log("What have we here 1:"+(Type)td);
-			    ((Type)td).visit(this);
-			}
-		    } else {
-			// no - now try a library!
-			fileName = new File(Utilities.Settings.includeDir).getAbsolutePath() + "/" + 
-			    Utilities.Settings.targetLanguage + "/" + 
-			    path +".pj";
-			System.out.println("try library now: package file name is : " + fileName);
-			if (new File(fileName).isFile()) {	
-			    System.out.println("but then again - try library: ready to resolve '" + fileName + "'.");
-			    // yes, so add it to the fileList
-			    Compilation comp = importFile(na, fileName);
-			    // Now top level visit it
-			    SymbolTable st = new SymbolTable();
-			    comp.visit(new TopLevelDecls<AST>(st));
-			    st = SymbolTable.hook;
-			    // TODO: this should do a proper find if its a symb ol table that comes back
-			    // but we probably need Type checking for that !
-			    // so for now - SymbolTable implements TopLevelDecl as well!
-			    TopLevelDecl td = (TopLevelDecl)st.getShallow(na.simplename());
-			    if (td == null) {
-				; // don't error out now - the NameChecker will do that!
-				//	Error.error(na,"Constant or Type '" + na + "' not declared.", false, 0000);
-			    } else {
-				na.c = comp;
-				na.resolvedPackageAccess = td;
-				Log.log("What have we here 2:"+(Type)td);
-				((Type)td).visit(this);
-			    }				
-			} else {
-			    ; // don't error out now - the NameChecker will do that!
-			    // Error.error(pa, "Cannot resolve file '" + na + "' for type or constant import.");
-			}
-		    }
-		}
-	    }	
-	}	
-	
-	public AST visitName(Name na) {
-		if (na.packageAccess().size() > 0) {
-			System.out.println("--> " + na);
-			resolveTypeOrConstant(na);
-		}
-		return null;
-	}
+    }
+        
+    public AST visitName(Name na) {
+        Log.log(na.line + " Resolving Name `" + na.getname() + "'");
+        if (na.packageAccess().size() > 0) {
+            resolveTypeOrConstant(na);
+        }
+        return null;
+    }
 
 
-	public AST visitNamedType(NamedType nt) {
-		Sequence packages = nt.name().packageAccess();
-		if (packages.size() > 0) {
-			System.out.println(">> " + nt.name());
-			resolveTypeOrConstant(nt.name());
-		}
+    public AST visitNamedType(NamedType nt) {
+        Log.log(nt.line + " Resolving NamedType `" + nt.name() + "'");
+        Sequence packages = nt.name().packageAccess();
+        if (packages.size() > 0) {
+            resolveTypeOrConstant(nt.name());
+        }
 
-		return null;
-	}
+        return null;
+    }
 }

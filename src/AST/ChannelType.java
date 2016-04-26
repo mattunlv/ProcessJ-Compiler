@@ -40,7 +40,6 @@ public class ChannelType extends Type {
   public <S extends Object> S visit(Visitor<S> v) {
     return v.visitChannelType(this);
   }
-
   public int byteSizeC(){
     //TODO.
     return 4;

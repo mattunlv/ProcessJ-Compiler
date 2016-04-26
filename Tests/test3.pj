@@ -1,0 +1,29 @@
+//import std.io;
+//import test4;
+
+proc void _p1(barrier b, ...) {
+    for (int i=0; i< 100; i++) {
+      x = x + h(...);
+    }
+    sync(b);
+}
+
+proc void h(barrier b,...) {
+    sync(b);
+}
+
+
+proc void test() {
+    barrier b;
+
+
+    par enroll b {
+	f(b);
+	g(b);
+	for (int i=0; i< 100; i++) {
+	    x = x + h(b,...);
+	}
+
+    }
+
+}

@@ -1,0 +1,8 @@
+#pragma LIBRARY;
+#pragma NATIVE "math.h";//   <--- this means map to <math.h>
+#pragma LANGUAGE "C";      //<--- just in C
+#pragma FILE "math";       //<--- the ProcessJ/lib/C/std/math.pj
+
+package std;       //                       the ProcessJ/lin/C/include/std/math.h
+
+native proc double fabs(double x) ;    // <---- all ProcessJ calls to fabs translate DIRECTLY into fabs from C

@@ -1,0 +1,381 @@
+\documentclass[pdflatex,11pt,letter]{article}
+
+\usepackage{graphicx}
+
+
+\newcommand{\te}{=_{\cal T}}
+\newcommand{\teq}{\sim_{\cal T}}
+\newcommand{\ac}{:=_{\cal T}}
+\newcommand{\tlt}{\leq_{\cal T}}
+\begin{document}
+
+\begin{center}
+Version 1.0\hfill{}February 13, 2016\\[0.5cm]
+{\Huge The Type System of ProcessJ}\\[0.5cm]
+by Matt B. Pedersen
+\end{center}
+
+\section{Introduction}
+
+This document defines the type system of ProcessJ and specifies the type checker as well. First, let us define the operators we need in the following:\\
+
+\noindent
+Two types $T_1$ and $T_2$ are said to be {\bf equal} if they are the same type, and we write
+\[
+T_1 \te T_2
+\]
+
+\noindents
+Given two types $T_1$ and $T_2$, we say that they are {\bf type equivalent} if any value of type $T_1$ can be assign\
+ed to a variable of type $T_2$ and any value of type $T_2$ can be assigned to a variable of $T_1$, and we write
+\[
+T_1 \teq T_2
+\]
+Note, if $T_1 \te T_2 \Rightarrow T_1 \teq T_2$, that is, if the two types are the {\it same} type, \
+then they are trivially type equivalent.\\
+
+\noindent
+Consider an assignment of type form
+\[
+v = e
+\]
+where $v$ represents a variable and $e$ an expression. If we assume that the type of $v$ is $T_v$ and the type of $e\
+$ is $T_e$, and if a value of type $T_e$ can be assigned to variable of type $T_v$, then we say that $T_e$ is {\bf assignment compatible} with $T_v$ and we write
+\[
+T_v \ac T_e
+\]
+It should be noted, that $T_v \ac T_e$ and $T_v \te T_e$ is {\bf not} the same. The former means that a value of type $T_e$ can be assigned to a value of type $T_v$ and the latter that the two types are the same. Consequently, the relation defined by $\ac$ is not symmetric; that is, $T_1 \ac T_2$ does not imply that $T_2 \ac T_1$.
+
+
+\section{Types in ProcessJ}
+
+\begin{center}
+\begin{tabular}{|l|l|}\hline
+\multicolumn{2}{|c|}{Primitive Types}\\ \hline
+Type & Representation \\ \hline\hline
+byte		& $byte$\\
+short		& $short$\\
+char		& $char$\\
+integer		& $integer$\\
+long		& $long$\\
+float		& $float$\\
+double		& $double$\\
+boolean		& $boolean$\\
+string      & $string$\\
+barrier		& $barrier$\\
+timer       & $timer$\\\hline
+\multicolumn{2}{|c|}{Constructed Types}\\ \hline
+Type & Representation \\ \hline\hline
+array		& $Array(t, size)$\\
+record		& $Record(n, \{(n_1\ t_1),\ldots,(n_m\ t_m)\})$\\
+protocol    & $Protocol(n, \{(tag_1, \{(n_{1,1}\ t_{1,1}),\ldots,(n_{1,m_1}\ t_{1,m_1})\}),$\\
+            & \hspace*{2.35cm}$\ldots,$\\
+            & \hspace*{2.25cm}$(tag_k, \{(n_{k,1}\ t_{k,1}),\ldots,(n_{k,m_k}\ t_{k,m_k})\})\})$\\
+channel     & $Channel(t)$\\
+channel end & $ChannelEnd(t, access)$\\
+procedure   & $Procedure(n, (t_1,\ldots,t_m), t)$\\ \hline 
+\end{tabular}
+\end{center}
+
+\noindent
+$t$, $t_i$, and $t_{i,j}$ are types; $n$ and $n_i$ are names; $access \in \{${\tt read}, {\tt write}$\}$, and $tag_i$ is also a name.
+
+\subsection{Type Predicates}
+
+There is a type predicate for each type, for example, $byte_?, short_?, \ldots, Array_?,\ldots,NamedType_?$. In addition it is useful with the following additional predicates:
+\begin{itemize}
+\item $Integral_?(t) = (t \in \{byte, short, char, int, long\}$
+\item $Numeric_?(t) = (Integral_?(t) \vee t \in \{float, double\})$.
+\item $Primitive_?(t) = (Numeric?(t) \vee t \in \{boolean, string, barrier, timer\})$
+\end{itemize}
+Naturally, something like $t \in \{float, double\}$ could have been written as $(float_?(t) \vee double_?(t))$.
+
+\subsection{Type Equality ($\te$)}
+
+The $\te$ operator is used to determine {\em type equality}, that is, it evaluates to true, if and only if two types are the same.
+
+\subsubsection{Primitive Types}
+
+A primitive type $t_1$ is only ever equal to another primitive type $t_2$ if they are both the same type. That is
+\[
+t_1 \te t_2 \Leftrightarrow Primitive_?(t_1) \wedge Primitive_?(t_2) \wedge (t_1 = t_2)
+\]
+
+\subsubsection{Arrays}
+
+Two array types $a_1 = Array(t_1, s_1)$ and $a_2 = Array(t_2, s_2)$ are equal if and only if they both have the same base type and their sizes are the same or both undefined ($\bot$), that is:
+\[
+a_1 \te a_2 \Leftrightarrow Array_?(a_1) \wedge Array_?(a_2) \wedge (t_1 \te t_2) \wedge (s_1 = s_2)
+\]
+
+\subsubsection{Records and Protocols}
+
+ProcessJ uses {\em name equivalence} for records and protocols, so for two such types to be the same they have to have the same type name. Therefore, we get for two record types $r_1 = Record(n_1,\{\ldots\})$ and $r_2 = Record(n_2,\{\ldots\})$:
+\[
+r_1 \te r_2 \Leftrightarrow Record_?(r_1) \wedge Record_?(r_2) \wedge (n_1 = n_2)
+\]
+and for two protocol types $p_1 = Protocol(n_1,\{\ldots\})$ and $p_2 = Protocol(n_2,\{\ldots\})$:
+\[
+r_1 \te r_2 \Leftrightarrow Protocol_?(r_1) \wedge Protocol_?(r_2) \wedge (n_1 = n_2)
+\]
+
+\subsection{Channels and Channel Ends}
+
+For channel types $c_1 = Channel(t_1)$ and $c_2 = Channel(t_2)$ to be equal they must carry the same type:
+\[
+c_1 \te c_2 \Leftrightarrow Channel_?(t_1) \wedge Channel_?(t_2) \wedge (t_1 \te t_2)
+\]
+For two channel ends $e_1 = ChannelEnd(t_1, a_1)$ and $t_2 = ChannelEnd(t_2, a_2)$ we further require that the access (read or write) is the same:
+\[
+e_1 \te e_2 \Leftrightarrow ChannelEnd_?(e_1) \wedge ChannelEnd_?(e_2) \wedge (t_1 \te t_2) \wedge (a_1 = a_2)
+\]
+
+\subsection{Procedures}
+
+Most languages do not consider procedures a type, but ProcessJ has mobile procedures so we need a procedure type.
+
+For two procedure types to be equal we require they have the same name and the same signature -- thus, a procedure type is only ever equal to itself. For $p_1 = Procedure(n_1,(t_{1,1},\ldots,t_{1,m_1}),t_1)$ and $p_2 = Procedure(n_2,(t_{2,1},\ldots,$ $t_{2,m_2}),2_1)$ we have:
+\[
+p_1 \te p_2 \Leftrightarrow (n_1 = n_2) \wedge (m_1 = m_2) \wedge (t_1 = t_2) \wedge (\bigwedge_{i=0}^{m_1} (t_{1,i} \te t_{2,i}))
+\]
+Note, we could have added the names of the parameters in the type if we wanted and then required that they also match, but most languages -- ProcessJ included -- does not allow the same procedure to be re-implemented with the same name and type signature (parameters and return type).
+
+\subsubsection{Named Types}
+
+ProcessJ does not have real named types, that is, there is no type definition operator that can introduce aliasing for types. The $NamedType$ type is used temporarily until resolved. Consider the following ProcessJ code:
+
+\begin{verbatim}
+  record R {
+    int id;
+    string name;
+  }
+
+  ...
+  proc void foo() {
+    R myR;
+    ... 
+  } 
+\end{verbatim}
+
+The type $R$ in the declaration of $myR$ is created as a named type. All named types must resolve to real types during name resolution, thus, the type checker should never encounter a named type.
+
+\section{Type Equivalence ($\teq$)}
+
+In ProcessJ, type equivalence is equal to type equality, so therefore for two types $t_1$ and $t_2$ we have:
+\[
+(t_1 \teq t_2) \Leftrightarrow (t_1 \te t_2)
+\]
+
+\section{Assignment Compatability ($\ac$)}
+
+Because of coercion of numeric types and because of inheritance in protocols assignment compatability is a little more than just type equivalence.
+
+\subsection{The Ordering Operator ($\tlt$)}
+
+The ordering operator is needed for both cases, that is, we need to define it for both primitives (actually, numeric primitive types only) and for protocols.
+
+it is worth noting that the following implication follows trivially:
+
+\[
+t_1 \te t_2 \Rightarrow ((t_1 \tlt t_2) \wedge (t_2 \tlt t_1))
+\]
+
+\subsubsection{Ordering of Primitive Numeric Types}
+
+In ProcessJ we have chosen to use the same rule as in Java and C/C++; that is, for an assignment line {\tt a = b} where both {\tt a} and {\tt b} are numeric, we say that it is ok if {\tt b} value can be coerced into a value of the type of {\tt a} without loss of precision. This is not the case for integer values stored in floats and longs in doubles, but we disregard that little issue to be compatible with Java. So we get the following:
+\[
+byte \tlt short \tlt char \tlt int \tlt long \tlt double
+\]
+\[
+int \tlt float \tlt double
+\]
+and we can define a ceiling function in the following way:
+
+\[
+\lceil t_1, t_2 \rceil = \left\{
+\begin{array}{ll}
+t_1 & \textrm{If $t_2 \tlt t_1$}\\
+t_2 & \textrm{If $t_1 \tlt t_2$}\\
+\bot & \textrm{Otherwise}
+\end{array}\right.
+\]
+
+\subsubsection{Ordering of Protocol Types}
+
+Protocol type ordering is based on inheritance, but it is important to understand the difference between object inheritance in a language like Java and protocol inheritance in ProcessJ. Let us briefly consider object inheritance first. Suppose we have the following code:
+\begin{verbatim}
+  class A { 
+    int a; 
+  }
+
+  class B extends A {
+    int b;
+  }
+\end{verbatim}
+then a variable of type {\tt A} can hold a reference to an object of type {\tt B}, not a variable of type {\tt B} cannot hold a reference to an object of type {\tt A}. To understand why assume that a variable of type {\tt A} could hold a reference to an object of type {\tt A} and consider the following code:
+
+\begin{verbatim}
+  ...
+  B myB = new A();
+  
+  myB.b = 100;
+\end{verbatim}
+Clearly, the {\tt b} field does not exist in the {\tt A} object. Now consider the following ProcessJ declarations:
+
+\begin{verbatim}
+
+protocol A {
+  a1: { ... }
+  a2: { ... }
+}
+
+protocol B extends A {
+  b1: { ... }
+  b2: { ... }
+  b3: { ... }
+}
+\end{verbatim}
+If we are not careful, we run into the same problem as we did with objects. For example if the following code was legal we would have a problem:
+\begin{verbatim}
+  chan<A> c;
+  B b = c.read();
+  ...  b.b3 ...
+\end{verbatim}
+The problem here consists of the unchecked access to the variant cases of {\tt b}. In ProcessJ {\bf all} access to variables must happen in a tag-guarded switch statement. That way the compiler can assure that the wrong fields are never accessed. The proper code would look like this:
+\begin{verbatim}
+  chan<A> c;
+  B b = c.read();
+  switch (b) {
+    case a1: // access to b.a1 is legal here
+    case a2: // access to b.a2 is legal here
+    case b1: // access to b.b1 is legal here
+    case b2: // access to b.b2 is legal here
+    case b3: // access to b.b2 is legal here
+  }
+\end{verbatim}
+Naturally, since {\tt c} carries only values of type {\tt A}, all the tag cases from {\tt B} will never be executed in the code above. So now we can say that one protocol type is less than another if its cases are a subset of the other -- here we do take both names and types into consideration. So for two types 
+
+% triple index: x,y,z: x = 1,2 p_1 or p_2, y = 1 ... k_1 or k_2 and z = 1 .. 
+% n_1, 
+% {(n_1,1,1 t_1,1,1), (n_1,1,2 t_1,1,2), ... (n_1,1,m_1,1 t_1,1,m_{1,1})},
+% {(n_1,2,1 t_1,2,1), (n_1,2,2 t_1,2,2), ... (n_1,2,m_1,2 t_1,2,m_{1,2})},
+% ...
+% {(n_1,k_1,1 t_1,k_1,1), (n_1,k_1,2 t_1,k_1,2), ... (n_1,k_1,m_{1,k_1} ...)}
+%
+
+\noindent
+$p_1 = Protocol(n_1, \{ (tag_{1,1}, \{(n_{1,1,1}\       t_{1,1,1}),           \ldots,
+             (n_{1,1,m_{1,1}}\ t_{1,1,m_{1,1}})\}), \\
+\hspace*{3.25cm}   (tag_{1,2}, \{(n_{1,2,1}\       t_{1,2,1}),           \ldots,
+             (n_{1,2,m_{1,2}}\ t_{1,2,m_{1,2}})\}), \\
+\hspace*{3.25cm}\ldots \\
+\hspace*{3.25cm}(tag_{1,k_1}, \{(n_{1,k_1,1}\ t_{1,k_1,1}),\ldots,(n_{1,k_1,m_{1,k_1}} t_{1,k_1,m_{1,k_1}})\})\})$ and 
+\noindent
+$p_2 = Protocol(n_2, \{ (tag_{2,1}, \{(n_{2,1,1}\       t_{2,1,1}),           \ldots,
+             (n_{2,1,m_{2,1}}\ t_{2,1,m_{2,1}})\}), \\
+\hspace*{3.25cm}   (tag_{2,2}, \{(n_{2,2,1}\       t_{2,2,1}),           \ldots,
+             (n_{2,2,m_{2,2}}\ t_{2,2,m_{2,2}})\}), \\
+\hspace*{3.25cm}\ldots \\
+\hspace*{3.25cm}(tag_{2,k_2}, \{(n_{2,k_2,1}\ t_{2,k_2,1}),\ldots,(n_{2,k_2,m_{2,k_2}} t_{2,k_2,m_{2,k_2}})\})\})$
+we define
+\[
+(p_1 \tlt p_2) \Leftrightarrow (\forall i : (1 \leq i \leq k_1) : tag_{1,i} \textrm{ exists as a tag with index $2,j$ in $p_2$}) \wedge
+\]
+\[
+(m_{1,i} = m_{2,j}) \wedge (\bigwedge_{k=1}^{m_{1,i}} ((n_{1,i,k} = n_{2,j,k}) \wedge (n_{1,i,k} \teq n_{2,j,k}))
+\]
+If needed, the ceiling function can be applied to protocol types as well.
+
+\subsection{Assignment Compatability}
+
+We can not continue with the definition of assignment compatability. The assignment compatability operator ($\ac$) determines if an assignment like:
+\[
+v = e
+\]
+where $t_v$ is the type of the left hand side variable $v$ and $t_e$ is the type of the right hand side expression is legal, that is if $t_v \ac t_e$ is true.
+
+\subsubsection{Assignment Compatability for Primitives}
+
+For primitive types we utilize the $\tlt$ operator from the previous subsection. So for two primitive type $t_1$ and $t_2$ we have:
+\[
+(t_1 \ac t_2) \Leftrightarrow Primitive_?(t_1) \wedge Primitive_?(t_2) \wedge (t_2 \tlt t_1)
+\]
+
+\subsubsection{Assignment Compatability for Arrays}
+
+For arrays we have to be a little careful; An array of integers cannot be assigned to an array type of doubles even if $int \tlt double$, but if the base type is a protocol, then we can make such an assignment as long as the ordering of protocol types is obeyed. So we have the following for two array types $a_1 = Array(t_1, d_1)$ and $t_2 = Array(t_2, d_2)$:
+\[
+(t_1 \ac t_2) \Leftrightarrow Array_?(t_1) \wedge Array_?(t_2) \wedge
+\]
+\[
+(Protocol_?(t_1) \wedge Protocol_?(t_2) \wedge (t_2 \tlt t_1)) \vee
+\]
+\[
+(\neg{}Protocol_?(t_1) \wedge \neg{}Protocol_?(t_2) \wedge (t_1 \teq t_2)))
+\] 
+
+\subsubsection{Assignment Compatability for Records}
+
+Records are straightforward. For two record types $r_1 = Record(n_1,\{\ldots\})$ and $r_2 = Record(n_2,\{\ldots\})$ we have
+\[
+(r_1 \ac r_2) \Leftrightarrow Record_?(r_1) \wedge Record_?(r_2) \wedge (r_1 \teq r_2)
+\]
+
+\subsubsection{Assignment Compatability for Channels and Channel Ends}
+
+Channels cannot be assigned using the = operator, and neither channel ends. They are immutable. Channels cannot be passed as parameters either, only channel ends can.
+
+Therefore we only need to define assignment compatability for channel ends. For two channel end types $e_1 = ChannelEnd(t_1, a_1)$ and $e_2 = ChannelEnd(t_2, a_2)$ we have:
+\[
+(e_1 \ac e_2) \Leftrightarrow ChannelEnd_?(e_1) \wedge ChannelEnd_?(e_2) \wedge (e_1 \teq e_2)
+\]
+
+\subsubsection{Assignment Compatability for Procedures}
+
+Since procedures can be mobile, and thus travel on channels, we need to define assignment compatability for procedures. It should be noted that the following code in ProcessJ is valid (or should be!):
+\begin{verbatim}
+  mobile proc void foo() ;
+
+  mobile proc void bar() implements foo { }
+
+  proc void main() {
+    foo f = new f;
+    chan<foo> c;
+
+    c.write(f);
+  }
+\end{verbatim}
+So assignment compatability is as simple as requiring all parameters be type equal. For two procedure types $p_1 = (n_1,(t_{1,1},\ldots,t_{1,k_1}), t_1)$ and $p_2 = (n_2,(t_{2,1},\ldots,t_{2,k_2}), t_2)$ we have:
+\[
+(p_1 \ac p_2) \Leftrightarrow Procedure_?(p_1) \wedge Procedure_?(p_2) \wedge (k_1 = k_2) \wedge 
+\]
+\[
+(t_1 \te t_2) \wedge \bigwedge_{i=0}^{k_1} (t_{1,i} \te t_{2,i})
+\]
+
+\subsubsection{Assignment Compatability for Named Types}
+Since named types do not figure in the type checking phase we do not need to consider them here.
+
+\section{Type Checking}
+
+
+%\section{Random Thoughts}
+%Should we allow arrays like
+
+
+
+%\begin{verbatim}
+%int a[10];
+%\end{verbatim}
+
+%to be just auto translated into 
+%\begin{verbatim}
+%int a[] = new int[10];
+%\end{verbatim}
+
+\section{Notes}
+
+The compiler crashes on the mobile stuff at the moment - and the new keyword isn't implemented yet .... the type checker doesn't like passing procedure types as it is right now ;-) it dies.
+
+
+\end{document}

@@ -1,0 +1,25 @@
+import F;
+//import A.B;
+//import Bar.P;
+//record RR { int x; }
+
+//proc void foo() {
+//}
+//proc void foo(int x, double d, string s) { }
+
+proc void main(){
+/*  
+  int[] x = {3, 4, 5};
+  int[] y;
+  BOO myBoo;
+  return;*/
+  //int a;	
+  //R myR;
+  //RR myRR;
+  F::DDD myD;
+  FFF myF;
+  //Bar.P::REC myRec;
+  //REC yourRed;
+ //	 F::foo(7);
+ //foo(23,"Hello");
+}

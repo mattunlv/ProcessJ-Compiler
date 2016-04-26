@@ -1,0 +1,11 @@
+//(2)
+//10: Array access index must be of integral type.
+//Error number: 3001
+//
+// source:TypeChecker/visitArrayAccessExpr()
+//
+proc void test () {
+  int i;
+  int x[];
+  i = x[5.6];
+}

@@ -1,0 +1,557 @@
+\documentclass[pdflatex,11pt,letter]{article}
+\usepackage[top=1in,left=1in,bottom=1in,right=1in,includefoot]{geometry}
+
+\usepackage{graphicx}
+
+
+\newcommand{\te}{=_{\cal T}}
+\newcommand{\teq}{\sim_{\cal T}}
+\newcommand{\ac}{:=_{\cal T}}
+\newcommand{\tlt}{\leq_{\cal T}}
+\begin{document}
+
+\begin{center}
+Version 1.0\hfill{}February 13, 2016\\[0.5cm]
+{\Huge The ProcessJ Language}\\[0.5cm]
+by Matt B. Pedersen
+\end{center}
+
+\section{Introduction}
+
+
+\section{The Grammar}
+
+\subsection{A Compilation Unit}
+
+A ProcessJ file constitutes a {\em compilation unit}. A compilation unit consists of the following four things:
+\begin{itemize}
+\item An optional list of pragmas (of the form {\tt pragma ...}). Pragmas are used to pass options to the compiler when compiling a specific file. Currently, pragmas are only utilized in the library generating system -- see Section~\ref{sec:pragmas}.
+\item An optional package declaration of the form {\tt package $<$name$>$}. A package name should, like in Java, correspond to the directory path in which the file is located. See Section~\ref{sec:packages} for more information on packages.
+\item An optional list of import statements of the form {\tt import ....}. importing a file allows you to use types and procedures (which are also types) from other compilation units. See Section~\ref{sec:imports} for general information on imports, Section~\ref{sec:qualifiedImplicitImports} for implicit imports though the use of qualified named, and Section~\ref{sec:nameresolution} for more information about how name resolution is handled with the presence of import statements.
+\item An optional list of type declarations. This includes the definition of records, protocols, and procedures.  
+\end{itemize}
+
+\begin{tabular}{lll}
+{\it compilation\_unit} &  $\rightarrow$ &  
+          {\it pragmas}$^*$ [{\it package\_declaration}]\\
+          &&  {\it import\_declarations}$^*$ {\it type\_declarations}$^*$\\
+\end{tabular}
+
+\noindent
+\underline{Example:}
+\begin{verbatim}
+  package Example;
+
+  import std.io;
+
+  public record R {
+    int a;
+    double b;
+  }
+
+  public proc void foo(int a) {
+    a = a + 1;
+  }
+\end{verbatim}
+
+\subsection{Pragmas}
+\label{sec:pragmas}
+
+A {\bf pragma} is a statement that is used to pass information to the compiler. Currently pragmas are used to instruct the compiler to generate certain types of code when generating new libraries. A pragma can take one of two shapes. The first is of the form
+\begin{verbatim}
+#pragma ID 
+\end{verbatim}
+where {\tt ID} is an identifier -- a flag -- that is passed to the compiler, or 
+\begin{verbatim}
+#pragma ID "string constant"
+\end{verbatim}
+where {\tt ID} is an identifier that is associated with the {\tt "string constant"} and passed to the compiler.
+
+The complete list of valid pragmas is:
+\begin{itemize}
+\item {\tt \#pragma LIBRARY;} -- this instructs the compiler that the ProcessJ file is meant to be a library file.
+\item {\tt \#pragma NATIVE "string";} -- this declares that the library is mapped directly to a natively written library represented by {\tt "string"}. One example could be {\tt "math.h"}, which would tell the compiler that the implementation of this library can be found in an existing library file for the target language (in this example, C).
+\item {\tt \#pragma LANGUAGE "string";} -- this sets the implementation language of the library. Naturally, there is a connection between the language chosen and the correct use of the other pragmas.
+\item {\tt \#pragma FILE "string";} -- this sets the name of the output file name in the target language.   
+\end{itemize}
+
+Much more information about the use of pragmas can be found in Section~\ref{sec:writingLibraries} on how to write libraries for ProcessJ.
+
+%TODO: finish this section
+
+\subsection{Package Declarations}
+
+%TODO: finish this - emailed the gang. packages can only have a single ID - no dots ...... 
+
+\subsection{Import Declarations}
+
+An import in ProcessJ is a way to make available code written in another compilation unit without re-implementing it. There are two forms of explicit imports in ProcessJ, one where a single compilation unit (file) is imported and one where all compilation untils (files) in a package are imported. It is not possible to import one single type from a compilation unit, but it is possible to explicitly use a type in a non-imported compilation unit through the {\tt ::} operator. However, such a use forces an import of the compilation unit (file) in which the type is located, but without making available the remaining types of that compilation unit to the program (apart from to the imported type).
+The two forms of the import statement look like this:
+\begin{verbatim}
+  import std.io;
+\end{verbatim}
+which imports the compilation unit {\tt io} found in the {\tt std} package, and 
+\begin{verbatim}
+  import std.*;
+\end{verbatim}
+which imports {\bf all} the compilation units in the {\tt std} package. The {\tt *} option should be utilized with care as it can potentially cause a lot of I/O for the compiler as it has to read and parse a lot of files.
+
+Importing compilation units (which henceforth shall be called just `files') builds a hierarchy for the name resolution phase to traverse. This hierarchy can be rather complicated to understand, especially for the compiler writer, but the following rules should be noted for the regular programmer:
+\begin{itemize}
+\item Types declared in later imports are preferred to types in earlier imports. This means that the order if import statements determines (in reverse order) which type is found in the name resolution phase when a type name is used. Again, to explicitly override this the {\tt ::} operator can be used in declarations or invocations of procedures.
+\item Files imported by explicitly imported files are not made available to the programmer, so if your program imports a file {\tt A} and {\tt A} imports a file {\tt B} which contains a type {\tt T}, then you cannot refer to {\tt T} without importing {\tt T} explicitly.
+\end{itemize}
+
+Section~\ref{sec:importImplementation} explain the implementation of the import system in greater detail.
+
+
+
+\subsection{Type Declarations}
+
+A ProcessJ file can contains any number of type declarations. In ProcessJ, a procedure is considered a type as well, the reason is that procedures, when run, are considered processes, and ProcessJ supports mobile processes; that is, processes can be communicated between other processes as a piece of data.
+
+At the top-level ProcessJ supports 5 different declarations:
+\begin{itemize}
+\item Procedure declarations.
+\item Protocol declarations.
+\item Record declarations.
+\item Constant declarations.
+\item Extern type declarations.
+\end{itemize}
+Before we consider the 5 different top-level declarations (of which the first three also are type constructors) we must briefly consider modifiers and primitive types.
+
+\subsubsection{Modifiers}
+
+ProcessJ currently supports 6 different modifiers. Modifiers are keywords that can be placed in front of type and variable declarations. Not all modifiers can be used on all types. The list of modifiers can be seen in Table~\ref{tab:modifiers}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{lp{10cm}}\hline
+Modifier & Description\\ \hline\hline
+{\tt mobile} & The {\tt mobile} modifier can only be used on procedure types, channel, and channel end declarations. A mobile process is a process that can be communicated in a channel that carries the appropriate procedure type. A mobile channel is a channel whose ends can be sent over a channel, and a mobile channel end denoted the channel ends of a mobile channel. \\\hline
+{\tt const} & The modifier {\tt const} can only be used to declare constants at the compilation unit level like {\tt const double PI = 3.1415} or it can be used to declare a local variable or even a parameter constant. A constant local cannot be assigned apart from its initializer, and a constant parameter cannot be assigned to at all apart from the value it gets when the procedure is called.\\ \hline
+{\tt native} & The {\tt native} modifier does not appear in normal code. It is used only when writing native libraries for ProcessJ. \\ \hline 
+{\tt public} & Only top-level types (that is, types declared outside procedures) can use the {\tt public} modifier. The {\tt public} modifier makes a type available to anyone who either imports the file in which it is declared or who implicitly causes an import by referring to the type using the {\tt ::} operator.\\ \hline
+{\tt private} & Like {\tt public}, {\tt private} is a top-level modifier. Any type declared {\tt private} can only be accessed within the compilation unit in which it was declared.\\ \hline
+{\tt protected} & Again, {\tt protected} is a top-level modifier only. A {\tt protected} type is accessible only within the package.\\ \hline
+\end{tabular}
+\end{center}
+\caption{ProcessJ modifiers.}
+\label{tab:modifiers}
+\end{table}
+
+If no modifiers are used, the {\tt protected} modifier is the default chosen by the compiler. This means that any type without a modifier will be visible only within the package.
+
+\subsubsection{Primitive Types}
+
+ProcessJ supports all the typical primitive types known from most other programming languages. These include integral types of various sizes, floating point types, booleans, and strings. In ProcessJ a string is a primitive type. In addition, there are two further primitive types, namely {\tt barrier} and {\tt timer}. These are probably new to you, but they are essential in a process oriented language (or at least the barrier is -- the timer is nice to have). Table~\ref{tab:primitives} contains a list of the primitive types.
+\begin{table}
+\begin{center}
+\begin{tabular}{lp{4cm}l}
+Name & Representation & Range\\ \hline\hline
+{\tt boolean} &                      &$\{${\tt true}, {\tt false}$\}$ \\ \hline
+{\tt byte}    & 8-bit signed 2's complement &\{-128,$\ldots$,127\}\\ \hline
+{\tt short}   & 16-bit signed 2's complement & \{-32768,$\ldots$,32767\}\\ \hline
+{\tt char}    & 16-bit Unicode character & \{'$\backslash{}${\tt u0000}',\ldots,'$\backslash{}${\tt ufff}'\}\\ \hline
+{\tt int}     & 32-bit signed 2's complement & \{$-2^{31},\ldots,2^{31}-1\}$\\ \hline
+{\tt long}    & 64-bit signed 2's complement & \{$-2^{63},\ldots,2^{63}-1\}$\\ \hline
+{\tt float}   & single-precision 32-bit IEEE 754 floating point & $\pm 1.18\times10^{−38}$ - $\pm 3.4\times10^{38}$\\ \hline
+{\tt double}  & double-precision 64-bit IEEE 754 floating point & $\pm 2.23\time10^{−308}$ - $\pm 1.80\times10^{308}$\\ \hline
+{\tt string}  & & -- \\ \hline
+{\tt barrier} & & -- \\ \hline
+{\tt timer}   & & -- \\ \hline
+\end{tabular}
+\end{center}
+\caption{ProcessJ primitive types.}
+\label{tab:primitives}
+\end{table}
+Apart from the {\tt barrier} and the {\tt timer} types, all the other primitive types should be well known from other languages.
+
+%TODO: probably something more here
+
+\paragraph{Barriers.}
+A {\tt barrier} is a {\em synchronization point} in a ProcessJ program. A process can {\tt enroll} on a barrier, which means that it may synchronize on it (using the {\tt sync} keyword). When a process synchronizes on a barrier, it will be held at that barrier until every other process enrolled on that barrier also synchronizes on it. Only when all enrolled processes have called {\tt sync} on the barrier in question will every process be allowed to proceed past the {\tt sync} call. If just one of the enrolled processes does not call {\tt sync}, all other processes will be prevented from progressing in their execution. Barriers can be passed like any other primitive value to procedures, but cannot be sent over channels; that is, barriers cannot be declared {\tt mobile}.
+
+\paragraph{Timers.} 
+A {\tt timer} is a data type that represents a clock that ticks. A timer variable can be {\em read}, much like a channel:
+\begin{verbatim}
+  timer t;
+  int time;
+
+  time = t.read();
+\end{verbatim}
+It should be noticed that while regular channel reads are synchronous, that is, the sender and the reader must both be ready to communicate (otherwise neither can progress, and the process is suspended), a timer read is always ready and can never cause a process to be suspended. A timer read returns an integer value. The second operation you can perform on a timer is a timeout:
+\begin{verbatim}
+  timer t;
+  int time;
+
+  t.timeout(100);
+\end{verbatim}
+Invoking a {\tt timeout} on a timer prevents the process from progressing until the specified amount of time has passed. %TODO: what unit is time measured in?
+Timeout statements can also be used as guards in an alt-statement. Like barriers, timers cannot be communicated on channels; they cannot be declared mobile.
+
+\subsubsection{Record Declarations}
+%TODO: cannot contain timers and barriers if the record is used as a channel type. 
+%TODO: The grammar allows for 'extends' on records; remove that!
+
+A record in ProcessJ is like a struct in C. The EBNF grammar for a record declaration is as follows:
+
+\begin{center}
+\begin{tabular}{lll}
+{\it record\_type\_declaration} & $\rightarrow$ & 
+          {\it modifier}$^*$ {\bf record} ID {\bf \{} \\
+          && ({\it type} {\it variable\_id} ({\bf ,} {\it type} {\it variable\_id} )$^*$ {\bf ;})$^+$\\
+          && {\bf \}}\\
+{\it variable\_id} & $\rightarrow$ & ID\\
+ && {\it variable\_id} {\bf [ ]}\\
+\end{tabular}
+\end{center}
+An example of a ProcessJ record is:
+\begin{verbatim}
+  public record Client {
+    string first_name, last_name;
+    string address1, address2, city;
+    int zip;
+    Transaction transactions[]; 
+  }    
+\end{verbatim}
+
+%TODO: Record Literal!
+%TODO: how are records communicated on channels?? 
+
+\subsubsection{Protocol Declarations}
+%TODO: cannot contain timers and barriers if the record is used as a channel type. 
+
+The protocol type constructor in ProcessJ has many similarities to a union data type in C. It consists of a number of tag-named variable lists. Here is an example:
+\begin{verbatim}
+  public protocol P {
+    request: { int number; double amount; }
+    reply: { bool status; }
+  }
+\end{verbatim}
+
+A variable of type {\tt P} contains {\bf either} an integer {\tt number} and a double {\tt amount} while being tagged as {\tt request} {\bf or} a boolean {\tt status} while being tagged {\tt reply}. 
+
+One major difference between unions in C and protocols in ProcessJ is that protocols can {\em extend} existing protocols. For example, consider this example:
+\begin{verbatim}
+  public protocol P2 extends P {
+    deny: { int code;}
+  }
+\end{verbatim}
+which declares a protocol type {\tt P2} which {\em inherits} the {\tt request} and {\tt reply} cases from {\tt P} and further extends the type by adding a new case called {\tt deny}.
+
+A protocol can extend as many other protocols as you want, so the following code is legal too:
+\begin{verbatim}
+  public protocol P7 extends P6, M2, Y6 ;
+\end{verbatim}
+Here, {\tt P7} will contain all the cases from {\tt P6}, {\tt M2}, and {\tt Y6}; if any of those three protocol types have similar tags an error will be produced by the compiler. The grammar for declaring protocol types look like this:
+
+\begin{center}
+\begin{tabular}{lll}
+{\it protocol\_type\_declaration} & $\rightarrow$ &
+{\it modifier}$^*$ {\bf protocol} ID [{\bf extends} ID ({\bf ,} ID)$^*$] \\
+&& (\\
+&& \quad{\bf \{}\\
+&& \quad\quad(ID {\bf :} {\bf \{} ({\it type} ID {\bf ;})$^*$ {\bf \}})$^*$\\
+&& \quad{\bf \}}\\
+&& $\mid$ {\bf ;}\\
+&& )\\
+\end{tabular}
+\end{center}
+A protocol body can be empty but only if it extends at least one other protocol. However, it is perfectly OK for a protocol case not to have any declarations in its list. That is often useful if a case simply serves to mark a certain choice that does not need to carry any data, like for example an acknowledgment.:
+\begin{verbatim}
+  public protocol P {
+    request: { int package_no; }
+    ack: {}
+  }
+\end{verbatim}
+
+%TODO: the closure of a protocol cannot contain barriers, timers, ... think this one through!
+
+\subsubsection{Constant Declarations}
+
+A constant declaration at the top-level is like a local variable declaration with the {\tt const} modifier prefixed. For example:
+\begin{verbatim}
+  public const double PI = 3.1415;
+\end{verbatim}
+declares a public constant called {\tt PI}. Top-level constants can only be declared of primitive types that are not barrier or timer types. Note, the use of the modifier {\tt const} for local variables or parameters simply means they cannot be assigned, and they can be of any type.
+
+%TODO: add the grammar
+
+
+
+\subsubsection{Procedure Declarations}
+
+
+\subsubsection{Native Type Declarations}
+
+Who knows.
+\subsection{Other Types}
+
+\subsubsection{Arrays}
+\subsubsection{Channels}
+
+A {\em channel} is a new concept for many programmers, but is central to the concepts of process oriented design. A channel, at its simplest incarnation, is nothing but a ``piece of garden hose'' through (though we say `on') which data can flow in one direction (channels are not bi-directional). Other versions of channels can have shared ends, which in the garden-hose analogy means that ends have spreaders on. Rather than water flowing in the hose think of marbles. If the receiving end is shared the marble will eventually end up going down one of the end of the spreader and only one receive will get it - it does not replicate itself like in a traditional broadcast. Here is an example of a declaration of a channel:
+\begin{verbatim}
+  chan<int> c;
+\end{verbatim}
+This declares a channel variable called {\tt c} that carries integer values. Note the use of the {\tt <>}. Channels must be declared to carry a type, and almost any type can be used. %TODO: which ones can't
+
+Channels cannot be passed as parameters to a procedure and they cannot be communicated on other channels either. For mobile channels see the next section on channel ends.
+
+%TODO: the compiler does not let you declare channels mobile YET!
+
+
+
+ 
+
+
+\subsubsection{Channel Ends}
+
+A channel consists of two ends: a reading end and a writing end. You can only read from the reading end and you can only write to the writing ends. any channel variable's ends can be obtained by suffixing either {\tt .read} or {\tt .write}. So the following code is legal:
+\begin{verbatim}
+  public void foo(chan<int>.read in) {
+    ...
+  }
+  
+  public void main(string args[]) {
+    chan<int> c;
+    
+    par {
+      ...
+      foo(c.read);
+    }
+  }
+\end{verbatim}
+We will return to the {\tt par} statement later in Section{sec:block}. Note the declaration of the parameter {\tt in}: {\tt chan<int>.read} is a {\em type}, namely the reading channel end of a channel carrying integer values. Similarly, the writing channel end type is obtained by the {\tt .write} postfix. To declare shared ends of a channel we have three options: either both are shared, only the reading end is shared, or only the writing end is shared. Here are examples of the declarations of all three types:
+\begin{verbatim}
+  shared chan<int> sharedReadWriteChan;
+  shared read chan<int> sharedReadChan;
+  shared write chan<int> sharedWriteChan;
+\end{verbatim}
+Similarly, in a procedure declaration's parameter list we can specify how a channel's ends are shared -- however, the use of the {\tt shared} modifier applies only to the end in question:
+\begin{verbatim}
+  public proc void foo(shared chan<int>.read sharedReadingChannelEnd,
+                       shared chan<int>.write sharedWritingChannelEnd) {
+    ..
+  }
+\end{verbatim}
+The idea of both ends being shared when talking about a channel end makes no sense, and since channels cannot be passed parameters, the ``both ends shared'' option does not apply for parameters.
+
+Shared channel ends must be {\em claimed} before being used. This is achieved using the {\tt claim} keyword. See section~\ref{sec:claimStatement} for more information.
+
+
+\subsection{Statements}
+
+\subsubsection{Block Statement}\label{sec:block}
+
+In general, a block in ProcessJ is a number of statements surrounded by a set of \{\ \}. A block also introduces a new scope, and blocks can be nested.
+
+A block is implicitly {\em sequential}, so each statement in a block is executed in order from top to bottom. However, in ProcessJ, it is sometimes possible to declare a block {\em parallel}. This is done by prefixing the word {\tt par} to the block. For example:
+\begin{verbatim}
+  ...
+  par {
+     foo();
+     bar();
+  }
+  ...  
+\end{verbatim}
+The above example shows a par-block with two statements, namely the invocations of the functions {\tt foo} and {\tt bar}. A par-block makes each statement a process that runs concurrently with the other statements in the par-block, and the entire par block does not terminate until every process of the block has terminated.
+
+It is not possible to declare variables in a par-block for a number of reasons: it is not possible to read and write the same variable in a par-block as that causes a race condition on the specific variable. If a variable can only be read or written, then a newly defined variable can only be written through its initializer or an assignment and never read, and since the variable goes out of scope at the end of the block, such an endeavor would be meaningless.
+
+Furthermore, a par-block can enroll its processes on zero or more barriers in the following way:
+
+\begin{verbatim}
+  ...
+  par enroll (b,c) {
+    foo(b,c);
+    bar(b,c);
+    baz(b,c);
+  }
+  ...
+\end{verbatim}
+which executes {\tt foo}, {\tt bar}, and {\tt baz} concurrently while enrolling all three processes on the barriers {\tt b} and {\tt c}. Note, all three processes are passed the barriers on which they are enrolled. If we did not do that they could not synchronize on the barriers, and if just one of them does not synchronize on a barrier it is enrolled on, then none of the other processes enrolled on that barrier can move past their synchronization point, and we have a potential for a deadlock.
+
+A par block can only appear inside the body of a procedure as a block statement.
+
+The grammar rules for regular blocks and par-blocks are:
+\begin{center}
+\begin{tabular}{lll}
+{\it block} & $\rightarrow$ & {\bf \{} ({\it block\_statements})$^*$ {\bf \}}\\
+{\it par\_block} & $\rightarrow$ & {\bf par} [ {\bf enroll (} ({\it expression})$^*$ ] {\bf )} {\it block}\\
+\end{tabular}
+\end{center}
+
+The list of expressions in the enroll clause must be of barrier type, and even though the par-block uses the rule for a block, local variable declarations will be prevented by the compiler.
+
+\subsubsection{Do Statement}
+
+A do statement in ProcessJ is exactly like in Java. The grammar for a do statement is:
+
+\begin{center}
+	\begin{tabular}{lll}
+		{\it do\_statement} & $\rightarrow$ & {\bf do} {\bf (} {\it expression} {\bf )} {\it statement}
+	\end{tabular}
+\end{center}
+
+\subsubsection{While Statement}
+
+Like Java
+
+\subsubsection{For Statement}
+
+Like Java
+
+\subsubsection{Expression Statement}
+
+Like Java
+
+\subsubsection{Break \& Continue Statements}
+\subsubsection{Return Statement}
+
+Like Java
+
+\subsubsection{Switch Statement}
+
+Like Java, except must be used for Protocol access.
+
+\subsubsection{Stop \& Skip Statements}
+
+{\tt stop} and {\tt skip} are two new keywords that most programmers may not be familiar with. {\tt skip} is a no-op operation - it does not do anything -- it could mostly be replaced by a semicolon.
+
+{\tt stop} does exactly that - it stops, but does not terminate. {\tt stop} is equivalent to {\tt for (;;) ;} -- an infinite loop that never does anything.
+
+\subsubsection{Barrier Synchronization Statement}
+\label{sec:barrierSync}
+
+To synchronize on a barrier we use the {\tt sync} keyword. For example:
+\begin{verbatim}
+  sync(b);
+\end{verbatim}
+synchronizes on a barrier named {\tt b}.
+
+Remember, no process can progress past a barrier synchronization until every barrier who has enrolled on it has 
+
+\subsubsection{Timer Read / Timeout Statement}
+
+Remember, a {\tt timer} is an ever ticking clock. A timer can be {\it read} much like a channel can:
+\begin{verbatim}
+  timer t;
+  long time = t.read(); 
+\end{verbatim}
+A read of a timer returns a long value. A timer can also be used as an `alarm clock', that is, it can be set to block until it times out after a preset time. For example, if we want a timer to stop execution for 1 second we can write code like this:
+\begin{verbatim}
+  timer t;
+  t.timeout(1000000); // time for timeout is measured in milliseconds 
+\end{verbatim}
+Code like the above is typically not how a timeout is used. It is often used as a case in an alt-statement such that if no other case is ready the alt-case can time out.
+
+
+\subsubsection{Suspend Statement}
+\subsubsection{Channel Write Statement}
+
+A channel write statement is simply a write to a channel. This is done like this:
+\begin{verbatim}
+  chan<int> c;
+  
+  ...
+  c.write(42);
+\end{verbatim}
+The last line writes the value 42 to the channel {\tt c}. Actually, in reality it writes 42 to the {\em writing end} of the channel {\tt c}, and therefore the correct way to write the last line from the example above ought to be:
+\begin{verbatim}
+  c.write.write(42);
+\end{verbatim}
+where {\tt c.write} is an expression that evaluates to the writing end of the channel {\tt c} to which we can then write 42 by calling {\tt write}. The compiler allows both way as the double `write' seems redundant. However, the following code is perfectly legal:
+\begin{verbatim}
+  chan<int> c;
+  
+  chan<int>.write cw = c.write;
+  cw.write(42);
+\end{verbatim}
+
+
+\subsubsection{Alt Statement}
+\label{sec:altStatement}
+
+Another new construct that C or Java does not have is {\it alternation} (or {\it alt} for short. An alt statement consists of a number of {\it guarded} statements. To execute an alt, each guard is evaluated, and of the guards that are {\it ready} one is chosen at random and its corresponding statement is executed.
+
+The grammar for an alt statement is as follows:
+
+\begin{center}
+	\begin{tabular}{lcl}
+		{\it alt\_statement} & $\rightarrow$ & [ {\bf pri} ] {\bf alt} {\bf \{}\\
+		                     && \quad  ([ {\bf (} {\it expression} {\bf )} {\bf \&\&} ] {\it guard} {\bf :} {\it statement})$^+$\\
+		                     && {\bf \}}\\
+		{\it guard} & $\rightarrow$ & {\it left\_hand\_side} {\bf = } {\it channel\_read\_expression}\\
+		& $\mid$ & {\bf skip}\\
+	    & $\mid$ & {\it timeout\_statement}\\            
+	\end{tabular}
+\end{center}
+
+Each guard can be preceded by an optional Boolean expression - if the Boolean expression is false, the guard is not considered. The selection process for which statement of an alt to execute follows the following algorithm:
+\begin{enumerate}
+\item For each case of an alt statement do the following: Ff the there is a boolean expression and it evaluates to {\it true}, then check if the guard is {\it ready}:
+\begin{itemize}
+	\item A skip guard is {\it always} ready.
+	\item A timeout is ready if the amount of time given in the timeout has elapsed since the alt was evaluated the first time\footnote{This is highly unlikely to be the case the first time around, but if no other guards are ready, the process is descheduled, and when it gets rescheduled, enough time might have elapsed for the timeout to have happened.}.
+	\item A channel read guard is ready if there is a committed sender at the other end of the channel, that is, if a communication of a piece of data on the channel is ready to proceed once a read operation is started.
+\end{itemize}
+\item From the set of guarded statements for which the guard is ready, if the alt is a prioritized alt, pick the fist one, and if not, pick one at random.
+\item If no guards are ready, the alt blocks until such time that at least one guard is ready.
+\end{enumerate}
+If no guards are ready, the alt statement is blocked until such time that at least one of the guards become ready. Since a skip guard is always ready, it can serve as default option in an alt statement. If the optional {\it pri} key word is used, the alt then becomes a prioritized alt in which guarded statement that appear lexicographically earlier than others will be chosen if ready over other ready statements appearing later.
+
+\begin{verbatim}
+  alt {
+    x = c1.read() : { ... }
+    y = c2.read() : { ... }
+    t.timeout(700) : { ... }
+  }
+\end{verbatim}
+or
+\begin{verbatim}
+ pri alt {
+   x = c.read() : { ... }
+   skip : { ... }
+ }
+\end{verbatim}
+In the latter example, if channel {\tt c} is not ready to read, the statement following the skip guard will execute by default.
+
+
+\subsubsection{Claim Statements}
+\label{sec:claimStatement}
+
+A claim statement is simply a statement that lists a number of shared channel ends used by the statement following. For example:
+
+\begin{verbatim}
+  claim (c, b2[i]) {
+    a = c.read();
+    b2[i].write(a);
+  }
+\end{verbatim}
+only shared channel ends should be claimed.
+
+The grammar for a claim statement is:
+
+\begin{center}
+	\begin{tabular}{lcl}
+		{\it claim\_statement} & $\rightarrow$ & {\bf claim} {\bf (} {\it channel\_end} ( {\bf ,} {\it channel\_end})$^*$ {\bf )} {\it statement}\\
+		{\it channel\_end} & $\rightarrow$ & ID \\
+		& $\mid$ & {\it channel\_type} ID {\bf =} {\it expression}\\
+		& $\mid$ & {\it expression} {\bf .} ( {\bf read} $\mid$ {\bf write} )\\
+    \end{tabular}
+\end{center} 
+  
+ T
+  
+% labelled statements.
+
+\subsection{Expressions}
+ 
+\subsubsection{}
+
+ 
+ 
+ 
+\end{document}

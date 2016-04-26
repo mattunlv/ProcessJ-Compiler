@@ -1,0 +1,23 @@
+
+proc void R(shared chan<int>.read c) {
+  for (;;) {
+    int a = c.read();
+  }
+}   
+
+proc void W(chan<int>.write c) {
+  for (int i=0;;i++) 
+    c.write(i);
+}
+
+
+proc void foo() {
+
+     shared read chan<int> c;
+
+     par {
+       W(c.write);
+       R(c.read);
+       R(c.read);
+     } 
+}

@@ -3,6 +3,7 @@ package CodeGeneratorC;
 import AST.*;
 import Utilities.*;
 import Utilities.Error;
+
 import org.stringtemplate.v4.*;
 import java.io.*;
 import java.util.*;
@@ -10,7 +11,7 @@ import NameCollector.*;
 
 /**
  * Code Geneartor turns processJ code to equivalent C code using using
-n * parse tree by visiting each node. It then recusively builds the program
+ * parse tree by visiting each node. It then recusively builds the program
  * through recursion returning strings rendered by the string template.
  * Notice sometimes we return String[] if there is multiple statements.
  * General rules of thumb:
@@ -594,7 +595,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //TODO: Fails for "for loops" with multiple initializers.
     Log.log(fs.line + ": Visiting a ForStat");
     boolean isParFor = fs.isPar();
-    
+
     //Pick right template based on whether it is parallel or not.
     ST template = isParFor ? group.getInstanceOf("ParForStat"):
       group.getInstanceOf("ForStat");
@@ -602,16 +603,16 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     String expr = (String) fs.expr().visit(this);
     Sequence<Statement> init = fs.init();
     Sequence<ExprStat> incr = fs.incr();
-    
+
     String[] initStr = null;
     String[] incrStr = null;
     Statement myStat = fs.stats();
     //Use in case of parallel for! This set contains all the NameExpr for this statement.
     LinkedList<NameExpr> myNames = null;
-    
+
 
     //If this is a parallel for statement a lot of extra work should be done!
-    if(isParFor == true){      
+    if(isParFor == true){
       //Visit our NameCollector for our current statement to get all the NameExpr's!
       myNames = new LinkedList();
       fs.stats().visit(new NameCollector(myNames));
@@ -634,7 +635,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 	params.append(ne);
       //Create invocations statements and parameters.
       ArrayList<String> procParams = paramPassing(params, indexName, arrayName, 1);
-      
+
       //Now create actual function!
       parProcs.add( createParProc(functionName, myStat, myNames, false, null) );
       parPrototypes.add( getSimplePrototypeString(functionName) );
@@ -661,7 +662,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       else
 	template.add("stats", (String) stats);
     }
-    
+
     //Check for null >:(
     if(init != null)
       initStr = (String[]) init.visit(this);
@@ -771,7 +772,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //This in not a special call so we use the long name.
     String functionName = makeFunctionName(in.targetProc);
     String simpleName = makeFunctionName(in.targetProc);
-    
+
     Log.log(in.line + ": Visiting Invocation (" + functionName + ")");
     ST template = group.getInstanceOf("Invocation");
 
@@ -936,7 +937,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     ArrayList<String> barrierInits = null;
     if(barriers != null)
       barrierInits = makeBarrierInit(barriers, stats.size());
-    
+
     //By now procParList is populated so we may add it to our template.
     procParTemplate.add("paramWorkspaceName", globalWorkspace);
     procParTemplate.add("processNumber", stats.size());
@@ -979,7 +980,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
       typeString = "bool";
     if(py.isBarrierType() == true)
       typeString = "LightProcBarrier";
-    
+
     return (T) typeString;
   }
   //====================================================================================
@@ -994,7 +995,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     Sequence<Modifier> modifiers = pd.modifiers();
     //Set our current function.
     this.currentFunction = name;
-    
+
     String returnType = (String) pd.returnType().visit(this);
 
     //This is the last function of the program make sure to shutdown Worskpace!
@@ -1153,7 +1154,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
     template.add("globalWsName", globalWorkspace);
     template.add("barrierName", barrier);
-    
+
     return (T) template.render();
   }
   //====================================================================================
@@ -1251,11 +1252,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     String name = makeFunctionName(procedure);
     String[] formals = (String[]) procedure.formalParams().visit(this);
     String type = (String) procedure.returnType().visit(this);
-    
+
     template.add("name", name);
     template.add("workspace", globalWorkspace);
     template.add("type", type);
-    
+
     if(formals.length != 0)
       template.add("formals", formals);
 
@@ -1292,7 +1293,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     Log.log(in.line + ": Creating Recusive call for: " +
 	    (String)in.procedureName().visit(this));
 
-    
+
     return null;
   }
   //====================================================================================
@@ -1442,7 +1443,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 					       String wsName, int type){
     Log.log("   Creating parameters for invocation!");
     ArrayList<String> paramList = new ArrayList();
-    
+
     for(int i = 0; i < params.size(); i++){
       ST template = group.getInstanceOf("ProcParam");
       template.add("globalWsName", globalWorkspace);
@@ -1465,7 +1466,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 	//value as a void*...
 	addition = "(void*)";
       }
-      
+
       //Create string and add to our list.
       template.add("param", addition + paramAsString);
       paramList.add(template.render());
@@ -1724,7 +1725,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 	template.add("body", (String) stats);
 
     ArrayList<String> getParameters = createProcGetParams(paramDeclList, parBlock);
-    
+
     //If we have a return add it here for recursive functions.
     if(extraParam != null){
       template.add("return", returnName);
@@ -1734,7 +1735,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     template.add("name", functionName);
     template.add("paramWorkspaceName", globalWorkspace);
     template.add("getParameters", getParameters);
-    
+
 
     return template.render();
   }
@@ -1769,11 +1770,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
    */
   public static String makeFunctionName(ProcTypeDecl myProc){
     String functionPlainName = (String) myProc.name().getname();
-    
+
     //Special case for print!
     if(functionPlainName.equals("println"))
        return functionPlainName;
-       
+
     //Notice this is not the C equivalent but our actual type! Else we could get char*
     //in the type!
     String returnType = myProc.returnType().typeName();
@@ -1800,7 +1801,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
   //====================================================================================
   ArrayList<String> makeBarrierInit(Sequence<Expression> barriers, int numberOfProcesses){
     ArrayList<String> barrierInits = new ArrayList();
-    
+
     for(Expression barrier : barriers){
       ST template = group.getInstanceOf("ForEnroll");
       template.add("globalWsName", globalWorkspace);
@@ -1830,7 +1831,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     //No index used for a recursive function, we do not use an array as it is a single
     //command.
     String noIndex = "";
-    
+
     //This list contains all the NameExpr for this invocation.
     LinkedList<NameExpr> myNames = new LinkedList();
     //Visit our NameCollector for our invocation to get all the NameExpr's!
@@ -1873,7 +1874,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 			       false, extraProcGetParam));
     int stackSize = getSizeOfFunction(sizePerFunction, functionName);
     parPrototypes.add(getSimplePrototypeString(newFunctionName));
-    
+
     //Create invocation, i.e. actual function call.
     template.add("globalWsName", globalWorkspace);
     template.add("paramNumber", myNames.size());

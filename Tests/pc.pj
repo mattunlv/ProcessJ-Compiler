@@ -1,0 +1,28 @@
+import std.io;
+
+proc void producer (shared chan<int>.write c) {
+  int i = 0;
+  while (true) {
+    claim (c) {
+      c.write(i);
+    }
+    i++;
+  }
+}
+
+proc void consumer (chan<int>.read c) {
+  while (true) {
+    int x;
+    x = c.read();
+    println("Received value: " + x);
+  }
+}
+
+proc void main() {
+  shared write chan<int> c;
+  par {
+    producer (c.write);
+    consumer (c.read);
+  }
+}
+   

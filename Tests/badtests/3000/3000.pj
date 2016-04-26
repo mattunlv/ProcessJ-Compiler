@@ -1,0 +1,10 @@
+//(2)
+// 4: Array type required, but found type int.
+// Error number: 3000
+//
+// source:TypeChecker/visitArrayAccessExpr()
+//
+proc void test () {
+  int i,x;
+  i = x[5];
+}

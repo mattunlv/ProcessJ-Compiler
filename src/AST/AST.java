@@ -3,6 +3,8 @@ import Utilities.Visitor;
 
 public abstract class AST  {
   /*implements java.io.Serializable*/ // temporarily removed.
+
+    public String myPackage; // set this field to the name of the package in which the parse tree node lives! (only for top level decls)
   public int line, charBegin;
   public int nchildren = 0;
   public AST[] children;

@@ -1,0 +1,14 @@
+// P5009.pj. 
+//
+// Reachability 
+//
+// Error: 5009
+// Break-statement inside par-block is not legal. 
+//
+proc void P5009() {
+  while (true) {
+    par {
+      break;
+    }
+  }
+}

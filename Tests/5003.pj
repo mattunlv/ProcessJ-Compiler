@@ -1,0 +1,13 @@
+// P5003.pj. 
+//
+// Reachability 
+//
+// Error: 5003
+// Unreachable code following statement beginning on line 11
+//
+proc void P5003() {
+  int a;
+  a = 10;
+  return;
+  a++;
+}

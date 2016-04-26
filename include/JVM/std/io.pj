@@ -1,0 +1,9 @@
+#pragma LIBRARY;
+#pragma NATIVE;
+#pragma FILE "io";
+#pragma LANGUAGE "JVM";
+package std;
+
+public native proc void println(string s) ;
+public native proc void println(int s) ;
+

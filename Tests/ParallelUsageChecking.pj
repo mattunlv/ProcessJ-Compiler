@@ -1,0 +1,38 @@
+
+
+record R {
+       int a;	
+       int b;
+}
+
+
+proc void bar(chan<int>.write c, int a, int b) { }
+proc void baz(shared chan<int>.write c,int a, int b) { }
+
+proc void foo() {
+
+     int a,b,c,d;
+     chan<int> c3;
+     shared chan<int> c2;
+     barrier b2;
+     R r;    
+     int aa[] = new int[10];
+     par {
+       a = c2.read();
+       a = c2.read();
+       bar(c3.write,b,c);
+       baz(c2.write,a,b);
+       r.b = c2.read();
+
+       aa[6+f(a-b)-r.b] = c2.read();
+       r.a++;
+       --aa[6+f(a-b)-r.b];
+       //r.a = c2.read();       
+       c3.write(r.a + aa[a++ + a++]);
+      }
+}
+
+
+proc int f(int a) {
+  return a-2;
+}

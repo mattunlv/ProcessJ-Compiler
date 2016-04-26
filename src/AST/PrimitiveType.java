@@ -1,4 +1,5 @@
 package AST;
+
 import Utilities.Visitor;
 
 public class PrimitiveType extends Type {
@@ -60,8 +61,6 @@ public class PrimitiveType extends Type {
     default:
       return -1;
     }
-
-
   }
 
   public static int ceiling(PrimitiveType p1, PrimitiveType p2) {

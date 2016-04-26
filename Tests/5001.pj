@@ -1,0 +1,12 @@
+// P5001.pj. 
+//
+// Reachability 
+//
+// Error: 5001
+// Then-part of if-statement unreachable
+//
+proc void P5001() {
+  int a;
+  if (false) 
+    a = 100;
+}

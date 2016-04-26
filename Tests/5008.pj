@@ -1,0 +1,14 @@
+// P5008.pj. 
+//
+// Reachability 
+//
+// Error: 5008
+// Return-statement inside par-block is not legal. 
+//
+proc void P5008() {
+  while (true) {
+    par {
+      return;
+    }
+  }
+}

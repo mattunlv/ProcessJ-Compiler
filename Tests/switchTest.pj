@@ -1,0 +1,27 @@
+protocol P {
+ a: { int a; int b; }
+ b: { int a; }
+}
+
+proc void SwitchTest() {
+  P p;
+  P r;   
+
+    switch(r) {
+    case a: { 
+    p = r;
+  switch(p) { 
+   
+    case a: skip;
+    case b: {
+          int m = p.b;
+
+
+    }
+    break;   
+    //    case t: skip;
+    default: skip;
+  }
+}
+}
+}

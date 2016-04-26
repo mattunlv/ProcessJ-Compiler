@@ -1,0 +1,11 @@
+record R {
+  int a;
+}
+
+
+
+proc void main() {
+  FF.G::FFF yourRecord;
+     R myRecord;
+  FF.G::foo(7);
+}

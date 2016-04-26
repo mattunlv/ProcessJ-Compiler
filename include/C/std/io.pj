@@ -1,8 +1,3 @@
-#pragma LIBRARY;
-#pragma LANGUAGE "C";
-#pragma FILE "io";
-
-package std;
 public proc void println(string s) ;
 public proc void println(int i) ;
 public proc void println(float f) ;
