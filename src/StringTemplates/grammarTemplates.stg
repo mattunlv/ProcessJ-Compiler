@@ -205,7 +205,7 @@ ParBlockProc(name, body, paramWorkspaceName, getParameters, return) ::= <<
 <! Very similar to ProcTypeDecl but simplified for ParBlocks only. !>
 void <name>(Workspace <paramWorkspaceName>){
   <if(getParameters)><getParameters; separator = ";\n">;<endif>
-  <if(return)>*<return> = <endif><body; separator = ";\n">;
+  <if(return)>*<return> = <body; separator = ";\n">;<else><body; separator = ";\n">;<endif>
 
   return;
 }
