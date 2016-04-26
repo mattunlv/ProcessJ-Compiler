@@ -6,13 +6,20 @@ Info() ::= <<
 
 
 Compilation(pragmas, packageName, imports, typeDecls, prototypes, parPrototypes,
-  parProcs, functionToCall, stackSize) ::= <<
+  parProcs, functionToCall, stackSize, hasArray, globalWsName) ::= <<
 <! TODO pragmas, packageName, imports !>
 #include \<stdio.h>
 #include \<cif.h>
 #include \<stdbool.h>
+#include \<string.h>
 
-#define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+<CommentBar()>
+<if(hasArray)>
+<ArrayStruct()>
+<CommentBar()>
+<endif>
+
+<ConcatFunction(globalWsName)>
 
 <CommentBar()>
 <if(prototypes)><prototypes; separator = ";\n">;<endif>
@@ -252,6 +259,25 @@ Var(name, init) ::= "<name><if(init)> = <init><endif>"
 
 CommentBar() ::= "/*======================================================================================*/"
 
+ArrayStruct() ::= <<
+typedef struct {
+  void* array;
+  int* dimensions;
+  int numDim;
+} ArrayStruct;
+>>
+
+
+ConcatFunction(globalWsName) ::= <<
+char* __concatStrings(Workspace <globalWsName>, char* s1, char* s2) {
+    char* temp = (char*) MAlloc(<globalWsName>, sizeof(char) * (strlen(s1) + strlen(s2) + 1));
+    ExternalCallN(strcpy, 2, temp, "");
+    ExternalCallN(strcat, 2, temp, s1);
+    ExternalCallN(strcat, 2, temp, s2);
+    return temp;
+}
+>>
+
 
 CMainFunction(functionToCall, stackSize) ::= <<
 int main(int argc, char** argv){
@@ -366,7 +392,34 @@ case <number>:
 
 AltEnd(globalWsName) ::= "AltEnd( <globalWsName> )"
 
-NewArray(globalWsName, type, size) ::= "(<type>*) MAlloc(<globalWsName>, MAX((sizeof(<type>) * <size>) / 4, 1))"
+LocalDeclArray(globalWsName, name, expr) ::= <<
+ArrayStruct* <name> = (ArrayStruct*) MAlloc(<globalWsName>, sizeof(ArrayStruct))<if(expr)>;
+<expr><endif>
+>>
+
+SetArrayDimensions(name, num, expr) ::= "<name>->dimensions[<num>] = <expr>"
+
+SetArraySize(name, size) ::= "<name>->numDim = <size>"
+
+NewArray(globalWsName, name, type, numDim, size, dimensionList) ::= <<
+<name>->array = (void*) MAlloc(<globalWsName>, (sizeof(<type>) * <size>));
+<name>->numDim = <numDim>;
+<name>->dimensions = (int*) MAlloc(<globalWsName>, (sizeof(int) * <numDim>));
+<dimensionList; separator = ";\n">
+>>
+
+
+ArrayAccess(name, index, dim) ::= "(<index> * <name>->dimensions[<name>->numDim - 1 - <dim>])"
+
+
+StringLiteral(globalWsName, string, var) ::= <<
+char* <var> = (char*) MAlloc(<globalWsName>, sizeof(char) * (strlen(<string>) + 1));
+ExternalCallN(strcpy, 2, <var>, <string>)
+>>
+
+
+StringCat(globalWsName, s1, s2) ::= "__concatStrings(<globalWsName>, <s1>, <s2>)"
+
 
 ParamDecl(type, name) ::= "<type> <name>"
 

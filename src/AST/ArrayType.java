@@ -49,7 +49,7 @@ public class ArrayType extends Type {
     public String signature() {
         String s = baseType().signature();
         for (int i=0;i<depth; i++)
-            s = "[" + s + ";";
+            s = "A" + s;
         return s;
     }
 

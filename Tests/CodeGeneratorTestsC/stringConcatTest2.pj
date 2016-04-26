@@ -1,0 +1,12 @@
+/**
+ * Simple program!
+ */
+import std.io;
+
+proc void myMain(){
+    string x;
+    string y = " world!";
+    x = "hello" + y + " Hello Bob!";
+    println(x);
+    return;
+}
