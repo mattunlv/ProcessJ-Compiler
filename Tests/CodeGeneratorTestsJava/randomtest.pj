@@ -1,0 +1,6 @@
+import std.random;
+
+proc void foo() [yield=true]{
+  initRandom(45L);
+  long l = longRandom();
+}

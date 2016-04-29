@@ -22,13 +22,13 @@ public class <packageName> { <! add and use className and extends/implements if 
 }
 >>
 
-AltStat(caseCount, altSwitchGroup, timers, initBoolGuards, initGuards, jmp1, jmp2, timerKills) ::= <<
-final Alt alt = new Alt(<caseCount>, this);	
+AltStat(name, chosen, caseCount, altSwitchGroup, timers, initBoolGuards, initGuards, jmp1, jmp2, timerKills) ::= <<
+<name> = new Alt(<caseCount>, this);	
 <timers>
 <initGuards>
 <initBoolGuards>
 
-boolean bRet = alt.setGuards(boolGuards, guards);
+boolean bRet = <name>.setGuards(boolGuards, guards);
 
 if (!bRet) {
 	System.out.println("RuntimeException: One of the boolean guards needs to be true!!");
@@ -37,10 +37,10 @@ if (!bRet) {
 
 label(<jmp1>);	
 
-int chosen = alt.getReadyGuardIndex();
+<chosen> = <name>.getReadyGuardIndex();
 <if(altSwitchGroup)><altSwitchGroup><endif>
 
-if (chosen == -1) {
+if (<chosen> == -1) {
 	this.runLabel = <jmp1>;
 	yield();	
 } else {
@@ -52,9 +52,9 @@ if (chosen == -1) {
 label(<jmp2>);
 >>
 
-AltSwitchGroup(cases) ::= <<
+AltSwitchGroup(cases, chosen) ::= <<
 <if(cases)>
-switch(chosen) {
+switch(<chosen>) {
 	<cases; separator=";\n">;
 }
 <endif>
@@ -122,7 +122,7 @@ if (<channel>.isReadyToWrite()) {
 	yield();
 }
 	
-label(<jmp1>)
+label(<jmp1>);
 >>
 
 ChannelReadExpr(left, channel, alt, jmp0, jmp1) ::= <<
@@ -144,7 +144,7 @@ if(<channel>.isReadyToRead(this)) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)<\\>
+label(<jmp1>);<\\>
 <endif>
 >>
 
@@ -173,7 +173,7 @@ if(<channel>.isReadyToRead(this)) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)<\\>
+label(<jmp1>);<\\>
 <endif>
 >>
 
@@ -182,13 +182,12 @@ ConstantDecl(type, var) ::= "public static final <type> <var>;"
 ClaimStat(stats, channels, jmp) ::= <<
 label(<jmp>);
 <if(channels)>if(<channels:{c | !<c>.claim() }; separator = "||">) {
-	<channels: {uc | <uc>.unclaim();}; separator="\n">
 	this.runLabel = <jmp>;
 	yield();
 }
 <endif>
-<stats; separator=";\n">;
-<channels:{c | <c>.unclaim()}; separator = ";\n">;
+<stats; separator=";\n">
+<channels:{c | <c>.unclaim();}; separator = "\n">
 >>
 
 ClaimStatClaimPart(c, unclaims, jmp) ::= <<
@@ -203,7 +202,7 @@ if (!<c>.claim()) {
 >>
 
 TimerReadExpr(left, timer) ::= <<
-<left> = <timer>.read()
+<left> = <timer>.read();
 >>
 
 ContinueStat() ::= "continue"
@@ -215,8 +214,14 @@ do {
 >>
 
 ForStat(init, expr, incr, stats) ::= <<
-for(<init; separator = ",">; <expr>; <incr>){
-  <stats; separator = ";\n">;
+for(<init; separator = ","> <expr>; <incr>){
+  <stats; separator = ";\n">
+}
+>>
+
+GetTrue() ::= <<
+public static boolean getTrue() {
+	return true;
 }
 >>
 
@@ -226,7 +231,7 @@ final Par <parName> = new Par(-1, this);
 int cnt = 0;	
 List\<Process> pp = new LinkedList\<Process>(); 
 
-for(<init; separator = ",">; <expr>; <incr>){
+for(<init; separator = ","> <expr>; <incr>){
 	cnt++;
 	pp.add(
 		<stats; separator=";\n">
@@ -234,6 +239,7 @@ for(<init; separator = ",">; <expr>; <incr>){
 }
 //set the process count	
 <parName>.setProcessCount(cnt);
+<if(barriers)><barriers:{b | <b>.enroll(cnt)}; separator = ";\n">;<endif>
 
 //schedule all the processes
 for(Process p : pp) {
@@ -242,7 +248,7 @@ for(Process p : pp) {
 setNotReady();
 this.runLabel = <jmp1>;
 yield();
-label(<jmp1>)
+label(<jmp1>);
 >>
 
 IfStat(expr, thenPart, elsePart) ::= <<
@@ -273,27 +279,35 @@ InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
 <if(left)><left>=<endif><right>
 >>
 
-LocalDeclNormalProc(typeStr, var, chanType, protoOrRecType, barrierType, rEmpty) ::= <<
+LocalDeclNormalProc(typeStr, var, chanType, protoType, recType, barrierType, timerType, rEmpty) ::= <<
 <if(chanType)>
-<typeStr> <var><if(rEmpty)> = new <typeStr>()<endif><\\>
-<elseif(protoOrRecType)>
-<typeStr> <var><if(rEmpty)> = null<endif><\\>
+<typeStr> <var><if(rEmpty)> = new <typeStr>();<endif><\\>
+<elseif(protoType)>
+ProtocolCase <var><if(rEmpty)> = null;<endif><\\>
+<elseif(recType)>
+<typeStr> <var><if(rEmpty)> = null;<endif><\\>
 <elseif(barrierType)>
-<typeStr> <var><if(rEmpty)> = new Barrier()<endif><\\>
+<typeStr> <var><if(rEmpty)> = new Barrier();<endif><\\>
+<elseif(timerType)>
+<! Initialization handled by TimeoutStat. We still want LocalDecl to take care of
+creating fields. !>
 <else>
-<typeStr> <var><\\>
+<typeStr> <var>;<\\>
 <endif>
 >>
 
-LocalDeclYieldingProc(typeStr, var, chanType, protoOrRecType, barrierType, rEmpty) ::= <<
+LocalDeclYieldingProc(typeStr, var, chanType, protoType, recType, barrierType, timerType, rEmpty) ::= <<
 <if(chanType)>
-<var><if(rEmpty)> = new <typeStr>()<endif><\\>
-<elseif(protoOrRecType)>
-<var><if(rEmpty)> = null<endif><\\>
+<var><if(rEmpty)> = new <typeStr>();<endif><\\>
+<elseif(protoType || recType)>
+<var><if(rEmpty)> = null;<endif><\\>
 <elseif(barrierType)>
-<var><if(rEmpty)> = new Barrier()<endif><\\>
+<var><if(rEmpty)> = new Barrier();<endif><\\>
+<elseif(timerType)>
+<! Initialization handled by TimeoutStat. We still want LocalDecl to take care of
+creating fields. !>
 <else>
-<if(!rEmpty)><var><endif><\\>
+<if(!rEmpty)><var>;<endif><\\>
 <endif>
 >>
 
@@ -301,10 +315,25 @@ NewArray(type, size) ::= "new <type>[<size>]"
 
 ParamDecl(type, name) ::= "<type> <name>"
 
+AnonymousProcess(lookupswitch, body, parName, parfor, barriers) ::= <<
+new Process(){
+	@Override
+	public synchronized void run() {
+		<lookupswitch>
+		<if(body)><body; separator = ";\n">;<endif>
+      	terminate();
+	}
+	
+	@Override
+	public void finalize() {
+		<if(parName)><parName>.decrement();<endif>	
+		<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
+	}
+}<if(!parfor)>.schedule()<endif>
+>>
+
 ProcTypeDeclToProcess(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, lookupswitch, body, mainMethod, foreverloop) ::= <<
-
 public static class <name> extends Process {
-
 	<if(formals)><formals; separator = ";\n">;<endif>
 	<if(globals)><globals; separator = ";\n">;<endif>
 
@@ -317,7 +346,7 @@ public static class <name> extends Process {
 	@Override
 	public synchronized void run() {
 		<lookupswitch>
-		<body; separator = ";\n">;
+		<body; separator = ";\n">
 		<if(!retstatFound && !foreverloop)>terminate();<endif>
 	}
 }
@@ -341,36 +370,30 @@ public static void main(String[] args) {
 }
 >>
 			
-ProcTypeDeclToMethod(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, body, last, foreverloop) ::= <<
+ProcTypeDeclToMethod(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, body, last, foreverloop, lookupswitch) ::= <<
 
 public static <returnType> <name>(<if(formals)><formals; separator = ", "><endif>) {
 	<body; separator = ";\n">;
 }
 >>
 
-ProtocolLiteral(protocolName, tagName, params, tag) ::= <<
-new <protocolName>(new <protocolName>.<tagName>(<if(params)><params; separator=", "><endif>), <protocolName>.Tag.<tag>)
+ProtocolLiteral(protocolName, tagName, params) ::= <<
+new <protocolName>.<tagName>(<if(params)><params; separator=", "><endif>)
 >>
 
-ProtocolCase(name, recMems, recMemNames) ::= <<
+ProtocolCase(name, recMems, recMemNames, tag) ::= <<
 public static class <name> extends ProtocolCase {
 	<if(recMems)><recMems:{n | public <n>}; separator=";\n">;<endif>
 	public <name>(<if(recMems)><recMems; separator=", "><endif>) {
     	<if(recMemNames)><recMemNames:{n | this.<n> = <n>}; separator = ";\n">;<endif>
+    	this.tag = "<tag>";
 	}
 }
 >>
 
-ProtocolTypeDecl(name, cases, caseNames) ::= <<
-public static class <name> {
-	<if(caseNames)>public enum Tag { <caseNames; separator=", "> };<endif>
+ProtocolTypeDecl(name, cases) ::= <<
+public static class <name> extends Protocol {
 	<cases; separator = "\n">
-	ProtocolCase data;
-    Tag tag;
-    public <name>(ProtocolCase data, Tag tag) {
-		this.data = data;
-		this.tag = tag;
-   }
 }
 >>
 
@@ -385,7 +408,7 @@ public static class <name> {
 
 RecordMember(type, name) ::= "<type> <name>"
 
-RecordAccess(protocolName, caseName, record, field) ::= "((<protocolName>.<caseName>) <record>.data).<field>"
+RecordAccess(protocolName, caseName, record, field) ::= "((<protocolName>.<caseName>) <record>).<field>"
 
 RecordLiteral(name, params) ::= <<
 new <name>(<if(params)><params; separator=", "><endif>)
@@ -422,32 +445,15 @@ final Par <parName> = new Par(<parCnt>, this);
 setNotReady();
 this.runLabel = <jmp1>;
 yield();
-label(<jmp1>)
->>
-
-AnonymousProcess(parName, lookupswitch, body, barriers, parfor) ::= <<
-new Process(){
-	public synchronized void run() {
-		<lookupswitch>
-		<if(body)><body; separator = ";\n">;<endif>
-      	terminate();
-	}
-	
-	<if(parName)>
-	public void finalize() {
-		<parName>.decrement();	
-		<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
-	}
-	<endif>
-}<if(!parfor)>.schedule()<endif>
+label(<jmp1>);
 >>
 
 ReturnStat(expr, procYields) ::= <<
 <if (procYields)>
 terminate();
-return<\\>
+return;<\\>
 <else>
-return<if(expr)> <expr><endif><\\>
+return<if(expr)> <expr>;<else>;<endif><\\>
 <endif>
 >>
 
@@ -474,7 +480,7 @@ SyncStat(barrier, jmp) ::= <<
 <barrier>.sync(this);
 this.runLabel = <jmp>;
 yield();
-label(<jmp>)
+label(<jmp>);
 >>
 
 Ternary(expr, trueBranch, falseBranch) ::= "<expr> ? <trueBranch> : <falseBranch>"
@@ -490,7 +496,7 @@ try {
 } catch (InterruptedException e) {
 	System.out.println("Timer Interrupted Exception!");
 }
-label(<jmp>)<\\>
+label(<jmp>);<\\>
 <endif>
 >>
 

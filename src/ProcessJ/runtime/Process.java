@@ -51,6 +51,11 @@ public abstract class Process {
 	}
 	
 	public void yield() {
+		yield(null);
+	}
+	public void yield(String desc) {
+		if (desc != null)
+			System.err.println("yielded::" + desc);
 		yielded = true;
 	}
 	

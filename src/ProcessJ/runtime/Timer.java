@@ -11,6 +11,10 @@ public class Timer implements Delayed {
 	public boolean started = false;
 	public boolean stopped = false;
 
+	public Timer() {
+		this.timeout = 0L;
+	}
+	
 	public Timer(Process process, long timeout) {
 		this.process = process;
 		this.timeout = timeout;

@@ -1,0 +1,176 @@
+
+const int N_REINDEER = 9;
+const int G_REINDEER = N_REINDEER;
+
+const int N_ELVES = 10;
+const int G_ELVES = 3;
+
+const int HOLIDAY_TIME = 100000;
+const int WORKING_TIME = 200000;
+const int DELIVERY_TIME = 100000;
+const int CONSULTATION_TIME = 200000;
+protocol Santa_msg {
+ reindeer_ready: { }
+ harness:        { int id; }
+ mush_mush:      { }
+ woah:           { }
+ unharness:      { int id; }
+ elves_ready:    { }
+ greet:          { int id; }
+ consulting:     { }
+ santa_done:     { }
+ goodbye:        { int id; }
+}
+protocol Elf_msg {
+ working:   { int id; }
+ elf_ready: { int id; }
+ consult:   { int id; }
+ elf_done:  { int id; }
+}
+
+protocol Reindeer_msg {
+ holiday:    { int id; }
+ deer_ready: { int id; }
+ deliver:    { int id; }
+ deer_done:  { int id; }
+}
+
+protocol Message extends Reindeer_msg, Elf_msg, Santa_msg;
+proc void syncronize (shared chan<boolean>.write a,
+                     shared chan<boolean>.write b) [yield=true]{
+ claim (a)
+   a.write(true);
+ claim (b)
+   b.write(true);
+}
+
+proc void santa (const long seed,
+     chan<boolean>.read knock, // will CRASH!!!!!
+     chan<int>.read from_reindeer,
+     chan<int>.read from_elf,
+     barrier santa_reindeer,
+     shared chan<boolean>.write santa_elves_a,
+     shared chan<boolean>.write santa_elves_b,
+     shared chan<Santa_msg>.write report) [yield = true]{
+     
+	long my_seed = seed;
+	timer tim;
+	long t, wait;
+    
+	while (true) {
+		int id;
+		boolean any;
+		pri alt {
+      		id = from_reindeer.read(): {  // Reindeer ready
+    			claim (report) {
+        			report.write(new Santa_msg{ reindeer_ready: });
+        			report.write(new Santa_msg{ harness: id });
+    			}
+    			for (int i=0; i< G_REINDEER; i++) {
+        			id = from_reindeer.read();
+        			claim (report)
+        				report.write(new Santa_msg{ harness: id });
+    			}
+    			claim (report)
+    				report.write(new Santa_msg{mush_mush:});
+    			sync (santa_reindeer);
+    			t = tim.read();
+    			tim.timeout (t + wait);
+    			claim (report)
+    				report.write (new Santa_msg{woah:});
+    			sync (santa_reindeer);
+    			for (int i=0; i< G_REINDEER; i++) {
+        			id = from_reindeer.read({
+          				claim (report)
+          					report.write (new Santa_msg{ unharness:id });
+    				});
+    			}
+    		}
+    		
+		any = knock.read (): { // 3 Elves ready
+
+			claim (report)
+    			report.write (new Santa_msg{ elves_ready: });
+
+    		for (int i=0; i<G_ELVES; i++) {
+        		id = from_elf.read();
+        		claim (report)
+      				report.write (new Santa_msg{ greet: id });
+    		}
+
+    		claim (report)
+    			report.write (new Santa_msg{ consulting: });
+
+    		syncronize (santa_elves_a, santa_elves_b);
+
+    		t = tim.read();
+    		tim.timeout (t + wait);
+
+    		claim (report)
+    		report.write (new Santa_msg{ santa_done: });
+
+    		syncronize (santa_elves_a, santa_elves_b);
+
+    		for (int i=0; i<G_ELVES; i++) {
+        		id = from_elf.read ({
+          			claim (report)
+          				report.write(new Santa_msg{ goodbye: id });
+		      		});
+		    	}
+		    }
+		}
+	}
+}
+
+proc void main(string[] args)[yield=true]{
+	barrier just_reindeer, santa_reindeer;
+    timer tim;
+    long seed;
+    seed = tim.read();
+    seed = (seed >> 2) + 42;
+    
+    shared write chan<boolean> elves_a, elves_b;
+    chan<boolean> knock;
+    shared write chan<boolean> santa_elves_a, santa_elves_b;
+    shared write chan<int> reindeer_santa, elf_santa;
+    shared write chan<Message> report;
+    
+    //santa_reindeer
+    //N_REINDEER
+    //report.write
+    //reindeer_santa.read
+    //santa_elves_a.write
+    //santa_elves_b.write
+    //elf_santa.read
+    //seed + something
+    
+   santa (seed + (N_REINDEER + N_ELVES), knock.read,
+       		reindeer_santa.read, elf_santa.read, santa_reindeer,
+       		santa_elves_a.write, santa_elves_b.write, report.write);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

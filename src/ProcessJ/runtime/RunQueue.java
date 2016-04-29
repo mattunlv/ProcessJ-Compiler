@@ -2,7 +2,6 @@ package ProcessJ.runtime;
 
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.Random;
 
 public class RunQueue {
 	private LinkedList<Process> queue = new LinkedList<Process>();
@@ -19,7 +18,25 @@ public class RunQueue {
 		return queue.size();
 	}
 
-	public void swap(int i, int j) {
+	public boolean swap(int i, int j) {
+		if (queue.get(i).isReady() || queue.get(j).isReady() ) {
+			return false;
+		}
 		Collections.swap(queue, i, j);
+		return true;
+	}
+	
+	public void dump() {
+		StringBuilder sb = new StringBuilder();
+		for(Process p : queue) {
+			if (p.isReady()) {
+//				sb.append("R");
+				sb.append("*");
+			} else {
+				sb.append(" ");
+			}
+		}
+		
+		System.out.println("RunQueueDump=>" + sb.toString() + "<<");
 	}
 }

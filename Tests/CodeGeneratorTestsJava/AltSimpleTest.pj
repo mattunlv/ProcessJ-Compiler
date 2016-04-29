@@ -19,7 +19,7 @@ proc void main(string[] args) [yield=true] {
 		alt {
 			(true) && x = c.read() : { x += 5;}		
 			(x > 5) && t.timeout(10000) : { x += 10;}
-			(getBool()) && skip: {x += 15;}	
+			//(getBool()) && skip: {x += 15;}	
 		}
 	}
 }

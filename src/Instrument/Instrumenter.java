@@ -12,6 +12,7 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -84,7 +85,7 @@ public class Instrumenter {
       throws Exception {
 
     // lets see assembler code before transformation
-    // ASMifierClassVisitor.main(new String[]{className.replace('/', '.')});
+//     ASMifierClassVisitor.main(new String[]{className.replace('/', '.')});
 
     ClassNode cn = new ClassNode();
     cr.accept(cn, 0);
@@ -102,13 +103,14 @@ public class Instrumenter {
   private byte[] getNewClassBytes(final ClassNode cn) {
     byte[] classBytes;
     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+//    ClassVisitor cv = new CheckClassAdapter(cw);
     cn.accept(cw);
     classBytes = cw.toByteArray();
     
     /*
      * Use this to see if changed bytecode will pass verifier. 
      */
-    //verifyModifiedClass(cw);
+//    verifyModifiedClass(cw);
     
     return classBytes;
   }
@@ -170,7 +172,7 @@ public class Instrumenter {
         if (min.owner.equals(workingClassName)) {
 
           if (min.name.equals(MARK_YIELD)) {
-
+//        	  System.out.println("found yield!!");
             yields.add(min);
 
           } else if (min.name.equals(MARK_RESUME)) {

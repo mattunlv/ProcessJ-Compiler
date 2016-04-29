@@ -22,8 +22,10 @@ public class TimerQueue {
 
 					timer.stopped = true;
 					Process p = timer.getProcess();
-					if (p != null)
+					if (p != null) {
+//						System.out.println("TimerQueue: setting a process ready!!");
 						p.setReady();
+					}
 				}
 			} catch (InterruptedException e) {
 				return;

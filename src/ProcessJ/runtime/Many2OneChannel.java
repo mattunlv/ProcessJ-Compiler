@@ -22,15 +22,17 @@ public class Many2OneChannel<T> extends Channel<T> {
 		}
 	}
 
-	//TODO add override to all
 	@Override
 	synchronized public T read(Process p) {
 		ready = false;
-		Process writer = writers.removeFirst();
-		writer.setReady();
-		writer = null;
+//		System.out.println("many2onechannel read...");
+		if (writers.size() > 0) {
+			Process writer = writers.removeFirst();
+			writer.setReady();
+		}
 		T myData = data;
 		data = null;
+//		System.out.println("read: " + myData);
 		return myData;
 	}
 	

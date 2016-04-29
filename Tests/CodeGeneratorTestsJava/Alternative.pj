@@ -4,11 +4,17 @@
 proc void alternative(chan<int>.read intChan, chan<int>.read intChan2) [yield=true]{
   int x = 0;
   int y = 0;
+  timer t;
 
   alt{
     x = intChan.read() : {
-    	y = 10;	
+    	y = x +y;
+    	x++;
+    	y = intChan.read();	
+    	y = x +y;
+    	x = intChan.read();
     }
+	(x > 5) && t.timeout(10000) : { x += 10; t.timeout(2000);}
     x = intChan2.read() : {
     	y = 20;
     }

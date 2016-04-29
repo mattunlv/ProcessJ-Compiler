@@ -1,0 +1,29 @@
+proc void santa()[yield=true]{}
+proc void reindeer()[yield=true]{}
+proc void elf()[yield=true]{}
+proc void display()[yield=true]{}
+proc void p_barrier_knock()[yield=true]{}
+proc void p_barrier()[yield=true]{}
+
+proc void foo() [yield=true]{
+	barrier a;
+	barrier b;
+	barrier c;
+	par { 
+  		par enroll (a) {
+			santa();
+      		par for (int i=0; i<5; i++) enroll (b, c)
+      			reindeer(); 
+  		} 
+
+  		par for (int i=0; i<5; i++) enroll (a, b, c){
+			elf();
+		}
+
+  		display();
+
+  		p_barrier_knock ();
+
+  		p_barrier ();
+	}
+}

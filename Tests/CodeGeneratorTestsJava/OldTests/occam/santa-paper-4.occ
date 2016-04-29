@@ -1,0 +1,136 @@
+--** Santa Claus: static network (no mobile channels or processes);
+--     asymmetric (reindeer use barrier, elves use partial barrier);
+--     restricted reports (to those from the Peyton-Jones solution
+--     using software transactional memory and Haskell).
+--
+--  This is the solution discussed in Appendix F of the article:
+--
+--    "Santa Claus: Formal Analysis of a Process-Oriented Solution"
+--    Welch, P. H. and Pedersen, J. B.
+--    ACM Trans. Program. Lang. Syst. 32, 4, Article 14 (April 2010), 37 pages. 
+--    DOI =10.1145/1734206.1734211 http:/doi.acm.org/10.1145/1734206.1734211
+
+
+#INCLUDE "protocol.occ"
+#INCLUDE "partial-barriers.occ"
+#INCLUDE "random-stuff.occ"
+#INCLUDE "display.occ"
+
+VAL INT N.REINDEER IS 9:
+VAL INT G.REINDEER IS N.REINDEER:
+
+VAL INT N.ELVES IS 10:
+VAL INT G.ELVES IS 3:
+
+VAL INT HOLIDAY.TIME IS 100000:        -- microseconds
+VAL INT WORKING.TIME IS 200000:        -- microseconds
+VAL INT DELIVERY.TIME IS 100000:       -- microseconds
+VAL INT CONSULTATION.TIME IS 200000:   -- microseconds
+
+PROC reindeer (VAL INT id, seed, BARRIER just.reindeer, santa.reindeer,
+               SHARED CHAN INT to.santa!, SHARED CHAN REINDEER.MSG report!)
+  INITIAL INT my.seed IS seed:
+  SEQ
+    random.warm.up (5000, my.seed)
+    WHILE TRUE
+      SEQ
+        random.wait (HOLIDAY.TIME, my.seed)           -- sleep for random amount of time 
+        SYNC just.reindeer                            -- wait for all deer to return 
+        CLAIM to.santa ! id                           -- send id and get harnessed 
+        CLAIM report ! deliver; id                    -- "I'm delivering toys" + id 
+        SYNC santa.reindeer                           -- until Santa takes us all home 
+:
+
+PROC elf (VAL INT id, seed,
+          SHARED CHAN BOOL just.elves.a!, just.elves.b!,
+          SHARED CHAN BOOL santa.elves.a!, santa.elves.b!,
+          SHARED CHAN INT to.santa!, SHARED CHAN ELF.MSG report!)
+  INITIAL INT my.seed IS seed:
+  SEQ
+    random.warm.up (5000, my.seed)
+    WHILE TRUE
+      SEQ
+        random.wait (WORKING.TIME, my.seed)           -- work until I have a problem
+        sync (just.elves.a!, just.elves.b!)           -- wait for two other elves 
+        CLAIM to.santa ! id                           -- say hello to Santa 
+        CLAIM report ! consult; id                    -- "I'm consulting Santa" + id 
+        sync (santa.elves.a!, santa.elves.b!)         -- until Santa has had enough 
+:
+
+PROC santa (VAL INT seed, CHAN INT from.reindeer?, BARRIER santa.reindeer,
+            CHAN BOOL just.elves.ping?, CHAN INT from.elves?,
+            SHARED CHAN BOOL santa.elves.a!, santa.elves.b!,
+            SHARED CHAN SANTA.MSG report!)
+  INITIAL INT my.seed IS seed:
+  SEQ
+    random.warm.up (5000, my.seed)
+    WHILE TRUE
+      PRI ALT
+        INT id:
+        from.reindeer ?? id                           -- the first reindeer is here
+          CLAIM report ! reindeer.ready               -- "Ho, Ho, Ho, reindeer are here"
+          SEQ                                         -- (extended input has finished)
+            SEQ i = 0 FOR G.REINDEER - 1              -- for the remaining deer
+              from.reindeer ? id                      --   receive their id
+            random.wait (DELIVERY.TIME, my.seed)      -- deliver toys for some random time
+            SYNC santa.reindeer                       -- signal everyone to return home
+        BOOL any:
+        just.elves.ping ? any                         -- a party of elves is at door
+          SEQ
+            CLAIM report ! elves.ready                -- "Ho, Ho, Ho, elves are here"
+            SEQ i = 0 FOR G.ELVES                     -- for each elf in party
+              INT id:                                 -- (G.ELVES is size of party)
+              from.elves ? id                         -- receive elf id
+            random.wait (CONSULTATION.TIME, my.seed)  -- consult for a random time
+            sync (santa.elves.a!, santa.elves.b!)     -- tell elves consultancy over
+:
+
+PROC santa.system (VAL INT seed, SHARED CHAN MESSAGE report!)
+
+  BARRIER just.reindeer, santa.reindeer:
+  
+  SHARED ! CHAN INT reindeer.2.santa:
+
+  SHARED ! CHAN BOOL just.elves.a, just.elves.b:      -- extended partial barrier
+  CHAN BOOL just.elves.ping:                          -- channels (just.elves)
+
+  SHARED ! CHAN BOOL santa.elves.a, santa.elves.b:    -- partial barrier channels
+
+
+  SHARED ! CHAN INT elves.2.santa:
+
+  PAR
+
+    PAR ENROLL santa.reindeer
+
+      santa (seed + (N.REINDEER + N.ELVES),
+             reindeer.2.santa?, santa.reindeer,
+             just.elves.ping?, elves.2.santa?,
+             santa.elves.a!, santa.elves.b!, report!)
+
+      PAR i = 0 FOR N.REINDEER ENROLL just.reindeer, santa.reindeer
+        reindeer (i, seed + i, just.reindeer, santa.reindeer,
+                  reindeer.2.santa!, report!)
+
+    PAR i = 0 FOR N.ELVES
+      elf (i, N.REINDEER + (seed + i), just.elves.a!, just.elves.b!,
+           santa.elves.a!, santa.elves.b!, elves.2.santa!, report!)
+
+    xp.bar (G.ELVES, just.elves.a?, just.elves.b?, just.elves.ping!)
+
+    p.bar (G.ELVES + 1, santa.elves.a?, santa.elves.b?)
+
+:
+
+PROC santa.paper.f (CHAN BYTE screen!)
+
+  INT seed:
+  SEQ
+    random.initialise (seed)
+
+    SHARED ! CHAN MESSAGE report:
+    PAR
+      santa.system (seed, report!)
+      display (report?, screen!)
+
+:

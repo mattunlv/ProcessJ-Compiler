@@ -6,18 +6,20 @@ proc void writer(chan<int>.write cw)[yield=true] {
 	cw.write(10);
 }
 
+proc void main(string[] args)[yield=true] {
+	foo();
+}
+
 proc void foo()[yield=true] {
 	chan<int> c;
 	int x, y;	
 
 	par {
+		par {
+			x = 10;	
+		}
 		reader(c.read);	
 		writer(c.write);
-		x = x + 10;
-		y = y + 10;
 	}
 }
 
-proc void main(string[] args)[yield=true] {
-	foo();
-}

@@ -37,8 +37,6 @@ public class Alt {
 	}
 	
 	public int getReadyGuardIndex() {
-		//initialize B to all true, since missing boolean 
-		//guard means it is true.
 		int chosen = -1;
 		for (int i = 0; i < bGuards.length; i++) {
 			if (bGuards[i]) {
@@ -63,9 +61,13 @@ public class Alt {
 							break;
 						}
 					} else {
+//						System.out.println("checking channel w/c is shared write single read");
+//						System.out.println("c.isReadyToRead=" + c.isReadyToRead(process));
 						if (c.isReadyToRead(process)) {
 							chosen = i;
 							break;
+						} else {
+//							System.out.println("not ready!!!!!!");
 						}
 					}
 				}

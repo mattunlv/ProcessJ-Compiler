@@ -5,6 +5,8 @@ import java.util.Random;
 public class Scheduler extends Thread {
 	
 	private boolean chaotic = false;
+	private boolean insanely_chaotic = false;
+	private boolean dump = false;
 
 	private final TimerQueue timerQueue = new TimerQueue();
 	private final RunQueue rq = new RunQueue();
@@ -23,11 +25,37 @@ public class Scheduler extends Thread {
 		return rq.size();
 	}
 	
-	public void makeChaotic() {
-		this.chaotic = true;
+	public void makeInsanelyChaotic() {
+		this.chaotic = false;
+		this.insanely_chaotic = true;
 	}
 	
+	public void makeChaotic() {
+		this.chaotic = true;
+		this.insanely_chaotic = false;
+	}
+	
+	public void makeItDump() {
+		this.dump = true;
+	}
+
 	private void shuffle() {
+		int size = rq.size();
+		if (size < 2)
+			return;
+		
+		while(true) {
+			Random rand = new Random(); 
+			int i = rand.nextInt(size()); 
+			int j = rand.nextInt(size()); 
+
+			if (rq.swap(i, j)) {
+				break;
+			}
+		}
+	}
+	
+	private void insaneShuffle() {
 		int size = rq.size();
 		if (size < 2)
 			return;
@@ -48,6 +76,7 @@ public class Scheduler extends Thread {
 //		int notReadyCounter = 0;
 		int contextSwitches = 0;
 		int swaps = 0;
+		int rotation = 0;
 		while (rq.size() > 0) {
 //			System.err.println("[Scheduler] Run Queue size: [" + rq.size() + "]");
 			
@@ -55,6 +84,18 @@ public class Scheduler extends Thread {
 				shuffle();
 				swaps++;
 			}
+			if (insanely_chaotic) {
+				insaneShuffle();
+				swaps++;
+			}
+
+//			if (dump) {
+//				rotation++;
+//				if (rotation == 100000) {
+					rq.dump();
+//					rotation = 0;
+//				}
+//			}
 			
 			// grab the next process in the run queue
 			Process p = rq.getNext();
@@ -94,7 +135,7 @@ public class Scheduler extends Thread {
 
 			if (inactivePool.getCount() == rq.size() && rq.size() > 0 && timerQueue.isEmpty()) {
 				System.err.println("No processes ready to run. System is deadlocked");
-				System.err.println(rq);
+				System.err.println("remaining processes:" + rq.size());
 				timerQueue.kill();
 				System.exit(1);
 			}
@@ -106,5 +147,4 @@ public class Scheduler extends Thread {
 			System.err.println("[Scheduler.Chaotic] Total Swaps: " + swaps);
 		}
 	}
-
 }

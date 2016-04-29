@@ -1,0 +1,86 @@
+import std.io;
+
+protocol Reindeer_msg {
+ holiday:    { int id; } //start of vacation postcard; reindeer id
+ deer_ready: { int id; } //back from vacation; reindeer id
+ deliver:    { int id; } //start of toy delivery; reindeer id
+ deer_done:  { int id; } //return from toy delivery; reindeer id
+}
+
+protocol Elf_msg {
+ working:   { int id; } //start of work shift; elf id
+ elf_ready: { int id; } //want to consult Santa; elf id
+ waiting:   { int id; } //in the waiting room; elf id
+ consult:   { int id; } //consulting; elf id
+ elf_done:  { int id; } //end of consultation; elf id
+}
+
+protocol Santa_msg {
+ reindeer_ready: { }			//woken up by reindeer
+ harness:        { int id; }	//harnessing this reindeer; id
+ mush_mush:      { }			//start of toy delivery
+ woah:           { }			//end of toy delivery
+ unharness:      { int id; }	//unharnessing this reindeer; id
+ elves_ready:    { }			//woken up by party of elves
+ greet:          { int id; }	//greet this elf; id
+ consulting:     { }			//consulting with elves
+ santa_done:     { }			//end of consultation
+ goodbye:        { int id; }	//show elf the door; id
+}
+
+protocol Message extends Reindeer_msg, Elf_msg, Santa_msg;
+
+proc void display (chan<Message>.read in) [yield=true]{
+  Message msg;
+  while (true) {
+    msg = in.read();
+    switch(msg) {
+   		case holiday:  
+      		println("                                                        Reindeer-" + msg.id + ": on holiday ... wish you were here");
+      		break;
+   		case deer_ready:
+      		println("                                                        Reindeer-" + msg.id + ": back from holiday ... ready for work");
+      		break;
+    
+   		case deliver: 
+   			println("                                                        Reindeer-" + msg.id + ": delivering toys...la-di-da-di-da-di-da"); 
+   			break;
+
+   		case deer_done: 
+   			println("                                                        Reindeer-" + msg.id + ": all toys delivered...want a holiday"); 
+   			break;
+   			
+   		case working: 
+   			println("                            Elf-" + msg.id + ": working"); 
+   			break;
+   		
+   		case elf_ready:
+      		println("                            Elf-" + msg.id + ": need to consult Santa, ;(");
+      		break;
+   		
+   		case waiting: 
+   			println("                            Elf-" + msg.id + ": in the waiting room..."); 
+   			break;
+
+   		case consult: 
+   			println("                            Elf-" + msg.id + ": about these toys...??"); 
+   			break;
+
+   		case elf_done: 
+   			println("                            Elf-" + msg.id + ": OK...we'll build it, bye...");
+   			break;
+
+   		case reindeer_ready: println("Santa: Ho-ho-ho...the reindeer are back!"); break;
+   		case harness: println("Santa: harnessing reindeer"); break;
+   		case mush_mush: println("Santa: mush mush ..."); break;
+   		case woah: println("Santa: woah...we're back home!"); break;
+   		case unharness: println("Santa: un-harnessing reindeer"); break;
+   		case elves_ready: println("Santa: Ho-ho-ho...some elves are here!"); break;
+   		case greet: println("Santa: hello elf"); break;
+   		case consulting: println("Santa: consulting with elves..."); break;
+   		case santa_done: println("Santa: OK, all done - thanks!"); break;
+   		case goodbye: println("Santa: goodbye elf"); break;
+    
+    }
+  }
+}

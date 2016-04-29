@@ -19,7 +19,7 @@ import java.util.List;
 public class Barrier {
 	
 	List<Process> pool = new ArrayList<Process>();
-	int enrolled = 0;
+	public int enrolled = 0;
 
 	/*
 	 * Any process that declares a barrier
@@ -39,18 +39,23 @@ public class Barrier {
 		 * the count. We want the declarer
 		 * to still be enrolled.
 		 */
+		System.out.println("resign being called!!!");
 		if (this.enrolled > 1) { 
 			this.enrolled = this.enrolled - 1;
 		}
 	}
 
 	public synchronized void sync(Process process) {
+//		System.out.println("a process is syncing!");
 		process.setNotReady();
 		pool.add(process);
+//		System.out.println("pool.size=" + pool.size() + " enrolled=" + enrolled);
 		if (pool.size() == enrolled) {
 			for(Process p : pool) {
 				p.setReady();
 			}
+//			System.out.println("clearning pool after all synced!!");
+			pool.clear();
 		}
 	}
 }

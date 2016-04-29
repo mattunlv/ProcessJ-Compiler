@@ -81,50 +81,6 @@ public abstract class Channel<T> {
 	synchronized public boolean isReadyToRead(Process p) {
 		// data present and reserved for a specific reader.
 		if (ready && reservedForReader != null)
-			/*
-			 * TODO: can we not be sure that the
-			 * reserved reader is not this one as this
-			 * process is definitely not in ALT as it
-			 * is calling this ready method??
-			 * 
-			 * No!No!No!
-			 * When a read end of multi-read channel is held
-			 * by a process not in an alt, it still adds itself
-			 * to the readers list. Well, if it does add to itself
-			 * to the list, then we are good w/o the below comparison.
-			 * Because, it means that the process has reached its channel.code
-			 * atleast once before, then added itself to list, and yielded. The
-			 * only way it would wake up is by the channel writer. then, if it
-			 * was awoken by the writer, that also means reservedForReade == itself.
-			 * 
-			 * Now, lets look at this scenario. Process A has an alt and has c.read
-			 * of one2many.Process A get to alt, gets added to list, yields. Process B has
-			 * c.read as well. It hasn't reached c.read but it is ahead of A in the
-			 * runqueue. That can happen either by B yielding due to some other
-			 * sync block or by just coming after A in the initial runqueue. A gets 
-			 * rescheduled to the back of the queue.
-			 * 
-			 * Now, Say C writes to c, sets A=ready, and reservedForRead=A, A is awoken
-			 * and waiting to be scheduled so that it can perform the read. But since
-			 * B is ahead in the runqueue, it get to c first, finds it ready, hijacks 
-			 * the data meant for A and moves on. What happens to A? This is not
-			 * acceptable. 
-			 * 
-			 * So, if we have check the reservedForReader as well, then we avoid
-			 * this scenario.
-			 * 
-			 * New update:
-			 * channels inside alt will not add themselves in the list. they only
-			 * reserve?? check this one. 04.11.2016: yes this is true. channels in
-			 * alt do not commit to read by adding itself to reader list. so, the
-			 * freaking long paragraph above has serious holes. dammit!
-			 * 
-			 * Alt is continuously running. so when a channel guard is ready, that
-			 * means there actually is data to be read. so maybe channel
-			 * doesn't even need to setnotready?? check this too.
-			 * 
-			 * 
-			 */
 			return (reservedForReader == p);
 		// data present but is reserved for an alt.
 		else if (reservedForAlt)

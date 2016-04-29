@@ -1,0 +1,12 @@
+import std.io;
+
+proc void foo()[yield=true] {}
+
+proc void main(string[] args)[yield=true]{
+
+	par for (int i=10; i<1000; i++) {
+		foo();	
+	}
+	
+	println("done!!");
+}

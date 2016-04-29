@@ -14,8 +14,9 @@ protocol B extends A{
 
 proc void main(string[] args){
 	C val;
-	B b = new B{b1:1,2,3};
-
+	//B b = new B{b1:1,2,3};
+	B b;
+	
  	switch(val) {
   		case c: val.cc = 100; break;
   		case a1: val.x = 200; 

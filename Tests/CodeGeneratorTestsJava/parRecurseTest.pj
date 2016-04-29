@@ -1,0 +1,39 @@
+import std.io;
+
+proc void f(int n)[yield=true]{
+  println("Hello! " + n);
+  if(n == 0)
+    return;
+
+  f(n - 1);
+  return;
+}
+
+proc void main(string[] args)[yield=true]{
+  int x;
+  barrier a, b;
+  par enroll (a){
+  	par enroll(b) {
+  		f(10);
+  		x = 10;
+  	}
+  }
+}
+
+proc void channelReadExprTest()[yield=true] {
+	int x;
+	chan<int> cr;
+	barrier a, b, c;
+	
+	par enroll (a){
+		cr.read.read();	
+		par enroll (b, c) {
+			cr.read.read();
+		}
+	}
+}
+
+
+
+
+
