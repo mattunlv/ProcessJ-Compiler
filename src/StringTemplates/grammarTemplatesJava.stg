@@ -201,8 +201,8 @@ if (!<c>.claim()) {
 }
 >>
 
-TimerReadExpr(left, timer) ::= <<
-<left> = <timer>.read();
+TimerReadExpr(left) ::= <<
+<left> = Timer.read();
 >>
 
 ContinueStat() ::= "continue"
@@ -225,8 +225,7 @@ public static boolean getTrue() {
 }
 >>
 
-ParForStat(parName, init, expr, incr, barriers, stats, jmp0, jmp1) ::= <<
-label(<jmp0>);	
+ParForStat(parName, init, expr, incr, barriers, stats, jmp) ::= <<
 final Par <parName> = new Par(-1, this);
 int cnt = 0;	
 List\<Process> pp = new LinkedList\<Process>(); 
@@ -246,9 +245,9 @@ for(Process p : pp) {
 	p.schedule();
 }
 setNotReady();
-this.runLabel = <jmp1>;
+this.runLabel = <jmp>;
 yield();
-label(<jmp1>);
+label(<jmp>);
 >>
 
 IfStat(expr, thenPart, elsePart) ::= <<
@@ -259,15 +258,15 @@ if( <expr> ) {
 }<endif>
 >>
 
-InvocationNormal(qualifiedProc, procParams, isProcess, par, parName, barriers) ::= <<
+InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, barriers) ::= <<
 <if(isProcess)>
-<if(par)>
+<if(par || parfor)>
 (new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
   public void finalize() {
     <parName>.decrement();    
 	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
   }
-}).schedule()<\\>
+})<if(!parfor)>.schedule()<endif><\\>
 <endif>
 <else>
 <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
@@ -435,17 +434,16 @@ ProcGetParam(type, name, number) ::= <<
 <type> <name> = ProcGetParam(<number>, <type>)
 >>
 
-ParBlock(parCnt, parName, stats, barriers, jmp0, jmp1) ::= <<
-label(<jmp0>);	
+ParBlock(parCnt, parName, stats, barriers, jmp) ::= <<
 final Par <parName> = new Par(<parCnt>, this);
 <if(barriers)><barriers:{b | <b>.enroll(<parCnt>)}; separator = ";\n">;<endif>
 	
 <stats; separator=";\n">;
 	
 setNotReady();
-this.runLabel = <jmp1>;
+this.runLabel = <jmp>;
 yield();
-label(<jmp1>);
+label(<jmp>);
 >>
 
 ReturnStat(expr, procYields) ::= <<

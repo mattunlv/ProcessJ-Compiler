@@ -43,7 +43,7 @@ public class Timer implements Delayed {
 		return 0;
 	}
 
-	public long read() {
+	public static long read() {
 		return System.currentTimeMillis();
 	}
 

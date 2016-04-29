@@ -24,29 +24,28 @@ public class Many2OneChannel<T> extends Channel<T> {
 
 	@Override
 	synchronized public T read(Process p) {
+		T myData = data;
+		data = null;
 		ready = false;
-//		System.out.println("many2onechannel read...");
 		if (writers.size() > 0) {
 			Process writer = writers.removeFirst();
 			writer.setReady();
 		}
-		T myData = data;
-		data = null;
-//		System.out.println("read: " + myData);
 		return myData;
 	}
 	
-	synchronized public T readPreRendezvous() {
+	synchronized public T readPreRendezvous(Process p) {
 		T myData = data;
 		data = null;
 		return myData;
 	}
 	
-	synchronized public void readPostRendezvous() {
+	synchronized public void readPostRendezvous(Process p) {
 		ready = false;
-		Process writer = writers.removeFirst();
-		writer.setReady();
-		writer = null;
+		if (writers.size() > 0) {
+			Process writer = writers.removeFirst();
+			writer.setReady();
+		}
 	}
 
 	synchronized public void addWriter(Process p) {

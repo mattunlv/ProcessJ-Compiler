@@ -297,6 +297,11 @@ proc void santa (const long seed, //ok
 	          			claim (report)
 	          				report.write (new Santa_msg{ unharness:id });
 	      			});
+	      			
+	      			/*id = from_reindeer.read();
+	          		claim (report)
+	          			report.write (new Santa_msg{ unharness:id });
+	          			*/
 	    		}
 	      	}
 	
@@ -329,6 +334,10 @@ proc void santa (const long seed, //ok
 	          				claim (report)
 	          					report.write(new Santa_msg{ goodbye: id });
 	      			});
+	      			/*id = from_elf.read ();
+	          		claim (report)
+	          			report.write(new Santa_msg{ goodbye: id });
+	          		*/
 	    		}
 	      	}
 	  	}

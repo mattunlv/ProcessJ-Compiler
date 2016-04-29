@@ -23,24 +23,29 @@ public class Many2ManyChannel<T> extends Channel<T> {
 	}
 
 	synchronized public T read(Process p) {
-		Process writer = writers.removeFirst();
-		writer.setReady();
 		T myData = data;
 		data = null;
+
 		ready = false;
+		if (writers.size() > 0) {
+			Process writer = writers.removeFirst();
+			writer.setReady();
+		}
 		return myData;
 	}
 	
-	synchronized public T readPreRendezvous() {
+	synchronized public T readPreRendezvous(Process p) {
 		T myData = data;
 		data = null;
 		return myData;
 	}
 	
-	synchronized public void readPostRendezvous() {
+	synchronized public void readPostRendezvous(Process p) {
 		ready = false;
-		Process writer = writers.removeFirst();
-		writer.setReady();
+		if (writers.size() > 0) {
+			Process writer = writers.removeFirst();
+			writer.setReady();
+		}
 	}
 
 	synchronized public void addWriter(Process p) {

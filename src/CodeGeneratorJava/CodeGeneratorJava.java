@@ -782,6 +782,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("qualifiedProc", qualifiedProc);
 		template.add("procParams", paramLst);
 		template.add("par", _inParBlock);
+		template.add("parfor", _inParFor);
 		template.add("parName", _parName);
 		
 		template.add("barriers", barriers);
@@ -846,7 +847,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			 */
 			template = group.getInstanceOf("TimerReadExpr");
 			template.add("left", left);
-			template.add("timer", channelNameExpr.visit(this));
+//			template.add("timer", channelNameExpr.visit(this));
 			return (T) template.render();
 		} else { 
 			Type baseType = null;
@@ -875,7 +876,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				Block b = cr.extRV();
 				String[] extRv = null;
 				if (b != null) {
+					//FIXME looks like ill need to turn off altGuard flag for
+					//this block as extRv could have read from the same channel
+					//again.
+					boolean oldAltGuard = isAltGuard;
+					isAltGuard = false;
 					extRv = (String[])b.visit(this);
+					isAltGuard = oldAltGuard;
 				}
 				//-------
 
@@ -1085,6 +1092,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			if (fs.stats() instanceof Block) {
 				Block b = (Block) fs.stats();
 				rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, b)).visit(this);
+			} else if (fs.stats() instanceof ExprStat) {
+				ExprStat es = (ExprStat) fs.stats();
+				if (es.expr() instanceof Invocation) {
+					rendered = (String) createInvocation(null, (Invocation) es.expr(), barriers, false);
+				}
+				
 			} else {
 				rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, new Block(new Sequence(fs.stats())))).visit(this);
 			}
@@ -1100,11 +1113,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			/*
 			 * Adding resumption points
 			 */
-			for (int i=0; i<2; i++) {
-				template.add("jmp" + i, _jumpCnt);
+//			for (int i=0; i<2; i++) {
+				template.add("jmp", _jumpCnt);
 				_switchCases.add(getLookupSwitchCase(_jumpCnt));	
 				_jumpCnt++;
-			}
+//			}
 			template.add("init", initStr);
 			template.add("incr", incrStr);
 			template.add("expr", expr);
@@ -1416,11 +1429,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 /*
 	     * Adding switch cases for Par resumption.
 	     */ 
-		for (int i=0; i<2; i++) {
+//		for (int i=0; i<2; i++) {
 			_switchCases.add(getLookupSwitchCase(_jumpCnt));	
-			parBlockTemplate.add("jmp" + i, _jumpCnt);
+			parBlockTemplate.add("jmp", _jumpCnt);
 			_jumpCnt++;
-		}	
+//		}	
 		
 		//BARRIER ------------------
 		

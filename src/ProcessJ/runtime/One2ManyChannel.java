@@ -37,13 +37,13 @@ public class One2ManyChannel<T> extends Channel<T> {
 		return myData;
 	}
 	
-	synchronized public T readPreRendezvous() {
+	synchronized public T readPreRendezvous(Process p) {
 		T myData = data;
 		data = null;
 		return myData;
 	}
 	
-	synchronized public void readPostRendezvous() {
+	synchronized public void readPostRendezvous(Process p) {
 		ready = false;
 		reservedForReader = null;
 		reservedForAlt = false;

@@ -92,7 +92,7 @@ public class Scheduler extends Thread {
 //			if (dump) {
 //				rotation++;
 //				if (rotation == 100000) {
-					rq.dump();
+//					rq.dump();
 //					rotation = 0;
 //				}
 //			}
