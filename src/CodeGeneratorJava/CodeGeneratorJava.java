@@ -360,22 +360,22 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		}
 		
 		Type t = ct.baseType();
-		String type = null;
+		//TODO rename this to generictype or template or something
+		String basetype = null;
 		if (t.isNamedType()) {
 			NamedType tt = (NamedType) t;
 			
 			if (isProtocolType(tt)) {
-				type = "ProtocolCase";
+				basetype = "ProtocolCase";
 			} else {
-				type = (String)tt.visit(this);
+				basetype = (String)tt.visit(this);
 			}
 		} else {
 			//FIXME maybe do a check for primitive type...and rename the below method.
-			type = getWrapperType(t);
+			basetype = getWrapperType(t);
 		}
 
-//		return (T) (typeString + "<" + getWrapperType(ct.baseType()) + ">");
-		return (T) (typeString + "<" + type + ">");
+		return (T) (typeString + "<" + basetype + ">");
 	}
 
 	/**
@@ -395,25 +395,41 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitChannelEndType(ChannelEndType ct) {
 		Log.log(ct.line + ": Visiting a Channel End Type!");
 
+		//Getting the channel type
+		String maintype = "Channel";
+		if(ct.isShared()) {
+			if(ct.isRead()) {
+				maintype = "One2ManyChannel";
+			} else {
+				maintype = "Many2OneChannel";
+			}
+		} else {
+			maintype = "One2OneChannel";
+		}
+		
+		//Getting the Channe<'basetype'>
 		Type t = ct.baseType();
-		String type = null;
+		String basetype = null;
 		if (t.isNamedType()) {
 			NamedType tt = (NamedType) t;
 			
 			if (isProtocolType(tt)) {
-				type = "ProtocolCase";
+				basetype = "ProtocolCase";
 			} else {
-				type = (String)tt.visit(this);
+				basetype = (String)tt.visit(this);
 			}
 		} else {
 			//FIXME maybe do a check for primitive type...and rename the below method.
-			type = getWrapperType(t);
+			basetype = getWrapperType(t);
 		}
-
-//		return (T) (typeString + "<" + getWrapperType(ct.baseType()) + ">");
-		return (T) ("Channel<" + type + ">");
 		
-//		return (T) ("Channel<" + getWrapperType(ct.baseType()) + ">");
+		String chanEndType = "";
+		if (isFormals) {
+			chanEndType = "Channel<" + basetype + ">";
+		} else {
+			chanEndType = maintype + "<" + basetype + ">";
+		}
+		return (T) chanEndType;
 	}
 
 	/**
@@ -614,30 +630,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(cs.line + ": Visiting an ClaimStat");
 		ST template = null;
 		
-//		Sequence<AST> channels = cs.channels();
-
-		List<String> claimparts = new ArrayList<String>();
-		String[] channels = (String[])cs.channels().visit(this);
-		List<String> claimed = new ArrayList<String>();
-//		for(int i=0; i<channels.length; i++) {
-//			template = group.getInstanceOf("ClaimStatClaimPart");
-//			
-//			String c = channels[i];
-//
-//			template.add("unclaims", claimed);
-//			template.add("c", c);
-//			template.add("jmp", _jumpCnt);
-//			_switchCases.add(getLookupSwitchCase(_jumpCnt));	
-//			_jumpCnt++;
-//			claimparts.add(template.render());
-//
-//			//list of channels that next channel needs
-//			//to unclaim if that channel claim fails.
-//			claimed.add(c);
-//		}
-
-//		String stat = (String)cs.stat().visit(this);
+		String[] channels = new String[cs.channels().size()];
+		String ldStr = null;
+		Sequence<AST> claimExprs = cs.channels();
 		
+		for(int k=0; k < claimExprs.size(); k++) {
+			AST ast = claimExprs.child(k);
+			if (ast instanceof LocalDecl) {
+				LocalDecl ld = (LocalDecl) ast;
+				ldStr = (String)ld.visit(this);
+				channels[k] = ld.var().name().getname();
+			} else {
+				channels[k] = (String) ast.visit(this);
+			}
+		}
 		
 		Object stats = null;
 		if (cs.stat() instanceof Block) {
@@ -650,12 +656,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template = group.getInstanceOf("ClaimStat");
 
 		template.add("channels", channels);
+		template.add("ldstr", ldStr);
 		template.add("stats", stats);
 		
 		template.add("jmp", _jumpCnt);
 		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
 		_jumpCnt++;
-		
 
 		return (T) template.render();
 	}
@@ -670,16 +676,45 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String left = (String) as.left().visit(this);
 		String op = (String) as.opString();
 
-		if(as.right() instanceof ChannelReadExpr) {
+		if (as.right() instanceof ChannelReadExpr) {
 			return (T) createChannelReadExpr(left, (ChannelReadExpr)as.right());
-		} else if(as.right() instanceof Invocation) {
+		} else if (as.right() instanceof Invocation) {
 			return (T) createInvocation(left, (Invocation)as.right(), false);
+		} else if (as.right() instanceof NewArray) {
+			return (T) createNewArray(left, (NewArray)as.right());
 		} else {
 			String right = (String) as.right().visit(this);
 			template.add("left", left);
 			template.add("right", right);
 			template.add("op", op);
 		}
+
+		return (T) template.render();
+	}
+	
+	public T createNewArray(String left, NewArray ne) {
+		Log.log(ne.line + ": Creating a NewArray");
+
+		ST template = null;
+		
+		Type bt = ne.baseType();
+		if (bt.isChannelType() || bt.isChannelEndType()
+				//TODO Records cannot be instantiated as we would need to give params. 
+				|| (bt.isNamedType() && (isProtocolType((NamedType)bt)))) {//|| isRecordType((NamedType)bt)))) {
+			template = group.getInstanceOf("NewArrayIntializedElements");
+		} else {
+			template = group.getInstanceOf("NewArray");
+		}
+
+		String myType = (String) ne.baseType().visit(this);
+		Sequence<Expression> sizeExp = ne.dimsExpr();
+
+		// TODO: Expand to n-dimensional arrays
+		String[] sizeString = (String[]) sizeExp.visit(this);
+
+		template.add("left", left);
+		template.add("type", myType);
+		template.add("size", sizeString[0]);
 
 		return (T) template.render();
 	}
@@ -1232,7 +1267,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 */
 		Expression right = ld.var().init();
 
-		if(right instanceof ChannelReadExpr || right instanceof Invocation){
+		if(_proc_yields && (right instanceof ChannelReadExpr || right instanceof Invocation || right instanceof NewArray)){
 			String assignment = (String)new Assignment(new NameExpr(ld.var().name()), right, Assignment.EQ).visit(this);
 			return (T) assignment;
 		} else {
@@ -1241,13 +1276,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			 */
 			Type t = ld.type();
 			
-//			boolean isProtocolType = false;
-//			boolean isRecordType = false;
-//			if (t instanceof NamedType) { //Protocol or Record type
-//				isProtocolType = isProtocolType((NamedType)t);
-//				isRecordType = isRecordType((NamedType)t);
-//			}
-//			
 			boolean barrierType = false;
 			if (t instanceof PrimitiveType && t.isBarrierType()) {
 				barrierType = true;
@@ -1365,18 +1393,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitNewArray(NewArray ne) {
 		Log.log(ne.line + ": Visiting a NewArray");
 
-		ST template = group.getInstanceOf("NewArray");
-		String myType = (String) ne.baseType().visit(this);
-
-		Sequence<Expression> sizeExp = ne.dimsExpr();
-
-		// TODO: Expand to n-dimensional arrays
-		String[] sizeString = (String[]) sizeExp.visit(this);
-
-		template.add("type", myType);
-		template.add("size", sizeString[0]);
-
-		return (T) template.render();
+		return createNewArray(null, ne);
 	}
 
 	/**
@@ -1537,6 +1554,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) typeString;
 	}
 
+	boolean isFormals = false;
 	/**
 	 * ProcTypeDecl
 	 */
@@ -1609,7 +1627,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			String qualifiedProc = qualifiedPkg + "." + _currentProcName;
 
 			String returnType = (String) pd.returnType().visit(this);
+			
+			boolean oldFormals = isFormals;
+			isFormals = true;
 			String[] formals = (String[]) pd.formalParams().visit(this);
+			isFormals = oldFormals;
+
 			String[] block = (String[]) pd.body().visit(this);
 			
 			Statement lastStat = null;
@@ -2331,6 +2354,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			typeStr = "Char";
 		else if (t.isShortType())
 			typeStr = "Short";
+		else if (t.isChannelEndType())
+			; //TODO does this need to be handled? as channels can be passed through channels.
 
 		return typeStr;
 	}

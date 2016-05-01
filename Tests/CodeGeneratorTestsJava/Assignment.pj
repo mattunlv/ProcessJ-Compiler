@@ -12,8 +12,8 @@ proc void main(){
     z = 4;
     k = x;
     x = x++;
-  }while(x < 4);
-//  }while((x=4) < 4);
+  //}while(x < 4);
+  }while((x=4) < 4);
 
   for (int i=0; i<10; i++) {
     y++;

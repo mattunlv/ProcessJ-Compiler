@@ -1,6 +1,12 @@
 import std.random;
+import std.io;
 
-proc void foo() [yield=true]{
+proc void foo() {
   initRandom(45L);
   long l = longRandom();
+  println(l);
+}
+
+proc void main(string[] args) {
+	foo();
 }

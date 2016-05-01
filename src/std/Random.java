@@ -8,6 +8,6 @@ public class Random {
     }
 
     public static long longRandom() {
-        return Math.abs(r.nextLong());
+        return Math.abs(r.nextLong()%10000);
     }
 }
