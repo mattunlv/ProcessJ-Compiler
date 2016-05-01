@@ -1,10 +1,10 @@
 package ProcessJ.runtime;
 
-public class Par {
-	private Process process;
+public class PJPar {
+	private PJProcess process;
 	private int processCount;
 
-	public Par(int processCount, Process p) {
+	public PJPar(int processCount, PJProcess p) {
 		this.processCount = processCount;
 		this.process = p;
 	}

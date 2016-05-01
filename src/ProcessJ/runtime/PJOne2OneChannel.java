@@ -1,17 +1,17 @@
 package ProcessJ.runtime;
 
-public class One2OneChannel<T> extends Channel<T> {
-	private Process writer = null;
-	private Process reader = null;;
+public class PJOne2OneChannel<T> extends PJChannel<T> {
+	private PJProcess writer = null;
+	private PJProcess reader = null;;
 
-	public One2OneChannel() {
+	public PJOne2OneChannel() {
 		this.type = TYPE_ONE2ONE;
 	}
 
 	// calls to read and write must be 
 	// properly controlled by the channel end
 	// holders.
-	synchronized public void write(Process p, T item) {
+	synchronized public void write(PJProcess p, T item) {
 		data = item;
 		writer = p;
 		writer.setNotReady();
@@ -21,7 +21,7 @@ public class One2OneChannel<T> extends Channel<T> {
 		}
 	}
 
-	synchronized public T read(Process p) {
+	synchronized public T read(PJProcess p) {
 		ready = false;
 		// we need to set the writer ready as 
 		// the synchronization has happened 
@@ -35,20 +35,20 @@ public class One2OneChannel<T> extends Channel<T> {
 		return myData;
 	}
 	
-	synchronized public T readPreRendezvous(Process p) {
+	synchronized public T readPreRendezvous(PJProcess p) {
 		T myData = data;
 		data = null;
 		return myData;
 	}
 	
-	synchronized public void readPostRendezvous(Process p) {
+	synchronized public void readPostRendezvous(PJProcess p) {
 		ready = false;
 		writer.setReady();
 		writer = null;
 		reader = null;
 	}
 
-	synchronized public void addReader(Process p) {
+	synchronized public void addReader(PJProcess p) {
 		reader = p;
 	}
 

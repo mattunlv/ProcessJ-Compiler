@@ -5,7 +5,7 @@ import java.util.concurrent.DelayQueue;
 
 public class TimerQueue {
 //	private BlockingQueue queue;
-	public static BlockingQueue<Timer> delayQueue = new DelayQueue<Timer>();
+	public static BlockingQueue<PJTimer> delayQueue = new DelayQueue<PJTimer>();
 
 //	public TimerQueue(BlockingQueue queue) {
 //		super();
@@ -18,10 +18,10 @@ public class TimerQueue {
 				while (true) {
 					//Take out timedout Timer objects from delay queue.
 					//Thread will wait here until one is available.
-					Timer timer = (Timer) delayQueue.take();
+					PJTimer timer = (PJTimer) delayQueue.take();
 
 					timer.stopped = true;
-					Process p = timer.getProcess();
+					PJProcess p = timer.getProcess();
 					if (p != null) {
 //						System.out.println("TimerQueue: setting a process ready!!");
 						p.setReady();
@@ -33,7 +33,7 @@ public class TimerQueue {
 		}
 	});
 	
-	public synchronized void insert(Timer timer) throws InterruptedException {
+	public synchronized void insert(PJTimer timer) throws InterruptedException {
 		this.delayQueue.offer(timer);
 	}
 	

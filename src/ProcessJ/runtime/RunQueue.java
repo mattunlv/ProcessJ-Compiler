@@ -4,13 +4,13 @@ import java.util.Collections;
 import java.util.LinkedList;
 
 public class RunQueue {
-	private LinkedList<Process> queue = new LinkedList<Process>();
+	private LinkedList<PJProcess> queue = new LinkedList<PJProcess>();
 
-	synchronized public void insert(Process p) {
+	synchronized public void insert(PJProcess p) {
 		queue.addLast(p);
 	}
 
-	synchronized public Process getNext() {
+	synchronized public PJProcess getNext() {
 		return queue.removeFirst();
 	}
 
@@ -28,7 +28,7 @@ public class RunQueue {
 	
 	public void dump() {
 		StringBuilder sb = new StringBuilder();
-		for(Process p : queue) {
+		for(PJProcess p : queue) {
 			if (p.isReady()) {
 //				sb.append("R");
 				sb.append("*");

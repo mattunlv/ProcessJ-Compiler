@@ -1,12 +1,12 @@
 package ProcessJ.runtime;
 
-public class Alt {
+public class PJAlt {
 //	private Object[] channels;
 	private Object guards[];
 	private boolean[] bGuards;
 
 	private int caseCount;
-	private Process process;
+	private PJProcess process;
 	
 	public static final String SKIP_GUARD = "skip";
 
@@ -14,7 +14,7 @@ public class Alt {
 //		this.channels = channels;
 //	}
 
-	public Alt(int caseCount, Process p) {
+	public PJAlt(int caseCount, PJProcess p) {
 		this.caseCount = caseCount;
 		this.process = p;
 		this.bGuards = new boolean[caseCount];
@@ -43,17 +43,17 @@ public class Alt {
 				if (guards[i] instanceof String && SKIP_GUARD.equals(guards[i])) {
 					chosen = i;
 					break;
-				} else if (guards[i] instanceof Timer) {
-					Timer t = (Timer)guards[i];
+				} else if (guards[i] instanceof PJTimer) {
+					PJTimer t = (PJTimer)guards[i];
 					//if (1st time && timeout amount ==0)
 					//or if not 1st time and timeout has happened, chosen = i
 					if ((!t.started && t.timeout <= 0L) || t.stopped) {
 						chosen=i;
 						break;
 					}
-				} else if (guards[i] instanceof Channel) {
+				} else if (guards[i] instanceof PJChannel) {
 					//if not shared call isReady() and if true
-					Channel c = (Channel) guards[i];
+					PJChannel c = (PJChannel) guards[i];
 					if (c.isSharedRead()){
 						//if shared, call isReadyAndReserve() and if true
 						if (c.isReadyToReadAltAndReserve()) {

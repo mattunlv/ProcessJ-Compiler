@@ -2,8 +2,8 @@ package ProcessJ.runtime;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
-public class Timer implements Delayed {
-	private Process process;
+public class PJTimer implements Delayed {
+	private PJProcess process;
 
 	private long delay;
 	private boolean killed = false;
@@ -11,18 +11,18 @@ public class Timer implements Delayed {
 	public boolean started = false;
 	public boolean stopped = false;
 
-	public Timer() {
+	public PJTimer() {
 		this.timeout = 0L;
 	}
 	
-	public Timer(Process process, long timeout) {
+	public PJTimer(PJProcess process, long timeout) {
 		this.process = process;
 		this.timeout = timeout;
 	}
 	
 	public void start() throws InterruptedException {
 		this.delay = System.currentTimeMillis() + timeout;
-		Process.scheduler.insertTimer(this);
+		PJProcess.scheduler.insertTimer(this);
 		started = true;
 	}
 
@@ -34,10 +34,10 @@ public class Timer implements Delayed {
 
 	@Override
 	public int compareTo(Delayed o) {
-		if (this.delay < ((Timer) o).delay) {
+		if (this.delay < ((PJTimer) o).delay) {
 			return -1;
 		}
-		if (this.delay > ((Timer) o).delay) {
+		if (this.delay > ((PJTimer) o).delay) {
 			return 1;
 		}
 		return 0;
@@ -51,7 +51,7 @@ public class Timer implements Delayed {
 		killed = true;
 	}
 
-	public Process getProcess() {
+	public PJProcess getProcess() {
 		if (killed)
 			return null;
 		else

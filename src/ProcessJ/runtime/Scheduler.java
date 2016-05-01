@@ -13,11 +13,11 @@ public class Scheduler extends Thread {
 	
 	public static InactivePool inactivePool = new InactivePool();
 
-	synchronized void insert(Process p) {
+	synchronized void insert(PJProcess p) {
 		rq.insert(p);
 	}
 	
-	synchronized void insertTimer(Timer t) throws InterruptedException {
+	synchronized void insertTimer(PJTimer t) throws InterruptedException {
 		timerQueue.insert(t);
 	}
 	
@@ -98,7 +98,7 @@ public class Scheduler extends Thread {
 //			}
 			
 			// grab the next process in the run queue
-			Process p = rq.getNext();
+			PJProcess p = rq.getNext();
 
 //			System.out.println("Ready to run? " + p + " " + p.isReady());
 

@@ -1,6 +1,6 @@
 package ProcessJ.runtime;
 
-public abstract class Process {
+public abstract class PJProcess {
 	protected int runLabel = 0; // the next label to restart from
 	protected boolean ready = true; // is the process ready to run
 	public boolean yielded = false; // did the process yield

@@ -232,7 +232,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
 				
 			} else if (caseExprStmt instanceof SkipStat){
-				guards[i] = "Alt.SKIP_GUARD";
+				guards[i] = "PJAlt.SKIP_GUARD";
 				
 				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
 			} else {
@@ -305,7 +305,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		_jumpCnt++;
 		
 		String altName = globalize("alt", false);
-		_gLocals.add("Alt " + altName);
+		_gLocals.add("PJAlt " + altName);
 		template.add("name", altName);
 
 		
@@ -352,10 +352,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		String typeString;
 		switch(ct.shared()) {
-			case ChannelType.NOT_SHARED: typeString = "One2OneChannel";break;
-			case ChannelType.SHARED_WRITE: typeString = "Many2OneChannel";break;
-			case ChannelType.SHARED_READ: typeString = "One2ManyChannel";break;
-			case ChannelType.SHARED_READ_WRITE: typeString = "Many2ManyChannel";break;
+			case ChannelType.NOT_SHARED: typeString = "PJOne2OneChannel";break;
+			case ChannelType.SHARED_WRITE: typeString = "PJMany2OneChannel";break;
+			case ChannelType.SHARED_READ: typeString = "PJOne2ManyChannel";break;
+			case ChannelType.SHARED_READ_WRITE: typeString = "PJMany2ManyChannel";break;
 			default: typeString = "One2OneChannel";
 		}
 		
@@ -366,7 +366,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			NamedType tt = (NamedType) t;
 			
 			if (isProtocolType(tt)) {
-				basetype = "ProtocolCase";
+				basetype = "PJProtocolCase";
 			} else {
 				basetype = (String)tt.visit(this);
 			}
@@ -396,15 +396,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(ct.line + ": Visiting a Channel End Type!");
 
 		//Getting the channel type
-		String maintype = "Channel";
+		String maintype = "PJChannel";
 		if(ct.isShared()) {
 			if(ct.isRead()) {
-				maintype = "One2ManyChannel";
+				maintype = "PJOne2ManyChannel";
 			} else {
-				maintype = "Many2OneChannel";
+				maintype = "PJMany2OneChannel";
 			}
 		} else {
-			maintype = "One2OneChannel";
+			maintype = "PJOne2OneChannel";
 		}
 		
 		//Getting the Channe<'basetype'>
@@ -414,7 +414,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			NamedType tt = (NamedType) t;
 			
 			if (isProtocolType(tt)) {
-				basetype = "ProtocolCase";
+				basetype = "PJProtocolCase";
 			} else {
 				basetype = (String)tt.visit(this);
 			}
@@ -425,7 +425,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		
 		String chanEndType = "";
 		if (isFormals) {
-			chanEndType = "Channel<" + basetype + ">";
+			chanEndType = "PJChannel<" + basetype + ">";
 		} else {
 			chanEndType = maintype + "<" + basetype + ">";
 		}
@@ -1242,7 +1242,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		}
 
 		if (isProtocolType) {
-			_gLocals.add("ProtocolCase " + name);
+			_gLocals.add("PJProtocolCase " + name);
 		} else {
 			_gLocals.add(typeString + " " + name);
 		}
@@ -1547,9 +1547,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (py.isStringType()) {
 			typeString = "String";
 		} else if (py.isTimerType()) {
-			typeString = "Timer";
+			typeString = "PJTimer";
 		} else if (py.isBarrierType()) {
-			typeString = "Barrier";
+			typeString = "PJBarrier";
 		}
 		return (T) typeString;
 	}

@@ -23,7 +23,7 @@ public class RuntimeSystem {
 		return index;
 	}
 
-	public void insert(Process p) {
+	public void insert(PJProcess p) {
 		int i = getMin();
 		System.out.println("Inserting process into run queue of scheduler #"
 				+ i);

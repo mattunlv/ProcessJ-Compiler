@@ -1,29 +1,24 @@
 delimiters "<",">"
 
 Info() ::= <<
- This file contains all templates for the ProcessJ compiler based on the grammar of
- ProcessJ. The CodeGeneratorJava.java file then uses these rules as well as a visitor
- to generate our Java equivalent code.
+ This file contains all templates for the ProcessJ JVM compiler based on the grammar
+ The CodeGeneratorJava.java visitor then uses these rules to generate Java code
+ from ProcessJ source.
 >>
 
-Compilation(pragmas, packageName, imports, typeDecls,
-  parBlockProcs) ::= <<
-<! TODO pragmas, packageName, imports !>
-
+Compilation(packageName, typeDecls) ::= <<
 package Generated<if(packageName)>.<packageName><endif>;
 import java.util.*;
-import ProcessJ.runtime.Process;
-import ProcessJ.runtime.Timer;
 import ProcessJ.runtime.*;
 
-public class <packageName> { <! add and use className and extends/implements if needed. !>
+public class <packageName> {
 	<typeDecls;
  		separator ="\n">
 }
 >>
 
 AltStat(name, chosen, caseCount, altSwitchGroup, timers, initBoolGuards, initGuards, jmp1, jmp2, timerKills) ::= <<
-<name> = new Alt(<caseCount>, this);	
+<name> = new PJAlt(<caseCount>, this);	
 <timers>
 <initGuards>
 <initBoolGuards>
@@ -190,7 +185,7 @@ label(<jmp>);
 <channels:{c | <c>.unclaim()}; separator = ";\n"><\\>
 >>
 
-TimerReadExpr(left) ::= "<left> = Timer.read()"
+TimerReadExpr(left) ::= "<left> = PJTimer.read()"
 
 ContinueStat() ::= "continue"
 
@@ -213,9 +208,9 @@ public static boolean getTrue() {
 >>
 
 ParForStat(parName, init, expr, incr, barriers, stats, jmp) ::= <<
-final Par <parName> = new Par(-1, this);
+final PJPar <parName> = new PJPar(-1, this);
 int cnt = 0;	
-List\<Process> pp = new LinkedList\<Process>(); 
+List\<PJProcess> pp = new LinkedList\<PJProcess>(); 
 
 for(<init; separator = ",">; <expr>; <incr>){
 	cnt++;
@@ -228,7 +223,7 @@ for(<init; separator = ",">; <expr>; <incr>){
 <if(barriers)><barriers:{b | <b>.enroll(cnt)}; separator = ";\n">;<endif>
 
 //schedule all the processes
-for(Process p : pp) {
+for(PJProcess p : pp) {
 	p.schedule();
 }
 setNotReady();
@@ -269,11 +264,11 @@ LocalDeclNormalProc(typeStr, var, chanType, protoType, recType, barrierType, tim
 <if(chanType)>
 <typeStr> <var><if(rEmpty)> = new <typeStr>()<endif><\\>
 <elseif(protoType)>
-ProtocolCase <var><if(rEmpty)> = null<endif><\\>
+PJProtocolCase <var><if(rEmpty)> = null<endif><\\>
 <elseif(recType)>
 <typeStr> <var><if(rEmpty)> = null<endif><\\>
 <elseif(barrierType)>
-<typeStr> <var><if(rEmpty)> = new Barrier()<endif><\\>
+<typeStr> <var><if(rEmpty)> = new PJBarrier()<endif><\\>
 <elseif(timerType)>
 <! Initialization handled by TimeoutStat. We still want LocalDecl to take care of
 creating fields. !>
@@ -288,7 +283,7 @@ LocalDeclYieldingProc(typeStr, var, chanType, protoType, recType, barrierType, t
 <elseif(protoType || recType)>
 <var><if(rEmpty)> = null<endif><\\>
 <elseif(barrierType)>
-<var><if(rEmpty)> = new Barrier()<endif><\\>
+<var><if(rEmpty)> = new PJBarrier()<endif><\\>
 <elseif(timerType)>
 <! Initialization handled by TimeoutStat. We still want LocalDecl to take care of
 creating fields. !>
@@ -309,7 +304,7 @@ for(int i=0; i \< <size>; i++) {
 ParamDecl(type, name) ::= "<type> <name>"
 
 AnonymousProcess(lookupswitch, body, parName, parfor, barriers) ::= <<
-new Process(){
+new PJProcess(){
 	@Override
 	public synchronized void run() {
 		<lookupswitch>
@@ -326,7 +321,7 @@ new Process(){
 >>
 
 ProcTypeDeclToProcess(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, lookupswitch, body, mainMethod, foreverloop) ::= <<
-public static class <name> extends Process {
+public static class <name> extends PJProcess {
 	<if(formals)><formals; separator = ";\n">;<endif>
 	<if(globals)><globals; separator = ";\n">;<endif>
 
@@ -351,13 +346,13 @@ ProcTypeDeclToMain(qualifiedProc) ::= <<
 public static void main(String[] args) {
 	Scheduler scheduler = new Scheduler();
 
-	Process.scheduler = scheduler;
+	PJProcess.scheduler = scheduler;
 	System.out.println("Added _main process to scheduler...");
 		
 	(new <qualifiedProc>(args)).schedule();
 	
 	System.out.println("Starting the scheduler...");
-	Process.scheduler.start();
+	PJProcess.scheduler.start();
 		
 	System.out.println("Scheduler thread.start() done.");
 }
@@ -375,7 +370,7 @@ new <protocolName>.<tagName>(<if(params)><params; separator=", "><endif>)
 >>
 
 ProtocolCase(name, recMems, recMemNames, tag) ::= <<
-public static class <name> extends ProtocolCase {
+public static class <name> extends PJProtocolCase {
 	<if(recMems)><recMems:{n | public <n>}; separator=";\n">;<endif>
 	public <name>(<if(recMems)><recMems; separator=", "><endif>) {
     	<if(recMemNames)><recMemNames:{n | this.<n> = <n>}; separator = ";\n">;<endif>
@@ -385,7 +380,7 @@ public static class <name> extends ProtocolCase {
 >>
 
 ProtocolTypeDecl(name, cases) ::= <<
-public static class <name> extends Protocol {
+public static class <name>{
 	<cases; separator = "\n">
 }
 >>
@@ -429,7 +424,7 @@ ProcGetParam(type, name, number) ::= <<
 >>
 
 ParBlock(parCnt, parName, stats, barriers, jmp) ::= <<
-final Par <parName> = new Par(<parCnt>, this);
+final PJPar <parName> = new PJPar(<parCnt>, this);
 <if(barriers)><barriers:{b | <b>.enroll(<parCnt>)}; separator = ";\n">;<endif>
 	
 <stats; separator=";\n\n">;
@@ -478,7 +473,7 @@ label(<jmp>)
 Ternary(expr, trueBranch, falseBranch) ::= "<expr> ? <trueBranch> : <falseBranch>"
 
 TimeoutStat(alt, name, delay, jmp) ::= <<
-<name> = new Timer(this, <delay>);
+<name> = new PJTimer(this, <delay>);
 <if(!alt)>
 try {
 	<name>.start();
@@ -486,7 +481,7 @@ try {
 	this.runLabel = <jmp>;
 	yield();
 } catch (InterruptedException e) {
-	System.out.println("Timer Interrupted Exception!");
+	System.out.println("PJTimer Interrupted Exception!");
 }
 label(<jmp>)<\\>
 <endif>

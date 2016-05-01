@@ -3,7 +3,7 @@ package ProcessJ.runtime;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class Channel<T> {
+public abstract class PJChannel<T> {
 	
 	protected final static int TYPE_ONE2ONE = 0; 
 	protected final static int TYPE_ONE2MANY = 1; 
@@ -17,28 +17,28 @@ public abstract class Channel<T> {
 	protected boolean reservedForAlt = false;
 	public int type;
 	protected boolean claimed = false;
-	protected LinkedList<Process> claimQueue = new LinkedList<Process>();
+	protected LinkedList<PJProcess> claimQueue = new LinkedList<PJProcess>();
 
-	Process reservedForReader = null;
+	PJProcess reservedForReader = null;
 
-	synchronized public void write(Process p, T item) {
+	synchronized public void write(PJProcess p, T item) {
 	}
 
-	synchronized public T read(Process p) {
+	synchronized public T read(PJProcess p) {
 		return null;
 	}
 
-	synchronized public T readPreRendezvous(Process p) {
+	synchronized public T readPreRendezvous(PJProcess p) {
 		return null;
 	}
 
-	synchronized public void readPostRendezvous(Process p) {
+	synchronized public void readPostRendezvous(PJProcess p) {
 	}
 	
-	synchronized public void addReader(Process p) {
+	synchronized public void addReader(PJProcess p) {
 	}
 
-	synchronized public void addWriter(Process p) {
+	synchronized public void addWriter(PJProcess p) {
 	}
 
 	synchronized public boolean claim() {
@@ -78,7 +78,7 @@ public abstract class Channel<T> {
 	  }
 	 */
 
-	synchronized public boolean isReadyToRead(Process p) {
+	synchronized public boolean isReadyToRead(PJProcess p) {
 		// data present and reserved for a specific reader.
 		if (ready && reservedForReader != null)
 			return (reservedForReader == p);
@@ -122,11 +122,11 @@ public abstract class Channel<T> {
 	}
 
 	public boolean isSharedRead() {
-		return (this.type == Channel.TYPE_ONE2MANY || this.type == Channel.TYPE_MANY2MANY);
+		return (this.type == PJChannel.TYPE_ONE2MANY || this.type == PJChannel.TYPE_MANY2MANY);
 	}
 	
 	public boolean isSharedWrite() {
-		return (this.type == Channel.TYPE_MANY2ONE || this.type == Channel.TYPE_MANY2MANY);
+		return (this.type == PJChannel.TYPE_MANY2ONE || this.type == PJChannel.TYPE_MANY2MANY);
 	}
 	
 	public int getType() {

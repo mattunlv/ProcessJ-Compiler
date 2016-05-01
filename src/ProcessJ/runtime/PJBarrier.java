@@ -16,16 +16,16 @@ import java.util.List;
  * yield(......., X);                                                                                                            
  *X: ...                                                                                                                           
 */
-public class Barrier {
+public class PJBarrier {
 	
-	List<Process> pool = new ArrayList<Process>();
+	List<PJProcess> pool = new ArrayList<PJProcess>();
 	public int enrolled = 0;
 
 	/*
 	 * Any process that declares a barrier
 	 * is itself enrolled on it; so count is 1.
 	 */
-	public Barrier() {
+	public PJBarrier() {
 		this.enrolled = 1;
 	}
 
@@ -45,13 +45,13 @@ public class Barrier {
 		}
 	}
 
-	public synchronized void sync(Process process) {
+	public synchronized void sync(PJProcess process) {
 //		System.out.println("a process is syncing!");
 		process.setNotReady();
 		pool.add(process);
 //		System.out.println("pool.size=" + pool.size() + " enrolled=" + enrolled);
 		if (pool.size() == enrolled) {
-			for(Process p : pool) {
+			for(PJProcess p : pool) {
 				p.setReady();
 			}
 //			System.out.println("clearning pool after all synced!!");

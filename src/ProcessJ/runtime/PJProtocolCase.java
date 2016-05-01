@@ -1,5 +1,5 @@
 package ProcessJ.runtime;
 
-public class ProtocolCase {
+public class PJProtocolCase {
 	public String tag = null;
 }

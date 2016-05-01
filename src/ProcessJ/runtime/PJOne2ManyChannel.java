@@ -3,27 +3,27 @@ package ProcessJ.runtime;
 import java.util.LinkedList;
 
 // One Writer and Many Readers
-public class One2ManyChannel<T> extends Channel<T> {
-	private Process writer = null;
-	private LinkedList<Process> readers = new LinkedList<Process>();
+public class PJOne2ManyChannel<T> extends PJChannel<T> {
+	private PJProcess writer = null;
+	private LinkedList<PJProcess> readers = new LinkedList<PJProcess>();
 
-	public One2ManyChannel() {
+	public PJOne2ManyChannel() {
 		this.type = TYPE_ONE2MANY;
 	}
 
-	synchronized public void write(Process p, T item) {
+	synchronized public void write(PJProcess p, T item) {
 		data = item;
 		writer = p;
 		writer.setNotReady();
 		ready = true;
 		if (readers.size() > 0) {
-			Process reader = readers.removeFirst();
+			PJProcess reader = readers.removeFirst();
 			reservedForReader = reader;
 			reader.setReady();
 		}
 	}
 
-	synchronized public T read(Process p) {
+	synchronized public T read(PJProcess p) {
 		ready = false;
 		reservedForReader = null;
 		//might not be reserved at all. doesn't hurt do it.
@@ -37,13 +37,13 @@ public class One2ManyChannel<T> extends Channel<T> {
 		return myData;
 	}
 	
-	synchronized public T readPreRendezvous(Process p) {
+	synchronized public T readPreRendezvous(PJProcess p) {
 		T myData = data;
 		data = null;
 		return myData;
 	}
 	
-	synchronized public void readPostRendezvous(Process p) {
+	synchronized public void readPostRendezvous(PJProcess p) {
 		ready = false;
 		reservedForReader = null;
 		reservedForAlt = false;
@@ -51,7 +51,7 @@ public class One2ManyChannel<T> extends Channel<T> {
 	}
 
 
-	synchronized public void addReader(Process p) {
+	synchronized public void addReader(PJProcess p) {
 		readers.add(p);
 	}
 	
