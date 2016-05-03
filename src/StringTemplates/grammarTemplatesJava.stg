@@ -242,13 +242,20 @@ if( <expr> ) {
 
 InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, barriers) ::= <<
 <if(isProcess)>
-<if(par || parfor)>
+<if(par)>
 (new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
   public void finalize() {
     <parName>.decrement();    
 	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
   }
-})<if(!parfor)>.schedule()<endif><\\>
+}).schedule()<\\>
+<elseif(parfor)>
+(new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
+  public void finalize() {
+    <parName>.decrement();    
+	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
+  }
+})<\\>
 <endif>
 <else>
 <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>

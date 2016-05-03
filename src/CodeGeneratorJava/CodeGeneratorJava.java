@@ -86,6 +86,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 	/** Relative location of our group string template file. */
 	private final String grammarStFile = "src/StringTemplates/grammarTemplatesJava.stg";
+	private static final int INV_WRAP_PAR = 0;
+	private static final int INV_WRAP_PARFOR = 1;
 
 	/** Object containing a group of string templates. */
 	private STGroup group;
@@ -703,10 +705,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 	
 	public T createInvocation(String left, Invocation in, boolean isParamInvocation) {
-		return createInvocation(left, in, null, isParamInvocation);
+		return createInvocation(left, in, null, isParamInvocation, -1);
 	}
 
-	public T createInvocation(String left, Invocation in, List<String> barriers, boolean isParamInvocation) {
+	public T createInvocation(String left, Invocation in, List<String> barriers, boolean isParamInvocation, int invocationWrapper) {
 		String invocationProcName = in.procedureName().getname();
 		Log.log(in.line + ": Creating Invocation ("+ invocationProcName + ") with LHS as " + left);
 
@@ -732,7 +734,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 * flag of the caller process. It's a bit tricky. So, if you 
 		 * are the next guy doing this, it is onto you. :P 
 		 */
-		if (yields && !(State.is(State.PAR_BLOCK) || State.is(State.PARFOR)) ) {
+//		if (yields && !(State.is(State.PAR_BLOCK) || State.is(State.PARFOR)) ) {
+//			return (new ParBlock(new Sequence(new ExprStat(in)), new Sequence())).visit(this);
+//		}
+		
+		if (yields && invocationWrapper != INV_WRAP_PAR && invocationWrapper != INV_WRAP_PARFOR) {
 			return (new ParBlock(new Sequence(new ExprStat(in)), new Sequence())).visit(this);
 		}
 		
@@ -799,8 +805,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template = group.getInstanceOf("InvocationNormal");
 		template.add("qualifiedProc", qualifiedProc);
 		template.add("procParams", paramLst);
-		template.add("par", State.is(State.PAR_BLOCK));
-		template.add("parfor", State.is(State.PARFOR));
+		
+		if (invocationWrapper == INV_WRAP_PAR) {
+//			template.add("par", State.is(State.PAR_BLOCK));
+			template.add("par", true);
+		} else if (invocationWrapper == INV_WRAP_PARFOR) {
+//			template.add("parfor", State.is(State.PARFOR));
+			template.add("parfor", true);
+		}
+
 		template.add("parName", _parName);
 		
 		template.add("barriers", barriers);
@@ -1106,7 +1119,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				Block b = (Block) fs.stats();
 				if (b.stats().size()==1 && b.stats().child(0) instanceof ExprStat && ((ExprStat)b.stats().child(0)).expr() instanceof Invocation) {
 					Invocation in = (Invocation)((ExprStat)b.stats().child(0)).expr();
-					rendered = (String) createInvocation(null, in, barriers, false);
+					rendered = (String) createInvocation(null, in, barriers, false, INV_WRAP_PARFOR);
 					System.out.println("normal invocation1");
 				} else {
 					rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, b)).visit(this);
@@ -1115,7 +1128,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			} else if (fs.stats() instanceof ExprStat) {
 				ExprStat es = (ExprStat) fs.stats();
 				if (es.expr() instanceof Invocation) {
-					rendered = (String) createInvocation(null, (Invocation) es.expr(), barriers, false);
+					rendered = (String) createInvocation(null, (Invocation) es.expr(), barriers, false, INV_WRAP_PARFOR);
 					System.out.println("normal invocation2");
 				} else {
 					rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, new Block(new Sequence(fs.stats())))).visit(this);
@@ -1457,7 +1470,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 					ExprStat es = (ExprStat) st; 
 					
-					stats[k] = (String) createInvocation(null, (Invocation) es.expr(), barriers, false);
+					stats[k] = (String) createInvocation(null, (Invocation) es.expr(), barriers, false, INV_WRAP_PAR);
 					
 				} else {
 					//FIXME I don't think annotation is needed as anonymous is only used for processes
