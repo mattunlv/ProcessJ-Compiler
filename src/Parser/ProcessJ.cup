@@ -1561,7 +1561,7 @@ literal ::=
 // RecordLiteral :> Literal :> Expression :> AST
 record_literal ::=
          NEW type_name:tn LBRACE argument_list:l RBRACE {: RESULT = new RecordLiteral(tn, l); :}
-       | NEW type_name:tn LBRACE RBRACE
+       | NEW type_name:tn LBRACE RBRACE {: RESULT = new RecordLiteral(tn, new Sequence()); :}
        ;
 
 // ProtocolLiteral :> Literal :> Expression :> AST
