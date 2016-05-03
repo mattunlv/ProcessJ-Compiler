@@ -30,10 +30,11 @@ public class RunQueue {
 		StringBuilder sb = new StringBuilder();
 		for(PJProcess p : queue) {
 			if (p.isReady()) {
-//				sb.append("R");
-				sb.append("*");
+				sb.append("R");
+//				sb.append("*");
 			} else {
-				sb.append(" ");
+//				sb.append(" ");
+				sb.append("N");
 			}
 		}
 		

@@ -116,7 +116,7 @@ if (<channel>.isReadyToWrite()) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)<\\>
+label(<jmp1>)
 >>
 
 ChannelReadExpr(left, channel, alt, jmp0, jmp1) ::= <<
@@ -182,7 +182,7 @@ label(<jmp>);
 }
 <endif>
 <stats; separator=";\n">;
-<channels:{c | <c>.unclaim()}; separator = ";\n"><\\>
+<channels:{c | <c>.unclaim()}; separator = ";\n">
 >>
 
 TimerReadExpr(left) ::= "<left> = PJTimer.read()"
@@ -432,7 +432,7 @@ final PJPar <parName> = new PJPar(<parCnt>, this);
 setNotReady();
 this.runLabel = <jmp>;
 yield();
-label(<jmp>)<\\>
+label(<jmp>)
 >>
 
 ReturnStat(expr, procYields) ::= <<

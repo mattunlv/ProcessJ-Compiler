@@ -4,8 +4,15 @@ proc void foo()[yield=true] {}
 
 proc void main(string[] args)[yield=true]{
 
-	par for (int i=10; i<1000; i++) {
+	/* #BUG
+	par for (int i=10; i<1000; i++) { 
 		foo();	
+		int x = 10;
+		}
+		*/
+
+	par for (int i=10; i<1000; i++) { 
+		foo();
 	}
 	
 	println("done!!");
