@@ -1,0 +1,30 @@
+protocol r {
+  b: {}
+}
+
+
+protocol p {
+a : { }
+}
+
+
+protocol m extends r,p;
+
+
+proc void foo(chan<p>.read report) { 
+}
+
+proc void f() {
+  m msg;
+  switch(msg) {
+    case a: break;
+  }
+
+  shared write chan<m> report;
+
+  par {
+    foo(report.read);
+}
+
+
+}
