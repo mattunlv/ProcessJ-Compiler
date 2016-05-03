@@ -54,8 +54,11 @@ public class Reachability extends Visitor<Boolean> {
 	boolean b = ws.stat().visit(this);
 	if (ws.expr().isConstant() && 
 	    ((Boolean)ws.expr().constantValue()) &&
-	    b &&                         // the statement can run to completion
-	    !ws.hasBreak && !ws.hasReturn) {  // but has no breaks, so it will loop forever
+	    (
+	     (b &&                         // the statement can run to completion
+	      !ws.hasBreak && !ws.hasReturn)   // but has no breaks, so it will loop forever
+	     ||
+	     !b)) {
 	    Error.error(ws,"While-statement is an infinite loop", false, 5002);
 	    ws.foreverLoop = true;
 	    loopConstruct = oldLoopConstruct;
