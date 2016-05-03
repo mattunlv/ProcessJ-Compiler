@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Utilities">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/src/Utilities/ST-4.0.7.jar!/" />
+      <root url="jar://$PROJECT_DIR$/src/Utilities/java_cup.jar!/" />
+      <root url="jar://$PROJECT_DIR$/src/Utilities/java_cup_runtime.jar!/" />
+      <root url="jar://$PROJECT_DIR$/src/Utilities/JFlex.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

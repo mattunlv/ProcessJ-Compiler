@@ -1,0 +1,23 @@
+import t4;
+
+
+public record Fna extends t4::myRecord  {
+  int g;
+}
+
+
+public proc void foo() {
+       int y = x;
+       bar();
+       myRecord mr;
+       bar b = new mobile(bar);
+       bar();
+       // x();
+       // t4::x();
+        t4::bar();
+        t4::bar();
+        t4::bar();
+        t4::bar();
+       t4::bar b2 = new mobile(t4::bar);
+       Fna myFna = new myRecord{23,98};
+}	 

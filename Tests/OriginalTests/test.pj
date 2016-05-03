@@ -1,0 +1,11 @@
+proc void foo(int a) {
+ }
+
+public proc void foo(chan<int>.read in1,
+                     chan<int>.read in2) {
+  int x;
+  alt {
+    x = in1.read() : { }
+    x = in2.read() : { }
+  }
+}

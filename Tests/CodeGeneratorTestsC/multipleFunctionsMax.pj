@@ -1,0 +1,40 @@
+/**
+ * Simple program to test max invocation is picked from among statements.
+ * Even when statements are nested.
+ */
+import std.io;
+
+proc void myMain(){
+  f();
+  g();
+
+  {
+    h();
+    h();
+    h();
+    {
+      h();
+    }
+  }
+
+  
+  return;
+}
+
+proc void f(){
+  int x, y, z;
+
+  return;
+}
+
+proc void g(){
+  double x, y, z;
+
+  return;
+}
+
+proc void h(){
+  float x, y, z;
+
+  return;
+}

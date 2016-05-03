@@ -1,0 +1,43 @@
+import std.math;
+
+//record A { int a; }
+//protocol B { B: { int a;}}
+
+//const int aa = 89;
+
+
+proc void foo(int y) {
+x.y.z.w[56].t.r.e = 8;
+
+//x[4].f.g.r.h = 7;
+  //int x;
+//  x.x.x.x.f();
+//  y.x.x.x.f();
+  //foo.x.x.x.x.f();
+  //A.x.x.x.x.f();
+  //B.x.x.x.x.f();
+  //aa.x.x.x.x.f();
+  //zz.y.f();
+
+//  ZZ.f();
+ // because ZZ isn't found .....
+
+  //foo(ZZ.YY); // could be constantDecl YY in file ZZ
+
+  //foo(ZZ); // should fail if ZZ isn't in the scope chain
+  // but 
+  //  std.math.foo();
+  //should not!
+
+  A.B.foo();
+
+  //aaa.bb.cc.dd.ee.ff.gg = 67; // might be ok - aa could be a package or a file ....
+//  aa.bb.cc.dd.ee.ff.gg();
+//  XX.YY.ZZ.WW.UU.f();
+  // because ZZ isn't found it breaks down as pack.file = ZZ.YY
+
+  //XX.YY myVar;  
+//x[1].f();
+//	A aa;	
+ // aa.field = 8;
+}

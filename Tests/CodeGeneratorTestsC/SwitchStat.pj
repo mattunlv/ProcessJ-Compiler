@@ -1,0 +1,25 @@
+/**
+ * Switch stamement program!
+ */
+proc void main(){
+  char c = 'c';
+  int x = 0;
+
+  switch(c){
+    case 'a':
+      x = 100;
+      int y = 10;
+      break;
+    case 'b':
+      x = 80;
+      break;
+    case 'c':
+    case 'd':
+      x = 70;
+    default:
+      x = 0;
+      break x;
+  }
+
+  return;
+}

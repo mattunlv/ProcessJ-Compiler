@@ -1,0 +1,10 @@
+
+public const int x = 75;
+
+public proc void bar() {
+}
+
+public record myRecord {
+  int a;
+  double b;
+}

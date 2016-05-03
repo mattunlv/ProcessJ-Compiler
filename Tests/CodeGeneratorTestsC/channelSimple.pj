@@ -1,0 +1,13 @@
+import std.io;
+
+proc void writer(chan<int>.write chanW) {
+  chanW.write(2);
+  return;
+}
+
+proc void procMain(){
+  chan<int> intChan;
+  writer(intChan.write);
+  return;
+}
+

@@ -1,0 +1,26 @@
+import std.io;
+
+proc int add(int id, int x){
+  int counter = 0;
+  timer t;
+  while(counter < x){
+    println("Process[" + id + "]: " +  counter);
+    counter++;
+    t.timeout(10);
+  }
+  return counter;
+}
+
+proc void myMain(){
+  par{
+    add(1, 1000000);
+    add(2, 1000000);
+    add(3, 1000000);
+    add(4, 1000000);
+    add(5, 1000000);
+    add(6, 1000000);
+  }
+
+  println("done!");
+  return;
+}

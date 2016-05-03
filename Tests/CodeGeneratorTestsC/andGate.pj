@@ -1,0 +1,36 @@
+/**
+ * Simple gates channel implementation.
+ */
+import std.io;
+//========================================================================================
+/**
+ * And Gate.
+ * @param in1: first in signal.
+ * @param in2: second in signal.
+ * @param out: out channel.
+ * @return void.
+ */
+proc void andGate(chan<boolean>.read in1, chan<boolean>.read in2, chan<boolean>.write out){
+  boolean x, y;
+  par{
+    x = in1.read();
+    y = in2.read();
+  }
+
+  out.write(x && y);
+  return;
+}
+//========================================================================================
+proc void myMain(){
+  chan<boolean> c1, c2,c3;
+  boolean b;
+  par{
+    c1.write(false);
+    c2.write(true);
+    andGate(c1.read, c2.read, c3.write);
+    b = c3.read();
+  }
+
+  println("C3 was: " + b);
+  return;
+}

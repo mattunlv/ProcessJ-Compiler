@@ -1,0 +1,71 @@
+import std.io;
+
+public proc void Prefix(int init,
+                        chan<int>.read in,
+                        chan<int>.write out) {
+  int val;
+  out.write (init);
+  while (true) {
+    val = in.read();
+    out.write(val);
+  }
+}
+
+public proc void Delta(chan<int>.read in,
+                       chan<int>.write out1,
+                       chan<int>.write out2) {
+  while (true) {
+    int val;
+    val = in.read();
+    out1.write(val);
+    out2.write(val);
+  }
+}
+
+//This function adds one to it's input.
+public proc void Succ(chan<int>.read in,
+                      chan<int>.write out) {
+  while (true) {
+    int val;
+    val = in.read();
+    out.write(val + 1);
+  }
+}
+
+public proc void Consumer(int nLoops, chan<int>.read in) {
+  println("nCommstime in processJ ...");
+  timer myTimer;
+  long value1, value2;
+  int val;
+
+  while (true) {
+    //Read time for getting difference.
+    value1 = myTimer.read();
+
+    for(int i = 0; i < nLoops; i++)
+      val = in.read();
+
+    value2 = myTimer.read();
+
+    long microseconds = value2 - value1;
+    long nanoseconds = 1000 * microseconds;
+
+    println("Last value recieved = " + val);
+    println("Time = " + microseconds + " microseconds");
+
+    long temp1 = nanoseconds / nLoops;
+    println("Time per loop = " + temp1 + " nanoseconds");
+    long temp2 = nanoseconds / (8 * nLoops);
+    println("Time per context swtich = " + temp2 + " nanoseconds");
+  }
+}
+
+public proc void Main() {
+  chan<int> a,b,c,d;
+  par {
+    Prefix(0, a.read, c.write);
+    Delta(c.read, b.write, d.write);
+    Succ(b.read, a.write);
+    Consumer(1000000, d.read);
+  }
+}

@@ -1,0 +1,11 @@
+/**
+ * Simple program to test max invocation is picked from among statements.
+ */
+import std.io;
+
+proc void myMain(){
+  double x = 3.14;
+
+  println("Value of x was: " + x);
+  return;
+}

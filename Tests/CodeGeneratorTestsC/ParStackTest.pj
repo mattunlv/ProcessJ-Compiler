@@ -1,0 +1,23 @@
+/**
+ * Not so trivial program, calling
+ * multiple functions.
+*/
+import std.io;
+
+//Source that writes 2 forever.
+proc void source1() {
+    println("Source1()");
+}
+
+proc void source2() {
+    println("Source2()");
+}
+
+proc void procMain() {
+  par{
+    source1();
+    source2();
+  }
+  return;
+}
+

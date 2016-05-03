@@ -1,0 +1,23 @@
+/**
+Tests simple parameter passing for generated code.
+*/
+import std.io;
+
+//Source that prints passed string, n times.
+proc void source1(string str,int n) {
+
+  for(int i = 0; i < n; i ++)
+    println(str);
+
+  return;
+}
+
+proc void procMain() {
+  int repeat = 10;
+  string str = "cat";
+
+  source1(str, repeat);
+
+  return;
+}
+

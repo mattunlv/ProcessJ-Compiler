@@ -1,0 +1,9 @@
+import std.io;
+
+proc void myMain(){
+  int x = 5;
+  int y, z, w;
+  boolean c;
+  double d = 3.0;
+  float f = 3.0f;
+}

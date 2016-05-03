@@ -1,0 +1,19 @@
+/**
+ * Simple processJ program: Creates a source, and run!
+*/
+import std.io;
+
+proc void source () {
+  int x = 10;
+  while (x > 0) {
+    println("Current number is: " + x);
+    x--;
+  }
+  return;
+}
+
+proc void procMain() {
+  source();
+  return;
+}
+

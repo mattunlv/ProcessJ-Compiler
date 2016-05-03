@@ -2,7 +2,7 @@ package AST;
 
 public abstract class Expression extends AST {
 
-    public Type type = null;
+	public Type type = null;
 
 	public Expression(Token t) {
 		super(t);

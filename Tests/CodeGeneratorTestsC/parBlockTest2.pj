@@ -1,0 +1,20 @@
+/**
+ * Not so simple program, creates 2 channel and has
+ * source talk to doubler talk to sink!
+*/
+import std.io;
+
+proc void procMain() {
+  int x = 0;
+  int w = 3;
+
+  par{
+    x = 3;
+    int y = 5 + 4;
+    int z = w + 1 + w++;
+    println("Hello World!");
+  }
+  println("(x, y, z) = " + x + ", " + y + ", " + z);
+  return;
+}
+

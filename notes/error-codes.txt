@@ -77,6 +77,7 @@ TypeChecker:
 3033  Incorrect number of expressions in protocol literal 'X'.
 3034  Cannot assign value of type 'X' to protocol field 'Y' of type 'Z'.
 // gone 3035  Non-array type cannot use .length operator.
+
 3036  Left-hand side of assignment not assignable.
 3037  No suitable procedure found.
 3038  Found more than one candidate - cannot chose between them!
@@ -104,8 +105,3 @@ TypeChecker:
 3060  Protocol tag ‘XXX’ not found in protocol ‘YYY’.
 3061  Request for member ‘XXX’ in something not a record or protocol type.
 3062  Record type ‘XXX’ has no member ‘YYY’.
-
-
-
-
-

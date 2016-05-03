@@ -1,0 +1,18 @@
+/**
+ * Visit assignment test!
+ */
+proc void main(){
+  int x = 0;
+  int y = 0;
+  x = 3;
+  y = x = 3;
+
+  do{
+    int z, y;
+    z = 4;
+    y = x;
+    x = x++;
+  }while((x = 4) < 4);
+
+  return;
+}

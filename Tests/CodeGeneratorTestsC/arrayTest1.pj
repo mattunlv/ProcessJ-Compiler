@@ -1,0 +1,25 @@
+/**
+ * Simple program!
+ */
+import std.io;
+
+public proc int getVal(int[][][] array, int i, int j, int k){
+  return array[i][j][k];
+}
+
+proc void myMain(){
+  int [][][] myArray;
+  myArray = new int[10*10][10][15];
+  int myIndexValue;
+  //myArray.size();
+  for (int i = 0; i < 10*10; i++) {
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 15; k++) {
+        myArray[i][j][k] = i;
+        myIndexValue = getVal(myArray, i, j, k);
+        println(myIndexValue);
+      }
+    }
+  }
+  return;
+}

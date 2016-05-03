@@ -1,0 +1,14 @@
+import std.io;
+
+proc int f(){
+  return g();
+}
+
+proc int g(){
+  return 5;
+}
+
+proc void main(){
+  int x = f();
+  println("f() = " + x);
+}

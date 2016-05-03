@@ -1,0 +1,15 @@
+/**
+ * Simple program!
+ */
+import std.io;
+
+proc string catify(string s) {
+    return s + "cat";
+}
+
+proc void myMain(){
+    string x;
+    x = catify("cat");
+    println(x);
+    return;
+}

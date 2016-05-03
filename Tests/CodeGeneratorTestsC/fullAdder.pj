@@ -1,0 +1,283 @@
+/**
+ * This program simulates the Full Adder as described in the Visual Occam: High Level
+ * Visualization and Design of Process by Mikola Michal Slomka.
+*/
+import std.io;
+//========================================================================================
+/**
+ * And Gate.
+ * @param in1: first in signal.
+ * @param in2: second in signal.
+ * @param out: out channel.
+ * @return void.
+ */
+proc void andGate(chan<boolean>.read in1, chan<boolean>.read in2, chan<boolean>.write out){
+  boolean x, y;
+  par{
+    x = in1.read();
+    y = in2.read();
+  }
+
+  out.write(x && y);
+  return;
+}
+//========================================================================================
+/**
+ * Or gate.
+ * @param in1: first in signal.
+ * @param in2: second in signal.
+ * @param out: out channel.
+ * @return void.
+ */
+proc void orGate(chan<boolean>.read in1, chan<boolean>.read in2, chan<boolean>.write out){
+  boolean x, y;
+  par{
+    x = in1.read();
+    y = in2.read();
+  }
+
+  out.write(x || y);
+  return;
+}
+//========================================================================================
+/**
+ * Not gate.
+ * @param in: in signal.
+ * @param out: out channel.
+ * @return void.
+ */
+proc void notGate(chan<boolean>.read in, chan<boolean>.write out){
+  boolean x;
+
+  x = in.read();
+
+  out.write(!x);
+
+  return;
+}
+//========================================================================================
+/**
+ * Nand Gate.
+ * @param in1: first in signal.
+ * @param in2: second in signal.
+ * @param out: out channel.
+ * @return void.
+ */
+proc void nandGate(chan<boolean>.read in1, chan<boolean>.read in2, chan<boolean>.write out){
+  chan<boolean> a;
+  par{
+    andGate(in1, in2, a.write);
+    notGate(a.read, out);
+  }
+
+  return;
+}
+//========================================================================================
+/**
+ * Multiplexer.
+ * @param in1: in signal.
+ * @param out1: first out channel.
+ * @param out2: second out channel.
+ * @return void.
+ */
+proc void muxGate(chan<boolean>.read in, chan<boolean>.read out1, chan<boolean>.write out2){
+  boolean x;
+  x = in.read();
+  par{
+    out1.write(x);
+    out2.write(x);
+  }
+
+   return;
+}
+//========================================================================================
+/**
+ * xor Gate.
+ * @param in1: in signal.
+ * @param out1: first out channel.
+ * @param out2: second out channel.
+ * @return void.
+ */
+proc void xorGate(chan<boolean>.read in1, chan<boolean>.read in2, chan<boolean>.write out){
+  chan<boolean> a, b, c, d , e, f, g, h, i;
+  par{
+    muxGate(in1, a.read, b.write);
+    muxGate(in2, c.read, d.write);
+    nandGate(b.read, d.read, e.write);
+    muxGate(e.read, f.read, g.write);
+    nandGate(a.read, f.read, h.write);
+    nandGate(c.read, g.read, i.write);
+    nandGate(h.read, i.read, out);
+  }
+
+  return;
+}
+
+//========================================================================================
+/**
+ * Single Adder.
+ * @param in1: in signal.
+ * @param in2: in signal.
+ * @param in3: in signal.
+ * @param result: first out signal.
+ * @param carry: second out signal. (Remainder).
+ * @return void.
+ */
+proc void oneBitAdder(chan<boolean>.read in1, chan<boolean>.read in2, chan<boolean>.read in3,
+                      chan<boolean>.write result, chan<boolean>.write carry){
+  chan<boolean> a, b, c, d, e, f, g, h, i, j, k;
+  par{
+    muxGate(in1, a.read, b.write);
+    muxGate(in2, c.read, d.write);
+    xorGate(a.read, c.read, e.write);
+
+    muxGate(e.read, f.read, g.write);
+    muxGate(in3, h.read, i.write);
+    xorGate(f.read, h.read, result);
+
+    andGate(g.read, i.read, j.write);
+    andGate(b.read, d.read, k.write);
+    orGate(j.read, k.read, carry);
+  }
+
+  return;
+}
+//========================================================================================
+/**
+ * fourBitadder
+ * @param: Not going to write all those parmeters...
+ * @return void.
+ */
+proc void fourBitAdder(chan<boolean>.read inA0, chan<boolean>.read inA1, chan<boolean>.read inA2,
+                      chan<boolean>.read inA3, chan<boolean>.read inB0, chan<boolean>.read inB1,
+                      chan<boolean>.read inB2, chan<boolean>.read inB3, chan<boolean>.read inCarry,
+                      chan<boolean>.write result0, chan<boolean>.write result1,
+                      chan<boolean>.write result2, chan<boolean>.write result3,
+                      chan<boolean>.write carry){
+  chan<boolean> a, b, c;
+  par{
+    oneBitAdder(inA0, inB0, inCarry, result0, a.write);
+    oneBitAdder(inA1, inB1, a.read, result1, b.write);
+    oneBitAdder(inA2, inB2, b.read, result2, c.write);
+    oneBitAdder(inA3, inB3, c.read, result3, carry);
+  }
+
+  return;
+}
+//========================================================================================
+/**
+ * 8-bit Adder.
+ * @param: Not going to write all those parmeters...
+ * @return void.
+ */
+proc void eightBitAdder(
+                        chan<boolean>.read inA0, chan<boolean>.read inA1, chan<boolean>.read inA2,
+                        chan<boolean>.read inA3, chan<boolean>.read inA4, chan<boolean>.read inA5,
+                        chan<boolean>.read inA6, chan<boolean>.read inA7,
+                        chan<boolean>.read inB0, chan<boolean>.read inB1, chan<boolean>.read inB2,
+                        chan<boolean>.read inB3, chan<boolean>.read inB4, chan<boolean>.read inB5,
+                        chan<boolean>.read inB6, chan<boolean>.read inB7,
+                        chan<boolean>.read inCarry,
+                        chan<boolean>.write result0, chan<boolean>.write result1,
+                        chan<boolean>.write result2, chan<boolean>.write result3,
+                        chan<boolean>.write result4, chan<boolean>.write result5,
+                        chan<boolean>.write result6, chan<boolean>.write result7,
+                        chan<boolean>.write outCarry){
+  chan<boolean> a;
+  par{
+    fourBitAdder(inA0, inA1, inA2, inA3,
+                 inB0, inB1, inB2, inB3,
+                 inCarry,
+                 result0, result1, result2, result3,
+                 a.write);
+    fourBitAdder(inA4, inA5, inA6, inA7,
+                 inB4, inB5, inB6, inB7,
+                 a.read,
+                 result4, result5, result6, result7,
+                 outCarry);
+  }
+
+  return;
+}
+//========================================================================================
+proc void myMain(){
+  chan<boolean> a0, a1, a2, a3, a4, a5, a6, a7;
+  chan<boolean> b0, b1, b2, b3, b4, b5, b6, b7;
+  chan<boolean> r0, r1, r2, r3, r4, r5, r6, r7;
+  chan<boolean> inCarry, outCarry;
+  //Our number to add.
+  boolean p0, p1, p2, p3, p4, p5, p6, p7;
+  boolean q0, q1, q2, q3, q4, q5, q6, q7;
+  //Result of addition.
+  boolean f0, f1, f2, f3, f4, f5, f6, f7;
+  boolean c, inC;
+
+  //Choose numbers here!
+  p7 = false;
+  p6 = false;
+  p5 = false;
+  p4 = false;
+  p3 = false;
+  p2 = false;
+  p1 = false;
+  p0 = false;
+
+  q7 = true;
+  q6 = true;
+  q5 = true;
+  q4 = true;
+  q3 = true;
+  q2 = true;
+  q1 = true;
+  q0 = true;
+  inC= true;
+
+  par{
+    //Our first number.
+    a7.write(p7);
+    a6.write(p6);
+    a5.write(p5);
+    a4.write(p4);
+    a3.write(p3);
+    a2.write(p2);
+    a1.write(p1);
+    a0.write(p0);
+    //Our second number.
+    b7.write(q7);
+    b6.write(q6);
+    b5.write(q5);
+    b4.write(q4);
+    b3.write(q3);
+    b2.write(q2);
+    b1.write(q1);
+    b0.write(q0);
+    //Initial Carry
+    inCarry.write(inC);
+
+    eightBitAdder(a0.read, a1.read, a2.read, a3.read, a4.read, a5.read, a6.read, a7.read,
+                  b0.read, b1.read, b2.read, b3.read, b4.read, b5.read, b6.read, b7.read,
+                  inCarry.read,
+                  r0.write, r1.write, r2.write, r3.write, r4.write, r5.write, r6.write, r7.write,
+                  outCarry.write);
+
+    f0 = r0.read();
+    f1 = r1.read();
+    f2 = r2.read();
+    f3 = r3.read();
+    f4 = r4.read();
+    f5 = r5.read();
+    f6 = r6.read();
+    f7 = r7.read();
+
+    c = outCarry.read();
+  }
+  println("  " + p7 + p6 + p5 + p4 + p3 + p2 + p1 + p0 + " (In Carry: " + inC + ")");
+  println("+ " + q7 + q6 + q5 + q4 + q3 + q2 + q1 + q0);
+  println("----------");
+  println("  " + f7 + f6 + f5 + f4 + f3 + f2 + f1 + f0);
+
+  println("Carry was: " + c);
+
+  return;
+}
+//========================================================================================

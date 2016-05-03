@@ -1,0 +1,9 @@
+import std.io;
+
+proc void main(){
+  
+  par for(int i = 0; i < 20; i++){
+      println("Hello: " + i);
+  }
+    return;
+}
