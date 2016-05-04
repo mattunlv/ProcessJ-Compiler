@@ -2,6 +2,7 @@
 #pragma NATIVE;
 #pragma FILE "file";
 #pragma LANGUAGE "C";
+
 package io;
 
 public native proc int fileOpen(string fileName, string Mode) ;

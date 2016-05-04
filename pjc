@@ -1,1 +1,2 @@
-java -cp bin:src/Utilities/java_cup_runtime.jar:src/Utilities/ST-4.0.7.jar:. ProcessJc -I include -sts $@
+java -cp bin:src/Utilities/java_cup_runtime.jar:src/Utilities/ST-4.0.7.jar:src/Utilities/asm-all-3.3.1.jar:lib/JVM:. ProcessJc -t JVM -I include $@
+

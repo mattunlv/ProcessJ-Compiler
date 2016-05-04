@@ -14,7 +14,7 @@ import java.lang.Boolean;
 
 
 public class Reachability extends Visitor<Boolean> {
-
+    boolean insideSwitch = false;
     LoopStatement loopConstruct = null;
     SwitchStat switchConstruct = null;
     boolean inParBlock = false;
@@ -54,8 +54,11 @@ public class Reachability extends Visitor<Boolean> {
 	boolean b = ws.stat().visit(this);
 	if (ws.expr().isConstant() && 
 	    ((Boolean)ws.expr().constantValue()) &&
-	    b &&                         // the statement can run to completion
-	    !ws.hasBreak && !ws.hasReturn) {  // but has no breaks, so it will loop forever
+	    (
+	     (b &&                         // the statement can run to completion
+	      !ws.hasBreak && !ws.hasReturn)   // but has no breaks, so it will loop forever
+	     ||
+	     !b)) {
 	    Error.error(ws,"While-statement is an infinite loop", false, 5002);
 	    ws.foreverLoop = true;
 	    loopConstruct = oldLoopConstruct;
@@ -171,7 +174,7 @@ public class Reachability extends Visitor<Boolean> {
 	    Error.error(bs, "Break statement outside loop or switch construct.", false, 5006);
 	    return new Boolean(true); // this break doesn't matter cause it can't be here anyways!
 	}
-	if (loopConstruct != null)
+	if (loopConstruct != null && !insideSwitch)
 	    loopConstruct.hasBreak = true;
 	return new Boolean(false);
     }
@@ -252,10 +255,13 @@ public class Reachability extends Visitor<Boolean> {
 
     public Boolean visitSwitchStat(SwitchStat ss) {
 	Log.log(ss,"Visiting a switch-statement.");
+	boolean oldInsideSwitch = insideSwitch;
+	insideSwitch = true;
 	SwitchStat oldSwitchConstruct = switchConstruct;
 	switchConstruct = ss;
 	ss.switchBlocks().visit(this);       
 	// TODO finish this!
+	insideSwitch = oldInsideSwitch;
 	switchConstruct = oldSwitchConstruct;
 	return new Boolean(true);
     }

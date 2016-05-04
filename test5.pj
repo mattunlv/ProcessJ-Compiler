@@ -1,0 +1,14 @@
+
+protocol P {
+ a : { int x; }
+}
+
+proc void f() {
+ 
+ int a;
+
+ switch(a) {
+ case a: { }
+ }
+ 
+}   

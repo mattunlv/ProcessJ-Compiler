@@ -1,0 +1,11 @@
+
+proc void reader1(chan<int>.read a, chan<int>.read b) [yield=true]{
+
+     int x;
+     int y;
+
+     alt {
+       skip:{ x=6;x=6;x=6; }
+     }
+     x = 7;
+}
