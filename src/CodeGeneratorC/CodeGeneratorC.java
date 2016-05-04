@@ -285,7 +285,7 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         if ((ae.target() instanceof NameExpr)) {
             String myArrayTarget = (String)ae.target().visit(this);
             String myIndex = (String)ae.index().visit(this);
-            String typeName = getCDataType((ae.type).typeName());
+            String typeName = getCDataType((String)ae.type.visit(this));
 
             if (arrayDepth == 0) {
                 return (T) ("((" + typeName + ")" + myArrayTarget + "->array)[" + myIndex + "]");
@@ -358,7 +358,9 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
             ST literalTemplate = group.getInstanceOf("StringLiteral");
             literalTemplate.add("globalWsName", globalWorkspace);
             literalTemplate.add("var", varName);
-            literalTemplate.add("flag", "");
+            // TODO: When else does this happen?
+            if (!(as.left() instanceof RecordAccess) && !(as.left() instanceof ArrayAccessExpr))
+                literalTemplate.add("flag", "");
             literalTemplate.add("string", stringExpr);
             return (T) literalTemplate.render();
         }
@@ -887,17 +889,30 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
                 ld.var().name().getname() + ")");
         //TODO: isConstant ??
         ST template = group.getInstanceOf("LocalDecl");
+        // Special case for array decls
         if (ld.type() instanceof ArrayType) {
             template = group.getInstanceOf("LocalDeclArray");
             template.add("globalWsName", globalWorkspace);
             hasArray = true;
             String name = (String) ld.var().name().visit(this);
+            arrayName = name;
             Expression init = ld.var().init();
             if (init != null) {
                 String expr = (String) init.visit(this);
                 template.add("expr", expr);
             }
             template.add("name", name);
+            return (T) template.render();
+        }
+        // Special case for named types (records)
+        if (ld.type() instanceof NamedType) {
+            template = group.getInstanceOf("LocalNamedType");
+            template.add("globalWsName", globalWorkspace);
+            String type = (String) ld.type().visit(this);
+            String name = (String) ld.var().visit(this);
+            template.add("name", name);
+            template.add("type", type);
+
             return (T) template.render();
         }
 
@@ -939,6 +954,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     }
     //====================================================================================
     // NamedType
+    public T visitNamedType(NamedType nt){
+        Log.log(nt.line + ": Visiting a NamedType");
+
+        return (T) nt.name().getname();
+    }
     //====================================================================================
     // NameExpr
     public T visitNameExpr(NameExpr ne){
@@ -1149,12 +1169,51 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     // ProtocolTypeDecl
     //====================================================================================
     // RecordAccess
+    public T visitRecordAccess(RecordAccess ra) {
+        Log.log(ra.line + ": Visiting a RecordAccess");
+        ST template = group.getInstanceOf("RecordAccess");
+        String name = (String) ra.record().visit(this);
+        String field = (String) ra.field().visit(this);
+
+        template.add("name", name);
+        template.add("field", field);
+
+        return (T) template.render();
+    }
     //====================================================================================
     // RecordLiteral
+    public T visitRecordLiteral(RecordLiteral rl) {
+        Log.log(rl.line + ": Visiting a RecordLiteral");
+        ST template = group.getInstanceOf("RecordLiteral");
+
+        return (T) template.render();
+    }
     //====================================================================================
     // RecordMember
+    public T visitRecordMember(RecordMember rm) {
+        Log.log(rm.line + ": Visiting a RecordMember");
+        //ST template = group.getInstanceOf("RecordMember");
+        ST template = group.getInstanceOf("LocalDecl");
+        String type = (String) rm.type().visit(this);
+        String name = (String) rm.name().visit(this);
+        template.add("type", type);
+        template.add("var", name);
+
+        return (T) template.render();
+    }
     //====================================================================================
     // RecordTypeDecl
+    public T visitRecordTypeDecl(RecordTypeDecl rd) {
+        Log.log(rd.line + ": Visiting a RecordDecl");
+        ST template = group.getInstanceOf("RecordDecl");
+        //String[] memberList = new String[rd.body().size()];
+        String[] memberList = (String[]) rd.body().visit(this);
+        String name = (String) rd.name().visit(this);
+        template.add("memberList", memberList);
+        template.add("id", name);
+
+        return (T) template.render();
+    }
     //====================================================================================
     // ReturnStat
     public T visitReturnStat(ReturnStat rs){

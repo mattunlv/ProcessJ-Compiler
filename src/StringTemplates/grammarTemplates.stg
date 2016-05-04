@@ -412,13 +412,35 @@ NewArray(globalWsName, name, type, numDim, size, dimensionList) ::= <<
 ArrayAccess(name, index, dim) ::= "(<index> * <name>->dimensions[<name>->numDim - 1 - <dim>])"
 
 
-StringLiteral(globalWsName, string, var) ::= <<
-char* <var> = (char*) MAlloc(<globalWsName>, sizeof(char) * (strlen(<string>) + 1));
+StringLiteral(globalWsName, string, flag, var) ::= <<
+<if(flag)>char* <endif><var> = (char*) MAlloc(<globalWsName>, sizeof(char) * (strlen(<string>) + 1));
 ExternalCallN(strcpy, 2, <var>, <string>)
 >>
 
 
 StringCat(globalWsName, s1, s2) ::= "__concatStrings(<globalWsName>, <s1>, <s2>)"
+
+
+ParamDecl(type, name) ::= "<type> <name>"
+
+
+RecordAccess(name, field) ::= "<name>-><field>"
+
+
+RecordDecl(id, memberList) ::= <<
+typedef struct {
+    <memberList; separator = ";\n">;
+} <id>;
+>>
+
+
+LocalNamedType(globalWsName, name, type) ::= "<type>* <name> = (<type>*) MAlloc(<globalWsName>, sizeof(<type>))"
+
+
+RecordMember() ::= ""
+
+
+RecordLiteral() ::= ""
 
 
 ParamDecl(type, name) ::= "<type> <name>"
