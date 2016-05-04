@@ -1,0 +1,10 @@
+proc void f() {
+    int x,y;
+    par {
+      {
+        x=6;
+	x=7;
+      }
+      y=9;
+   }
+}

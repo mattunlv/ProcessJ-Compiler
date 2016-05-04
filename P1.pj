@@ -1,0 +1,44 @@
+
+
+
+protocol A {
+  a1: { int x; int y;}
+  a2: { double d; float f;}
+}
+
+protocol B {
+  b1: { int x; int y; int z;}
+  b2: { double d; float f; long l;}
+}
+
+protocol C extends A,B {
+  c: { int cc; }
+}
+
+proc void main(string args[]) {
+
+  C val;
+  C[] cs;
+  int i;	
+  switch(cs[i]) {
+    case c: break;
+    case a1: val.x = 100; break;
+    case b2: val.f = 34.6F; break;
+    case a2: {
+      B val2;
+      int a;  
+      switch (a) {
+      case 1: break;
+      case 2: break;
+
+      }
+
+
+
+
+
+    } 
+    break;
+
+  }
+}

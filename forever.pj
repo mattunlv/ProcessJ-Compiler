@@ -1,0 +1,9 @@
+
+proc void forever() {
+     while (true) {
+         while (true) {
+	   int x;
+	   x = 8;
+         } 
+     }
+}

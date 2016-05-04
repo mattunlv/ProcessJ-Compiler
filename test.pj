@@ -1,0 +1,39 @@
+import std.io;
+
+proc void main() {
+//  chan<int> c;
+//  int d;
+//  boolean x;
+//  alt {
+//    (true)   && d = c.read.read() : skip;
+//    (d == 7) && d = c.read.read() : skip;
+//    (x)      && d = c.read.read() : skip;
+//  }
+
+//  println(8);
+    shared chan<int> c;
+    shared chan<int>.read cr = c.read;
+    shared chan<int>.read chanEnds[] = new shared chan<int>[100];
+
+    int[] x = new int[100];
+    barrier bs[] = new barrier[100];
+
+    chanEnds[1] = null;
+
+//    Channel[] chanEnds;
+
+
+
+
+    claim(shared chan<int>.read ccr = chanEnds[34]) {
+
+
+    }
+    claim(chan<int> v = (c)) { 
+    
+
+
+    }
+
+
+}
