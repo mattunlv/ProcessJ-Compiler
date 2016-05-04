@@ -1,0 +1,29 @@
+import std.io;
+
+public record A {
+    int x;
+    string y;
+}
+
+public record B {
+    A a;
+}
+
+proc void main() {
+    int[] x;
+    string[][] y;
+    int w;
+    string z;
+    A a;
+    x = new int[1];
+    y = new string[1][1];
+    x[0] = 5;
+    y[0][0] = "hello";
+    a.x = x[0];
+    a.y = y[0][0];
+    w = a.x;
+    z = a.y;
+    println(w);
+    println(z);
+    return;
+}

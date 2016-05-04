@@ -8,6 +8,7 @@ public class Log {
     }
 
     public static void log(AST a, String s) {
+	//System.out.println(Error.fileName + ":" + a.line + " " + s);
 	System.out.println(Error.fileName + ":" + a.line + " " + s);
     }
 
