@@ -1,0 +1,11 @@
+import std.io;
+
+proc void main(){
+  chan<int> c;
+  par{
+    int x = c.read();
+    c.write(5);
+  }
+
+  return;
+}

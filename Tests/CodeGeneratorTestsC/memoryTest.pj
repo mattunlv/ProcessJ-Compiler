@@ -1,0 +1,16 @@
+import std.io;
+
+proc int f(int i){
+    return i;
+}
+
+proc void main(){
+    int size = 100000000;
+    int x;
+    par for(int i = 0; i < size; i++){
+        x = f(i);
+    }
+    println(x);
+}
+
+

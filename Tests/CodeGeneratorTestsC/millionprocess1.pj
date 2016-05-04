@@ -1,0 +1,33 @@
+import std.io;
+
+proc void foo(chan<int>.read c1r, chan<int>.write c2w)[yield=true]{
+    int x;
+    par {
+        //x = c1r.read({println("foo.x="+x);});
+        c2w.write(10);
+    }
+}
+
+proc void bar(chan<int>.write c1w, chan<int>.read c2r)[yield=true]{
+    int y;
+    par {
+        //y = c2r.read({println("bar.y="+y);});
+        c1w.write(20);
+    }
+}
+
+proc void f(){
+    chan<int> c1;
+    chan<int> c2;
+    par {
+        foo(c1.read, c2.write);
+        bar(c1.write, c2.read);
+    }
+}
+
+proc void main()[yield=true]{
+
+    par for (int i=0; i<10000000; i++) {
+        f();
+    }
+}

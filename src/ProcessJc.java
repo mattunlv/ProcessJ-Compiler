@@ -305,17 +305,17 @@ public class ProcessJc {
      */
     public static void printTable(Hashtable<String, Integer> table){
         String dashLine = "---------------------------------------------------------";
-        Log.log(dashLine);
-        Log.log(String.format("|%-25s\t|\t%15s\t|", "functionName", "Size"));
-        Log.log(dashLine);
+        System.out.println(dashLine);
+        System.out.println(String.format("|%-25s\t|\t%15s\t|", "functionName", "Size"));
+        System.out.println(dashLine);
         Set<String> myKeys = table.keySet();
 
         for(String name: myKeys){
             int size = table.get(name);
             String msg = String.format("|%-25s\t|\t%15d\t|", name, size);
-            Log.log(msg);
+            System.out.println(msg);
         }
-        Log.log(dashLine);
+        System.out.println(dashLine);
 
         return;
     }

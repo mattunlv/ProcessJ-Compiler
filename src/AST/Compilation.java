@@ -6,9 +6,9 @@ public class Compilation extends AST {
 
     public boolean visited = false;
 
-    public Compilation(Sequence<Pragma> pragmas, 
-                       Name packageName, 
-                       Sequence<Import> imports, 
+    public Compilation(Sequence<Pragma> pragmas,
+                       Name packageName,
+                       Sequence<Import> imports,
                        Sequence<Type> typeDecls) {
         super(typeDecls);
         nchildren = 4;

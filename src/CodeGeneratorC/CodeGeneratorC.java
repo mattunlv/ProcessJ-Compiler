@@ -92,7 +92,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
      * to avoid infinite recursion.
      */
     String makingRecursionFunction = "";
-    String returnName = "__return";
+    private final String returnName = "__return";
+    private final String arrayStructName = "ArrayStruct*";
 
     /** Array variables.*/
     private Boolean hasArray = false;
@@ -282,10 +283,11 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         int myDepth;
 
         // top level array access
-        if ((ae.target() instanceof NameExpr)) {
+        if ((ae.target() instanceof NameExpr)){
             String myArrayTarget = (String)ae.target().visit(this);
             String myIndex = (String)ae.index().visit(this);
-            String typeName = getCDataType((ae.type).typeName());
+            String typeString = (String)ae.type.visit(this);
+            String typeName = getCDataType(typeString);
 
             if (arrayDepth == 0) {
                 return (T) ("((" + typeName + ")" + myArrayTarget + "->array)[" + myIndex + "]");
@@ -325,13 +327,16 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
     // ArrayLiteral
     //====================================================================================
     // ArrayType
-
+    /**
+     * This is bad but it's too late now. The array generation code relies on the fact
+     * that visitArrayType returns the base type. It should really return "ArrayStruct*"
+     * this is handled explictly in ParProc and anywhere else it might be needed...
+     */
     public T visitArrayType(ArrayType at) {
         Log.log(at.line + ": Visiting an ArrayType!");
         String baseType = (String)at.baseType().visit(this);
-        return (T) (baseType);
+        return (T) baseType;
     }
-
     //====================================================================================
     // Assignment
     public T visitAssignment(Assignment as){
@@ -343,16 +348,16 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
             hasArray = true;
             if (as.left() instanceof NameExpr) {
                 arrayName = (String) as.left().visit(this);
-                Log.log(arrayName);
                 return as.right().visit(this);
             }
             else {
                 // TODO: Extend NewArray to record_access and array_access
-                Error.error("Cannot assign new array to non NameExpr, it is not supported at this time");
+                Error.error("Cannot assign new array to non NameExpr, not supported at this time");
             }
         }
         // Handle String Literal
-        if (as.type instanceof PrimitiveType && ((PrimitiveType) as.type).isStringType() && as.right() instanceof PrimitiveLiteral) {
+        if (as.type instanceof PrimitiveType && ((PrimitiveType) as.type).isStringType() &&
+            as.right() instanceof PrimitiveLiteral) {
             String varName = (String) as.left().visit(this);
             String stringExpr = (String) as.right().visit(this);
             ST literalTemplate = group.getInstanceOf("StringLiteral");
@@ -587,8 +592,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         //Recurse to all children getting strings needed for this Class' Template.
         String[] typeDeclsStr = (String[]) c.typeDecls().visit(this);
         int stackSize = getSizeOfFunction(sizePerFunction, lastFunction);
-        //Divide by four as we want the size in words not bytes.
-        stackSize = (int) Math.ceil(stackSize / 4.0);
+        //TODO Divide by four as we want the size in words not bytes?
+        stackSize = (int) Math.ceil(stackSize / 4);
 
         //This is where functions are created as they are procedure type.
         template.add("globalWsName", globalWorkspace);
@@ -685,15 +690,24 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         String[] initStr = null;
         String[] incrStr = null;
         Statement myStat = fs.stats();
-        //Use in case of parallel for! This set contains all the NameExpr for this statement.
-        LinkedList<NameExpr> myNames = null;
-
 
         //If this is a parallel for statement a lot of extra work should be done!
         if(isParFor == true){
+            //Use in case of parallel for! This set contains all the NameExpr for this statement.
+            LinkedList<NameExpr> myNames = new LinkedList();
+            LinkedList<String> localNames = new LinkedList();
+            //Temp list used to omit local names (from localNames) in myNames.
+            LinkedList<NameExpr> tempList = new LinkedList();
+
             //Visit our NameCollector for our current statement to get all the NameExpr's!
-            myNames = new LinkedList();
-            fs.stats().visit(new NameCollector(myNames));
+            fs.stats().visit(new NameCollector(myNames, localNames));
+
+            //Create copy of list without the local name expressions.
+            for(NameExpr ne : myNames){
+                if(!localNames.contains(ne.toString()))
+                    tempList.add(ne);
+            }
+            myNames = tempList;
 
             //If we have a barriers then we enroll them here:
             Sequence<Expression> barriers = fs.barriers();
@@ -719,8 +733,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
             parPrototypes.add( getSimplePrototypeString(functionName) );
             int stackSize = getSizeOfFunction(sizePerFunction, functionName);
 
-            //Divide by four as we want the size in words not bytes.
-            stackSize = (int) Math.ceil(stackSize / 4.0);
+            //TODO? Divide by four as we want the size in words not bytes.
+            stackSize = (int) Math.ceil(stackSize / 4);
             template.add("stackSize", stackSize);
             template.add("function", functionName);
             template.add("workspace", globalWorkspace);
@@ -886,12 +900,16 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         Log.log(ld.line + ": Visting LocalDecl (" + ld.type().typeName() + " " +
                 ld.var().name().getname() + ")");
         //TODO: isConstant ??
+
         ST template = group.getInstanceOf("LocalDecl");
         if (ld.type() instanceof ArrayType) {
             template = group.getInstanceOf("LocalDeclArray");
             template.add("globalWsName", globalWorkspace);
             hasArray = true;
             String name = (String) ld.var().name().visit(this);
+            //Set global name of array.
+            arrayName = name;
+
             Expression init = ld.var().init();
             if (init != null) {
                 String expr = (String) init.visit(this);
@@ -958,18 +976,21 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         Log.log(ne.line + ": Visiting a NewArray!");
 
         ST template = group.getInstanceOf("NewArray");
-        String myType = (String)ne.baseType().visit(this);
+        Type type = ne.baseType();
+        String typeString = (String) type.visit(this);
         Sequence<Expression> sizeExp = ne.dimsExpr();
+        String channelString = "";
+
         //Expanded to n-dimensional arrays.
         String[] sizeString = (String[])sizeExp.visit(this);
         String[] dimAllocations = new String[sizeString.length];
-
+        String allocateString = "1";
         String numDim = Integer.toString(sizeString.length);
 
-        String allocateString = "1";
         for (int i = 0; i < sizeString.length; i++) {
             ST setDimTemplate = group.getInstanceOf("SetArrayDimensions");
             String size = sizeString[i];
+
             setDimTemplate.add("name", arrayName);
             setDimTemplate.add("num", Integer.toString(i));
             setDimTemplate.add("expr", size);
@@ -978,13 +999,23 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         }
 
         template.add("globalWsName", globalWorkspace);
-        template.add("type", myType);
+        template.add("type", typeString);
         template.add("name", arrayName);
         template.add("numDim", numDim);
         template.add("size", allocateString);
         template.add("dimensionList", dimAllocations);
 
-        return (T) template.render();
+        /*Special case where we handle channel allocation. */
+
+        if(type.isChannelType()){
+            ST template2 = group.getInstanceOf("NewArrayChannel");
+            template2.add("globalWsName", globalWorkspace);
+            template2.add("length", allocateString);
+            template2.add("arrayName", arrayName);
+            channelString = template2.render();
+        }
+
+        return (T) (template.render() + channelString);
     }
     //====================================================================================
     // NewMobile
@@ -1630,6 +1661,10 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
             if(forParBlock == true)
                 typeString += "*";
 
+            //Explictly handle anrrays!
+            if(param.type() instanceof ArrayType)
+                typeString = "ArrayStruct*";
+
             template.add("type", typeString);
             template.add("name", name);
             //Create string and add to our list.
@@ -1677,8 +1712,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
 
         this.inParallel = true;
         int stackSize = getSizeOfFunction(sizePerFunction, functionName);
-        //Divide by four as we want the size in words not bytes.
-        stackSize = (int) Math.ceil(stackSize / 4.0);
+        //TODO? Divide by four as we want the size in words not bytes.
+        stackSize = (int) Math.ceil(stackSize / 4);
 
         //Add all our fields to our template!
         template.add("wordName", wordName);
@@ -2006,6 +2041,8 @@ public class CodeGeneratorC <T extends Object> extends Visitor<T> {
         parProcs.add(createParProc(newFunctionName, new ExprStat(in), myNames,
                                    false, extraProcGetParam));
         int stackSize = getSizeOfFunction(sizePerFunction, functionName);
+        //TODO? Divide by four as we want the size in words not bytes.
+        stackSize = (int) Math.ceil(stackSize / 4);
         parPrototypes.add(getSimplePrototypeString(newFunctionName));
 
         //Create invocation, i.e. actual function call.

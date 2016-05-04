@@ -22,8 +22,8 @@ public class ChannelType extends Type {
   public int shared()    { return shared; }
   public Type baseType() { return (Type)children[0]; }
 
-  public String modString() { 
-    return modSyms[shared]; 
+  public String modString() {
+    return modSyms[shared];
   }
 
   public String signature() {

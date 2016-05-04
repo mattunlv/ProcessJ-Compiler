@@ -5,8 +5,8 @@
 tar -xzvf CCSP.tar.gz
 
 #Compile CCSP Library.
+ccspPath=$(realpath lib/CCSP/)
 cd CCSP/
-ccspPath="$(realpath lib/CCSP)"
 ./configure --build=i686-pc-linux-gnu "CFLAGS=-m32" "CXXFLAGS=-m32" "LDFLAGS=-m32" --prefix=$ccspPath
 make
 make install # :)

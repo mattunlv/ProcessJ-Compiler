@@ -12,7 +12,7 @@ public class ConstantDecl extends AST implements VarDecl, TopLevelDecl {
 	public void setType(Type t) {
 		children[1] = t;
 	}
-	
+
 	public Sequence<Modifier> modifiers() { return (Sequence<Modifier>)children[0]; }
 	public Type type()          { return (Type)children[1]; }
 	public Var var()            { return (Var)children[2]; }

@@ -408,6 +408,15 @@ NewArray(globalWsName, name, type, numDim, size, dimensionList) ::= <<
 <dimensionList; separator = ";\n">
 >>
 
+NewArrayChannel(globalWsName, length, arrayName) ::= <<
+;
+/*Allocate all channels! */
+for(int __i = 0; __i \< <length>; __i++){
+  Channel* __chan = ((Channel**) <arrayName>->array)[__i] =
+                    (Channel*) MAlloc(<globalWsName>, sizeof(Channel));
+  ChanInit(<globalWsName>, __chan);
+}
+>>
 
 ArrayAccess(name, index, dim) ::= "(<index> * <name>->dimensions[<name>->numDim - 1 - <dim>])"
 

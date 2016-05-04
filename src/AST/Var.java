@@ -6,7 +6,7 @@ public class Var extends AST {
 
 	/* Note init() can return null */
 
-	public Var(Name name, Expression init) { 
+	public Var(Name name, Expression init) {
 		super(name);
 		nchildren = 2;
 		children = new AST[] { name, init };

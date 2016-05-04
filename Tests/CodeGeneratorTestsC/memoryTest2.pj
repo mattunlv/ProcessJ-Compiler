@@ -1,0 +1,4 @@
+proc void main(){
+    string x = "cat";
+    return;
+}
