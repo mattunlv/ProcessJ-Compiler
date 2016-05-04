@@ -395,6 +395,7 @@ proc void main(string[] args)[yield=true] {
 
   		p_barrier (G_ELVES + 1, santa_elves_a.read, santa_elves_b.read);//ok
 	}
+
 }
 
 

@@ -34,7 +34,13 @@ proc void foo(chan<int>.read c) [yield=true] {
 }
 
 proc void bar(chan<int>.write c) [yield=true] {
-
+	int x, y;
+	while(true) {
+		x++;	
+		while(true) {
+			y++;	
+		}
+	}
 }
 
 proc chan<int>.read getChan() [yield=true] {

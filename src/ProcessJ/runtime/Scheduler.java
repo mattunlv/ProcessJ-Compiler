@@ -69,6 +69,7 @@ public class Scheduler extends Thread {
 
 	public void run() {
 		// run the scheduler here and start main!
+		final long startTime = System.nanoTime();
 		System.err.println("[Scheduler] Scheduler running");
 
 		timerQueue.start();
@@ -77,9 +78,14 @@ public class Scheduler extends Thread {
 		int contextSwitches = 0;
 		int swaps = 0;
 		int rotation = 0;
+		int maxrqsize = 0;
 		while (rq.size() > 0) {
 //			System.err.println("[Scheduler] Run Queue size: [" + rq.size() + "]");
 			
+			if (rq.size() > maxrqsize) {
+				maxrqsize = rq.size();
+			}
+
 			if (chaotic) {
 				shuffle();
 				swaps++;
@@ -89,13 +95,13 @@ public class Scheduler extends Thread {
 				swaps++;
 			}
 
-//			if (dump) {
-//				rotation++;
-//				if (rotation == 100000) {
-//					rq.dump();
-//					rotation = 0;
-//				}
-//			}
+			if (dump) {
+				rotation++;
+				if (rotation == 1) {
+					rq.dump();
+					rotation = 0;
+				}
+			}
 			
 			// grab the next process in the run queue
 			PJProcess p = rq.getNext();
@@ -143,8 +149,14 @@ public class Scheduler extends Thread {
 		timerQueue.kill();
 
 		System.err.println("[Scheduler] Total Context Switches: " + contextSwitches);
+		System.err.println("[Scheduler] Max RunQueue Size: " + maxrqsize);
 		if (chaotic) {
 			System.err.println("[Scheduler.Chaotic] Total Swaps: " + swaps);
 		}
+		
+		final long endTime = System.nanoTime();
+		long elapsedTime = endTime - startTime;
+		double seconds = (double)elapsedTime / 1000000000.0;
+		System.out.println("Total execution time: " + (seconds) );
 	}
 }

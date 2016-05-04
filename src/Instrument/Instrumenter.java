@@ -59,8 +59,9 @@ public class Instrumenter {
     if (directoryListing != null) {
       for (File file: directoryListing) {
         if (file.isFile() && isClassFile(file)){
+        	
+        	System.out.println("Instrumenting => " + file.getName());
           
-          System.out.println("Instrumenting => " + file.getName());
           FileInputStream is = new FileInputStream(file);
           ClassReader cr = new ClassReader(is);
       
@@ -88,8 +89,8 @@ public class Instrumenter {
 //     ASMifierClassVisitor.main(new String[]{className.replace('/', '.')});
 
     ClassNode cn = new ClassNode();
-    cr.accept(cn, 0);
-
+    cr.accept(cn, ClassReader.SKIP_DEBUG);
+    
     boolean changed = makeChanges(cn);
 
     if (changed) {
@@ -255,9 +256,11 @@ public class Instrumenter {
      *  
      *  Will leave them in anything. Won't hurt.
      */
-    AbstractInsnNode retNode = mn.instructions.getLast().getPrevious();
+    AbstractInsnNode retNode = mn.instructions.getLast();
 
     int ret_opcode = retNode.getOpcode();
+    
+//    System.out.println("ret_opcode=" + ret_opcode);
 
     switch(ret_opcode) {
       case Opcodes.RETURN: //doesn't have any preceding operation

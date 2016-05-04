@@ -116,7 +116,7 @@ if (<channel>.isReadyToWrite()) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)<\\>
+label(<jmp1>)
 >>
 
 ChannelReadExpr(left, channel, alt, jmp0, jmp1) ::= <<
@@ -182,7 +182,7 @@ label(<jmp>);
 }
 <endif>
 <stats; separator=";\n">;
-<channels:{c | <c>.unclaim()}; separator = ";\n"><\\>
+<channels:{c | <c>.unclaim()}; separator = ";\n">
 >>
 
 TimerReadExpr(left) ::= "<left> = PJTimer.read()"
@@ -242,13 +242,20 @@ if( <expr> ) {
 
 InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, barriers) ::= <<
 <if(isProcess)>
-<if(par || parfor)>
+<if(par)>
 (new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
   public void finalize() {
     <parName>.decrement();    
 	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
   }
-})<if(!parfor)>.schedule()<endif><\\>
+}).schedule()<\\>
+<elseif(parfor)>
+(new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
+  public void finalize() {
+    <parName>.decrement();    
+	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
+  }
+})<\\>
 <endif>
 <else>
 <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
@@ -432,7 +439,7 @@ final PJPar <parName> = new PJPar(<parCnt>, this);
 setNotReady();
 this.runLabel = <jmp>;
 yield();
-label(<jmp>)<\\>
+label(<jmp>)
 >>
 
 ReturnStat(expr, procYields) ::= <<
