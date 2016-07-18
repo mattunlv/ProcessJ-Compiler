@@ -18,7 +18,7 @@ import java.util.List;
 */
 public class PJBarrier {
 	
-	List<PJProcess> pool = new ArrayList<PJProcess>();
+	List<PJProcess> sycned = new ArrayList<PJProcess>();
 	public int enrolled = 0;
 
 	/*
@@ -48,14 +48,14 @@ public class PJBarrier {
 	public synchronized void sync(PJProcess process) {
 //		System.out.println("a process is syncing!");
 		process.setNotReady();
-		pool.add(process);
+		sycned.add(process);
 //		System.out.println("pool.size=" + pool.size() + " enrolled=" + enrolled);
-		if (pool.size() == enrolled) {
-			for(PJProcess p : pool) {
+		if (sycned.size() == enrolled) {
+			for(PJProcess p : sycned) {
 				p.setReady();
 			}
 //			System.out.println("clearning pool after all synced!!");
-			pool.clear();
+			sycned.clear();
 		}
 	}
 }

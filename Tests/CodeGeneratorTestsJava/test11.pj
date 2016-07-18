@@ -1,0 +1,12 @@
+import std.io;
+
+proc void f(chan<int>.read in, int count) [yield=true] {
+  int sum = 0;
+  while (count > 0) {
+    int val;
+    val = in.read();
+	sum = sum + val;
+    count--;
+  }
+  println(sum);
+}

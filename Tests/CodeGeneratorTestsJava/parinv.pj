@@ -1,0 +1,27 @@
+import std.io;
+import std.strings;
+
+proc int g(chan<int>.read in)[yield=true] { 
+ int result = in.read();
+ return result;
+}
+
+proc void p1(chan<int>.read in) [yield=true]{
+   int a;
+   a = g(in);
+}
+
+proc void p2(chan<int>.write out) [yield=true]{
+   out.write(42);
+}
+
+proc void main(string args[]) [yield=true]{
+   int n = string2int(args[1]);
+   par for (int i=0; i<n; i++) {
+       chan<int> c;
+       par {
+           p1(c.read);
+           p2(c.write);
+       }
+   }
+}

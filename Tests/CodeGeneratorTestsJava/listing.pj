@@ -1,0 +1,21 @@
+proc void chantest()[yield=true]{
+ 
+	chan<int> c;
+ 	chan<int>.read cr;
+ 	chan<boolean>.write cw;
+	shared chan<int> cs;
+	shared write chan<long> csw;
+	chan<int>[] carr = new chan<int>[100];
+	 	
+ 
+}
+
+ proc void foo(barrier b, barrier c)[yield=true] {}
+ proc void bar(barrier b, barrier c)[yield=true] {}
+ proc void baz(barrier b, barrier c)[yield=true] {}
+ 
+ proc void partest(chan<int>.write out)[yield=true] {
+ 	int x;
+ 	out.write(10);	
+ }
+ 

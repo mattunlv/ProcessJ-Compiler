@@ -4,15 +4,14 @@ proc void main(string[] args)[yield=true]{
 
 	chan<int> c;
 	int x;
-	int i=0;
 
 	while(true) {
 		
 		par {
-			//x = c.read.read();
-			x = c.read.read({
-				println(x);
-			});
+			x = c.read.read();
+			//x = c.read.read({
+			//	println(x);
+			//});
 			c.write.write(10);	
 		}
 		

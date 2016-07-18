@@ -1,6 +1,6 @@
 import std.io;
 
-proc void foo() [yield=true] {
+proc void foo1() [yield=true] {
 	chan<int> c;
 	barrier a;
 	barrier b;
@@ -11,13 +11,17 @@ proc void foo() [yield=true] {
 		bar(b, a);
 	}
 	
-	par {
-		xx(b);
-		int x = 10;
-		}
+	par enroll(b) {
+		foo(b);
+		bar1(b);
+	}
 }
 
-proc void xx(barrier b) [yield=true] {
+proc void foo(barrier b) [yield=true] {
+	sync(b);
+}
+
+proc void bar1(barrier b) [yield=true] {
 	sync(b);
 }
 
@@ -39,5 +43,6 @@ proc void bar(barrier b, barrier a) [yield=true] {
 }
 
 proc void main(string[] args) [yield=true] {
-	foo();
+	barrier b;
+	foo(b);
 }

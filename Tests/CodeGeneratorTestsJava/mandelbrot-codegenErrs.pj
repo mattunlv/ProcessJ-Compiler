@@ -1,0 +1,49 @@
+import images.pgm;
+
+public proc void cal_pixel(double real, double imag, chan<int>.write out)[yield=true] {
+    int count, max;
+    double z_real, z_imag;
+    double temp, lengthsq;
+    
+    max = 256;
+    z_real = 0;
+    z_imag = 0;
+    count =0;
+    do {
+        temp = z_real * z_real - z_imag * z_imag + real;
+        z_imag = 2 * z_real * z_imag + imag;
+        z_real = temp;
+        lengthsq = z_real * z_real + z_imag * z_imag;
+        count++;
+    } while ((lengthsq < 4.0) && (count < max));
+    out.write(count);
+}                      
+
+proc void main(string[] args)[yield=true] {      
+    int disp_width  = 1024;
+    int disp_height = 768;
+    
+    int mandelbrot[][] = new int[disp_height][disp_width];
+    
+    double real_min = -0.7801785714285;
+    double real_max = -0.7676785714285;
+    double imag_min = -0.1279296875000;
+    double imag_max = -0.1181640625000;
+    
+    double scale_real = (real_max-real_min)/disp_width;
+    double scale_imag = (imag_max-imag_min)/disp_height;
+    
+    par for (int y=0; y<disp_height; y++) {
+        par for (int x=0; x<disp_width; x++) {
+            chan<int> c;
+            double c_real = real_min + ((double) x * scale_real);
+            double c_imag = imag_min + ((double) y * scale_imag);
+            par {
+                cal_pixel(c_real, c_imag, c.write);
+                mandelbrot[y][x] = 256-c.read();
+            }
+        }
+    }    
+    
+    write_P2_PGM(mandelbrot, "mm.pgm", 256);
+}

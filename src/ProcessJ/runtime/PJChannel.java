@@ -1,7 +1,5 @@
 package ProcessJ.runtime;
 
-import java.util.LinkedList;
-import java.util.List;
 
 public abstract class PJChannel<T> {
 	
@@ -13,33 +11,20 @@ public abstract class PJChannel<T> {
 	// the data item communicated on the channel
 	protected T data;
 	// is there any data?
-	public boolean ready = false;
+	protected boolean ready = false;
 	protected boolean reservedForAlt = false;
-	public int type;
 	protected boolean claimed = false;
-	protected LinkedList<PJProcess> claimQueue = new LinkedList<PJProcess>();
+	protected int type;
+//	protected LinkedList<PJProcess> claimQueue = new LinkedList<PJProcess>();
 
-	PJProcess reservedForReader = null;
+	protected PJProcess reservedForReader = null;
 
-	synchronized public void write(PJProcess p, T item) {
-	}
-
-	synchronized public T read(PJProcess p) {
-		return null;
-	}
-
-	synchronized public T readPreRendezvous(PJProcess p) {
-		return null;
-	}
-
-	synchronized public void readPostRendezvous(PJProcess p) {
-	}
-	
-	synchronized public void addReader(PJProcess p) {
-	}
-
-	synchronized public void addWriter(PJProcess p) {
-	}
+	public abstract void write(PJProcess p, T item);
+	public abstract T read(PJProcess p);
+	public abstract T readPreRendezvous(PJProcess p);
+	public abstract void readPostRendezvous(PJProcess p);
+	public abstract void addReader(PJProcess p);
+	public abstract void addWriter(PJProcess p);
 
 	synchronized public boolean claim() {
 		boolean success = false;

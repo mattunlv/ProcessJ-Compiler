@@ -1,0 +1,7 @@
+proc void g(shared chan<int>.read in, barrier b) [yield=true]{
+  int v;
+  claim(in) {
+    v = in.read();
+  }
+  sync(b);
+}

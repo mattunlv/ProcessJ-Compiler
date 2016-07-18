@@ -6,8 +6,9 @@ Info() ::= <<
  from ProcessJ source.
 >>
 
-Compilation(packageName, typeDecls) ::= <<
-package Generated<if(packageName)>.<packageName><endif>;
+Compilation(packageName, classname, typeDecls) ::= <<
+<! package Generated<if(packageName)>.<packageName><endif>; !>
+<! package <packageName>; !>
 import java.util.*;
 import ProcessJ.runtime.*;
 
@@ -17,15 +18,15 @@ public class <packageName> {
 }
 >>
 
-AltStat(name, chosen, caseCount, altSwitchGroup, timers, initBoolGuards, initGuards, jmp1, jmp2, timerKills) ::= <<
+AltStat(name, chosen, caseCount, altSwitchGroup, timers, initBoolGuards, initGuards, jmp1, jmp2, timerKills, altCnt) ::= <<
 <name> = new PJAlt(<caseCount>, this);	
 <timers>
 <initGuards>
 <initBoolGuards>
 
-boolean bRet = <name>.setGuards(boolGuards, guards);
+boolean bRet<altCnt> = <name>.setGuards(boolGuards<altCnt>, guards<altCnt>);
 
-if (!bRet) {
+if (!bRet<altCnt>) {
 	System.out.println("RuntimeException: One of the boolean guards needs to be true!!");
 	System.exit(1);
 }
@@ -61,18 +62,18 @@ case <number>:
 	break
 >>
 
-AltBooleanGuardsArr(tempExprs, constants) ::= <<
+AltBooleanGuardsArr(tempExprs, constants, altCnt) ::= <<
 <if(tempExprs)><tempExprs; separator=";\n">;<endif>
-<if(constants)>boolean[] boolGuards = {<constants; separator=", ">};<endif>	
+<if(constants)>boolean[] boolGuards<altCnt> = {<constants; separator=", ">};<endif>	
 >>
 
-AltGuardsArr(guards) ::= <<
-<if(guards)>Object[] guards = {<guards; separator=", ">};<endif>
+AltGuardsArr(guards, altCnt) ::= <<
+<if(guards)>Object[] guards<altCnt> = {<guards; separator=", ">};<endif>
 >>
 
 AltTimerKill(timer) ::= <<
 <if(timer)>
-if (<timer>.started && !<timer>.stopped) {
+if (<timer>.started && !<timer>.expired) {
 	<timer>.kill();
 }	
 <endif>
@@ -177,6 +178,7 @@ ClaimStat(stats, channels, ldstr, jmp) ::= <<
 <if(ldstr)><ldstr; separator=";\n">;<endif>
 label(<jmp>);
 <if(channels)>if(<channels:{c | !<c>.claim() }; separator = "||">) {
+	<channels:{c | <c>.unclaim()}; separator = ";\n">;
 	this.runLabel = <jmp>;
 	yield();
 }
@@ -262,7 +264,7 @@ InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, bar
 <endif>
 >>
 
-InvocationWithChannelReadExprParam(left, right, paramBlocks) ::= <<
+InvocationWithInvocationParameter(left, right, paramBlocks) ::= <<
 <if(paramBlocks)><paramBlocks; separator=";\n\n">;<endif>
 <if(left)><left>=<endif><right>
 >>
@@ -299,11 +301,13 @@ creating fields. !>
 <endif>
 >>
 
-NewArray(left, type, size) ::= "<left> = new <type>[<size>]"
+NewArray(left, type, dims) ::= <<
+<left> = new <type><dims:{d | [<d>]}; separator = "">
+>>
 
-NewArrayIntializedElements(left, type, size) ::= <<
-<left> = (<type>[])new Object[<size>];
-for(int i=0; i \< <size>; i++) {
+NewArrayIntializedElements(left, type, dims) ::= <<
+<left> = (<type>[])new Object[<dims>];
+for(int i=0; i \< <dims>; i++) {
 	<left>[i] = new <type>();
 }
 >>

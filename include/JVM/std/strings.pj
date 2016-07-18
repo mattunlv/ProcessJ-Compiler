@@ -1,0 +1,7 @@
+#pragma LIBRARY;
+#pragma NATIVE;
+#pragma FILE "strings";
+#pragma LANGUAGE "JVM";
+package std;
+
+public native proc int string2int(string str);

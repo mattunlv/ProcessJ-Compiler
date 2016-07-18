@@ -26,7 +26,7 @@ public class State {
 		state_table.put(ALT_GUARD, false);
 		state_table.put(PROTOCOL_EXPR, false);
 		
-		currentState();
+//		currentState();
 	}
 	
 	public static boolean is(String field) {
@@ -46,6 +46,7 @@ public class State {
 		System.out.println("---------------------------------");
 	}
 	
+	//debug method
 	public static void currentState() {
 		System.out.println("*******************");
 		System.out.println("   Current State   ");

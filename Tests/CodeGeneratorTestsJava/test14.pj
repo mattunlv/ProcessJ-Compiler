@@ -1,0 +1,6 @@
+proc void f() [yield=true]{
+  timer t;
+
+  t.timeout(100);
+
+}

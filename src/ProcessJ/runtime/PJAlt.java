@@ -1,21 +1,14 @@
 package ProcessJ.runtime;
 
 public class PJAlt {
-//	private Object[] channels;
 	private Object guards[];
 	private boolean[] bGuards;
 
-	private int caseCount;
 	private PJProcess process;
 	
 	public static final String SKIP_GUARD = "skip";
 
-//	public Alt(Object... channels) {
-//		this.channels = channels;
-//	}
-
 	public PJAlt(int caseCount, PJProcess p) {
-		this.caseCount = caseCount;
 		this.process = p;
 		this.bGuards = new boolean[caseCount];
 		this.guards = new Object[caseCount];
@@ -47,7 +40,7 @@ public class PJAlt {
 					PJTimer t = (PJTimer)guards[i];
 					//if (1st time && timeout amount ==0)
 					//or if not 1st time and timeout has happened, chosen = i
-					if ((!t.started && t.timeout <= 0L) || t.stopped) {
+					if ((!t.started && t.timeout <= 0L) || t.expired) {
 						chosen=i;
 						break;
 					}
@@ -76,14 +69,4 @@ public class PJAlt {
 		
 		return chosen;
 	}
-
-	// -1: no channels are ready
-	// remember to do a isReadyToRead after getting the index in the process.
-//	public int getReadyIndex() {
-//		for (int i = 0; i < channels.length; i++) {
-//			if (((Channel<? extends Object>) channels[i]).isReadyToReadAltAndReserve())
-//				return i;
-//		}
-//		return -1;
-//	}
 }

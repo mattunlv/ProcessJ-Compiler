@@ -1,0 +1,10 @@
+proc void f() [yield=true]{ 
+  for (;;)
+    ;
+}
+
+proc void main(string[] args) [yield=true]{
+  par for (int i=0; i<100000000; i++) {
+    f();
+  }
+}

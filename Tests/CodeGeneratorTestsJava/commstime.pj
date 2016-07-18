@@ -1,0 +1,52 @@
+import std.io;
+import std.strings;
+
+public proc void Prefix(int init, chan<int>.read in, chan<int>.write out, int n)[yield=true] {
+  int val;
+  out.write (init);
+  while (n != 0) {
+    val = in.read();
+    out.write(val);
+    n--;
+  }
+}
+
+public proc void Delta(chan<int>.read in, chan<int>.write out1, chan<int>.write out2, int n)[yield=true] {
+  while (n != 0) {
+    int val;
+    val = in.read();
+    out1.write(val);
+    out2.write(val);
+    n--;
+  }
+}
+
+public proc void Succ(chan<int>.read in, chan<int>.write out, int n)[yield=true] {
+  while (n != 0) {
+    int val;
+    val = in.read();
+    out.write(val + 1);
+    n--;
+  }
+}
+
+public proc void Consumer(chan<int>.read in, int n)[yield=true] {
+  while (n != 0) {
+    int val;
+    val = in.read();
+    if (val % 10000 == 0)
+      println(val);
+    n--;
+  }
+}
+
+public proc void main(string[] args)[yield=true] {
+  chan<int> a,b,c,d;
+  int n = string2int(args[1]);
+  par {
+    Prefix(0, a.read, c.write, n);
+    Delta(c.read, d.write, b.write, n);
+    Succ(b.read, a.write, n);
+    Consumer(d.read,n);
+  }
+}

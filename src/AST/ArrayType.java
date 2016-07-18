@@ -33,6 +33,7 @@ public class ArrayType extends Type {
 
 	public String typeName() {
 		String s = baseType().typeName();
+		System.out.println("AT.depth:" + depth);
 		for (int i=0; i<depth; i++)
 			s = s + "[]";
 		return s;

@@ -11,6 +11,7 @@ public class PJMany2OneChannel<T> extends PJChannel<T> {
 		this.type = TYPE_MANY2ONE;
 	}
 
+	@Override
 	synchronized public void write(PJProcess p, T item) {
 		ready = true;
 		data = item;
@@ -34,12 +35,14 @@ public class PJMany2OneChannel<T> extends PJChannel<T> {
 		return myData;
 	}
 	
+	@Override
 	synchronized public T readPreRendezvous(PJProcess p) {
 		T myData = data;
 		data = null;
 		return myData;
 	}
 	
+	@Override
 	synchronized public void readPostRendezvous(PJProcess p) {
 		ready = false;
 		if (writers.size() > 0) {
@@ -48,10 +51,12 @@ public class PJMany2OneChannel<T> extends PJChannel<T> {
 		}
 	}
 
+	@Override
 	synchronized public void addWriter(PJProcess p) {
 		writers.add(p);
 	}
 	
+	@Override
 	synchronized public void addReader(PJProcess p) {
 		reader = p;
 	}

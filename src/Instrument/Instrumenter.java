@@ -41,7 +41,11 @@ public class Instrumenter {
   public String fullPath = "";
   
   public Instrumenter(String folder) {
-    this.fullPath = Instrumenter.class.getResource("../"+ folder +"/").getPath();
+	  
+	System.out.println("in instrumenter!!");
+
+//    this.fullPath = Instrumenter.class.getResource("../"+ folder +"/").getPath();
+    this.fullPath = folder;
     
     System.out.println("================================");
     System.out.println("*  Instrumenting classes in:   *");
@@ -54,6 +58,9 @@ public class Instrumenter {
   public void execute() throws Exception {
 
     File directory = new File(fullPath);
+    if(!directory.exists())
+    	System.out.println("doesnt exist!!");
+
     File[] directoryListing = directory.listFiles();
 
     if (directoryListing != null) {
@@ -260,7 +267,7 @@ public class Instrumenter {
 
     int ret_opcode = retNode.getOpcode();
     
-//    System.out.println("ret_opcode=" + ret_opcode);
+    System.out.println("ret_opcode=" + ret_opcode);
 
     switch(ret_opcode) {
       case Opcodes.RETURN: //doesn't have any preceding operation

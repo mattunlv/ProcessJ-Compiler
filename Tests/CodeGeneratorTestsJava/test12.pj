@@ -1,0 +1,30 @@
+proc void f(chan<int>.read in, int a) [yield=true] {
+  timer t;
+  int v;
+  alt {
+    (a >0) && v = in.read() : { 
+
+    }
+    t.timeout(100) : {
+
+    }
+    skip : {
+
+
+    } 
+  }
+  
+  
+  alt {
+    (a >0) && v = in.read() : { 
+
+    }
+    t.timeout(100) : {
+
+    }
+    skip : {
+
+
+    } 
+  }
+}

@@ -1,0 +1,7 @@
+#pragma LIBRARY;
+#pragma NATIVE;
+#pragma FILE "pgm";
+#pragma LANGUAGE "JVM";
+package image;
+
+public native proc boolean write_P2_PGM(int[][] pic, string filename, int max) ;

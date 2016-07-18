@@ -100,6 +100,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private int _gvarCnt = 0;
 	private int _jumpCnt = 1;
 	private int _parCnt = 0;
+	private int _altCnt = 1;
 	private String _parName = null;
 	private String _currentProcName = null;
 
@@ -117,7 +118,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	
 	private final String MAIN_SIGNATURE = "([T;)V";
 
-	//TODO Cabel look at trying to get this name from Error.filename or from compilation.
+	public static String workdir = "";
+	
 	private String originalFilename = null;
 
 	public CodeGeneratorJava(SymbolTable topLevelDecls) {
@@ -142,6 +144,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(ac.line + ": Visiting an AltCase");
 		ST template = group.getInstanceOf("AltCase");
 		
+		//FIXME: figure out if this visitor is needed as well as the ST.template.
 		Statement caseExprStmt = ac.guard().guard();
 		Statement stat = ac.stat();
 		String caseExprStr;
@@ -181,6 +184,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		}
 		altBGArrTemplate.add("tempExprs", tempExprs);
 		altBGArrTemplate.add("constants", constants);
+		altBGArrTemplate.add("altCnt", _altCnt);
 		//------------------------------------------------------
 		
 		/*
@@ -286,6 +290,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		if (guards.length > 0) {
 			altGuardArrTemplate.add("guards", guards);
+			altGuardArrTemplate.add("altCnt", _altCnt);
 		}
 
 		//--------------------
@@ -308,6 +313,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String altName = globalize("alt", false);
 		_gLocals.add("PJAlt " + altName);
 		template.add("name", altName);
+
+		template.add("altCnt", _altCnt);
+		_altCnt++;
 
 		State.set(State.ALT, oldAlt);
 
@@ -340,6 +348,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitArrayType(ArrayType at) {
 		Log.log(at.line + ": Visiting an ArrayType!");
+		System.out.println("at.typeName():" + at.typeName());
+
+		System.out.println("depth:" + at.getDepth());
+
 		String baseType = (String) at.baseType().visit(this);
 		return (T) (baseType + "[]");
 	}
@@ -383,9 +395,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitChannelEndExpr(ChannelEndExpr ce) {
 		Log.log(ce.line + ": Visiting a Channel End Expression!");
-		//TODO: Figure out what else could be in a ChannelEndExpr.
 		String channel = (String) ce.channel().visit(this);
-		
 		return (T) channel;
 	}
 
@@ -599,6 +609,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		template.add("typeDecls", typeDeclsStr);
 		template.add("packageName", this.originalFilename);
+		
+		String home = System.getProperty("user.home");
+		
+		System.out.println("home:" + home);
+
+//		String dir = home + File.separator + workdir;
+//		dir = dir.substring(1);
+//		dir = dir.replace("/", ".");
+//		dir = dir.substring(0, dir.length()-1);
+//		template.add("packageName", dir);
+//		template.add("classname", this.originalFilename);
 
 		/*
 		 * Finally write the output to a file
@@ -683,23 +704,19 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		ST template = null;
 		
 		Type bt = ne.baseType();
-		if (bt.isChannelType() || bt.isChannelEndType()
-				//TODO Records cannot be instantiated as we would need to give params. 
-				|| (bt.isNamedType() && (isProtocolType((NamedType)bt)))) {//|| isRecordType((NamedType)bt)))) {
+		if (bt.isChannelType() || bt.isChannelEndType() || (bt.isNamedType() && (isProtocolType((NamedType)bt)))) {
 			template = group.getInstanceOf("NewArrayIntializedElements");
 		} else {
 			template = group.getInstanceOf("NewArray");
 		}
 
 		String myType = (String) ne.baseType().visit(this);
-		Sequence<Expression> sizeExp = ne.dimsExpr();
-
-		// TODO: Expand to n-dimensional arrays
-		String[] sizeString = (String[]) sizeExp.visit(this);
-
+		Sequence<Expression> dimsExpr = ne.dimsExpr();
+		String[] dims = (String[]) dimsExpr.visit(this);
+		
 		template.add("left", left);
 		template.add("type", myType);
-		template.add("size", sizeString[0]);
+		template.add("dims", dims);
 
 		return (T) template.render();
 	}
@@ -714,7 +731,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 	    ST template = null;
 	    ProcTypeDecl pd = in.targetProc;
-	    String qualifiedPkg = getQualifiedPkg(pd, invocationProcName);
+	    String qualifiedPkg = getQualifiedPkg(pd);
 	    String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
 
 		List<String> paramLst = new ArrayList<String>();
@@ -724,20 +741,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		/*
 		 * For any invocation of yielding proc that's not inside
 		 * par block, we will, as inefficient as it, wrap it in
-		 * a par that has single exprstat. By cheating this way,
-		 * we are able to make all recursions work out of the box
-		 * at the expense of spawning new process for each recursive
-		 * call. There is a better way of doing it by wrapping all
-		 * recursive calls in a procedure block and running them in
-		 * the same thread as the caller process. Which also means
-		 * that all the procedure has to yield on the same 'ready' 
-		 * flag of the caller process. It's a bit tricky. So, if you 
-		 * are the next guy doing this, it is onto you. :P 
+		 * a par that has single exprstat.
 		 */
-//		if (yields && !(State.is(State.PAR_BLOCK) || State.is(State.PARFOR)) ) {
-//			return (new ParBlock(new Sequence(new ExprStat(in)), new Sequence())).visit(this);
-//		}
-		
 		if (yields && invocationWrapper != INV_WRAP_PAR && invocationWrapper != INV_WRAP_PARFOR) {
 			return (new ParBlock(new Sequence(new ExprStat(in)), new Sequence())).visit(this);
 		}
@@ -807,17 +812,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("procParams", paramLst);
 		
 		if (invocationWrapper == INV_WRAP_PAR) {
-//			template.add("par", State.is(State.PAR_BLOCK));
 			template.add("par", true);
 		} else if (invocationWrapper == INV_WRAP_PARFOR) {
-//			template.add("parfor", State.is(State.PARFOR));
 			template.add("parfor", true);
 		}
 
 		template.add("parName", _parName);
-		
 		template.add("barriers", barriers);
-		
 		
 		/*
 		 * If target proc (pd) is a yielding proc, ie. it is a process,
@@ -829,9 +830,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (left != null || !paramBlocks.isEmpty()) {
 
 			String invocationBlock = template.render();
-			//TODO change name of template as this is true for any invocation with
-			//another invocation as params.
-			template = group.getInstanceOf("InvocationWithChannelReadExprParam");
+			template = group.getInstanceOf("InvocationWithInvocationParameter");
 			
 			template.add("paramBlocks", paramBlocks);
 			template.add("left", left);
@@ -871,14 +870,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (myType.isTimerType()) {
 			/*
 			 * Possibility One: Timer
-			 * 
-			 * NOTE: for the moment, timer read expr is of type ChannelReadExpr
-			 * just because they are very similar. But, if need be, we can have
-			 * TimerReadExpr and its own visitor in the future.
 			 */
 			template = group.getInstanceOf("TimerReadExpr");
 			template.add("left", left);
-//			template.add("timer", channelNameExpr.visit(this));
 			return (T) template.render();
 		} else { 
 			Type baseType = null;
@@ -901,53 +895,46 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				baseType = chanType.baseType();
 			}
 
-//			if (baseType.isIntegerType() || baseType.isBooleanType() || baseType.isProtocolType()) {
+			//EXTENDED RENDEZVOUS
+			Block b = cr.extRV();
+			String[] extRv = null;
+			if (b != null) {
+				//FIXME looks like ill need to turn off altGuard flag for
+				//this block as extRv could have read from the same channel
+				//again.
+				boolean oldAltGuard = State.set(State.ALT_GUARD, false);
+				extRv = (String[])b.visit(this);
+//				isAltGuard = oldAltGuard;
+				State.set(State.ALT_GUARD, oldAltGuard);
+			}
+			//-------
+
+			if (extRv == null) {
+				template = group.getInstanceOf("ChannelReadExpr");
+			} else {
+				template = group.getInstanceOf("ChannelReadExprExtRv");
+				template.add("extRv", extRv);
+			}
 				
-				//EXTENDED RENDEZVOUS
-				Block b = cr.extRV();
-				String[] extRv = null;
-				if (b != null) {
-					//FIXME looks like ill need to turn off altGuard flag for
-					//this block as extRv could have read from the same channel
-					//again.
-					boolean oldAltGuard = State.set(State.ALT_GUARD, false);
-					extRv = (String[])b.visit(this);
-//					isAltGuard = oldAltGuard;
-					State.set(State.ALT_GUARD, oldAltGuard);
+			//Since channel read in Alts are handled differently, i.e. w/o
+			//yields in the generated code but rather in Alt class,
+			//we don't want to increment and add jumpCnts to runlabel switch.
+			if (!(State.is(State.ALT) && State.is(State.ALT_GUARD))) {
+				/*
+			     * Adding switch cases for resumption.
+			     */
+				for (int i=0; i<2; i++) {
+					_switchCases.add(getLookupSwitchCase(_jumpCnt));	
+					template.add("jmp" + i, _jumpCnt);
+					_jumpCnt++;
 				}
-				//-------
+			}
 
-				if (extRv == null) {
-					template = group.getInstanceOf("ChannelReadExpr");
-				} else {
-					template = group.getInstanceOf("ChannelReadExprExtRv");
-					template.add("extRv", extRv);
-				}
-				
-				//Since channel read in Alts are handled differently, i.e. w/o
-				//yields in the generated code but rather in Alt class,
-				//we don't want to increment and add jumpCnts to runlabel switch.
-				if (!(State.is(State.ALT) && State.is(State.ALT_GUARD))) {
-					/*
-				     * Adding switch cases for resumption.
-				     */
-					for (int i=0; i<2; i++) {
-						_switchCases.add(getLookupSwitchCase(_jumpCnt));	
-						template.add("jmp" + i, _jumpCnt);
-						_jumpCnt++;
-					}
-				}
+			template.add("channel", channel);
+			template.add("left", left);
+			//FIXME I might not even need _inAlt here.
+			template.add("alt", ( State.is(State.ALT) && State.is(State.ALT_GUARD)));
 
-				template.add("channel", channel);
-				template.add("left", left);
-				//FIXME I might not even need _inAlt here.
-				template.add("alt", ( State.is(State.ALT) && State.is(State.ALT_GUARD)));
-
-//			} else {
-//				String errorMsg = "Unsupported type: %s for Channel!";
-//				String error = String.format(errorMsg, baseType.toString());
-//				Error.error(cr, error);
-//			}
 		}
 
 		return (T)template.render();
@@ -981,7 +968,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String right = (String) be.right().visit(this);
 		String op = (String) be.opString();
 
-		// TODO: Add support for string concatanation here.
+		// TODO: Add support for string concatenation here.
 
 		template.add("left", left);
 		template.add("right", right);
@@ -1006,7 +993,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitCastExpr(CastExpr ce) {
 		Log.log(ce.line + ": Visiting a Cast Expression");
 		ST template = group.getInstanceOf("CastExpr");
-		// No node for type get actual string.
 		String ct = ce.type().typeName();
 		String expr = (String) ce.expr().visit(this);
 
@@ -1123,20 +1109,16 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 					System.out.println("normal invocation1");
 				} else {
 					rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, b)).visit(this);
-					System.out.println("anonymous1");
 				}
 			} else if (fs.stats() instanceof ExprStat) {
 				ExprStat es = (ExprStat) fs.stats();
 				if (es.expr() instanceof Invocation) {
 					rendered = (String) createInvocation(null, (Invocation) es.expr(), barriers, false, INV_WRAP_PARFOR);
-					System.out.println("normal invocation2");
 				} else {
 					rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, new Block(new Sequence(fs.stats())))).visit(this);
-					System.out.println("anonymous2");
 				}
 			} else {
 				rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, new Block(new Sequence(fs.stats())))).visit(this);
-					System.out.println("anonymous3");
 			}
 			
 			//TODO: fix for empty forstat block
@@ -1173,7 +1155,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			 * Depending whether there is curly brackets (block) it
 			 * may return an array, or maybe just a single object. 
 			 */
-			Object stats = fs.stats().visit(this);
+			Statement st = fs.stats();
+			Object stats = null;
+			if (st != null) {
+				stats = fs.stats().visit(this);
+			}
 
 			if (stats instanceof String[])
 				template.add("stats", (String[]) stats);
@@ -1507,22 +1493,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	/**
-	 * Auxillary function, given a name it will create the appropriate protoype needed by the equivalent c program. This
-	 * is used to create all the function protoypes created from a ParBlock. void <name>(Workspace <globalWsName>)
-	 * 
-	 * @param name
-	 *            : Name of function to create.
-	 * @return string of our function.
-	 */
-	private String getSimplePrototypeString(String name) {
-		ST template = group.getInstanceOf("Prototype");
-
-		template.add("name", name);
-
-		return template.render();
-	}
-
-	/**
 	 * PrimitiveLiteral
 	 */
 	public T visitPrimitiveLiteral(PrimitiveLiteral li) {
@@ -1613,6 +1583,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			this._jumpCnt = 1;
 			this._gvarCnt = 0;
 			this._parCnt = 0;
+			this._altCnt = 1;
 			this._gFormalNamesMap = new HashMap<String, String>();
 			this._gLocalNamesMap = new HashMap<String, String>();
 			this._gLocals = new ArrayList<String>();
@@ -1620,7 +1591,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 			State.set(State.FOREVER_LOOP, false);
 
-			String qualifiedPkg = getQualifiedPkg(pd, null);
+			String qualifiedPkg = getQualifiedPkg(pd);
 			String qualifiedProc = qualifiedPkg + "." + _currentProcName;
 
 			String returnType = (String) pd.returnType().visit(this);
@@ -1675,7 +1646,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) rendered;
 	}
 	
-	//--------------------------------------------------------------------------
 	/**
 	 * Protocol Literal
 	 */
@@ -1786,7 +1756,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 	
 	public T visitRecordMember(RecordMember rm) {
-		Log.log(rm.line + ": Visiting a RecordMember");
+		Log.log(rm.line + ": Visiting a RecordMember (" + rm.type().typeName() + " " 
+				+ rm.name().getname() + ")");
+		
+		
 		ST template = group.getInstanceOf("RecordMember");
 
 		_gRecMemNames.add((String)rm.name().visit(this));
@@ -1972,11 +1945,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		template.add("barrier", st.barrier().visit(this));
 		template.add("jmp", _jumpCnt);
 
-		//FIXME: maybe create a method for this and do the 
-		//adding to different lists based on boolean in that
-		//method. also look into if adding it to the same list
-		//always but swap the lists in different nodes as needed
-		//rather than using different lists.
 		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
 		_jumpCnt++;
 
@@ -2028,7 +1996,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(ts.line + ": Visiting a TimeoutStat");
 		ST template = group.getInstanceOf("TimeoutStat");
 		
-		//FIXME I might not even need _inAlt here.
 		template.add("alt", ( State.is(State.ALT) && State.is(State.ALT_GUARD)));;
 		template.add("name", ts.timer().visit(this));
 		template.add("delay", ts.delay().visit(this));
@@ -2088,7 +2055,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 */
 		if (expr instanceof ChannelReadExpr) {
 			/*
-			 * TODO 03.25.2016 why is this commented cabel?
+			 * TODO 03.25.2016 why is this commented?
 			 * remove this if not needed coz seems like this might
 			 * ignore channel read expr.
 			 */
@@ -2201,47 +2168,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return template.render();
 	}
 	
-	/*
-	 * FIXME: for now this only works for invocations
-	 * of target found in the same file. We haven't considered
-	 * imported file invocations.
-	 * 
-	 * Atleast for lib imports, e.g: include.JVM.std.io, it
-	 * seems like if we keep the last two pkgs, that is enough.
-	 * (though this too has not been implemented below.)
-	 * 
-	 * But need to make sure it works always.
-	 * 
-	 * And for goodness sake, find a better way to do this.
-	 */
-	public String getQualifiedPkg(ProcTypeDecl pd, String invName) {
+	public String getQualifiedPkg(ProcTypeDecl pd) {
 		String myPkg = pd.myPackage;
-		StringBuilder qualifiedPkg = new StringBuilder();
-
-		String startPkg = null;
-		 if("println".equals(invName)){
-			 startPkg = "std";
-		 } else if("initRandom".equals(invName) || "longRandom".equals(invName)) {
-			 startPkg = "std.Random";
-			 return startPkg;
-		 } else {
-			 startPkg = this.originalFilename;
-		 }
-		 
-		String[] tokens = myPkg.split("\\.");
-		boolean pk_start = false;
-		for (int i = 0; i < tokens.length; i++) {
-			if (tokens[i].equals(startPkg))
-				pk_start = true;
-
-			if (pk_start) {
-				qualifiedPkg.append(tokens[i]);
-
-				if (i < tokens.length - 1)
-					qualifiedPkg.append(".");
-			}
+		
+		if (myPkg.contains(this.originalFilename)) { //invocation from the same file
+			return originalFilename;
+		} else { //invocation from imported file
+			//for now lets assume that all imports are done from 
+			//include.JVM. So, get everything after that. Re-visit if this changes.
+			int i = myPkg.indexOf(".", (myPkg.indexOf(".")+1));
+			return myPkg.substring(i+1);
 		}
-		return qualifiedPkg.toString();
 	}
 
 	/**
@@ -2298,30 +2235,70 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Writer writer = null;
 
 		try {
-			String basePath = "/Users/matt/Dropbox/ProcessJ-Compiler/src/Generated/";
-			File pkg = new File(basePath + this.originalFilename);
-			if (!pkg.exists())
-				pkg.mkdir();
+			String home = System.getProperty("user.home");
 
-			FileOutputStream fos = new FileOutputStream(pkg.getAbsolutePath()
-					+ File.separator + filename + ".java");
+			File dir = new File(home + File.separator + workdir);
+			if (!dir.exists())
+				dir.mkdir();
+
+			System.out.println(dir.getAbsolutePath() + this.originalFilename);		
+
+//			File pkg = new File(dir.getAbsoluteFile() + File.separator + this.originalFilename);
+
+			String javafile = dir.getAbsolutePath() + File.separator + filename + ".java";
+			System.out.println("JavaFile=" + javafile);
+
+			FileOutputStream fos = new FileOutputStream(javafile);
+			
+			
+			//-------old way
+//			String basePath = "/Users/cabel/Dropbox/github/ProcessJ-Compiler/src/Generated/";
+//			File pkg = new File(basePath + this.originalFilename);
+//			if (!pkg.exists())
+//				pkg.mkdir();
+//
+//			FileOutputStream fos = new FileOutputStream(pkg.getAbsolutePath()
+//					+ File.separator + filename + ".java");
+			
+			//-------------------
+			
+			
 			writer = new BufferedWriter(new OutputStreamWriter(fos, "utf-8"));
 			writer.write(finalOutput);
 			
 			
 			//TODO try compiling here?
+	        
+			
+			
+//			Runtime rt = Runtime.getRuntime();
+//	        Process cat = rt.exec("javac " + javafile);
+//	        BufferedInputStream catOutput= new BufferedInputStream(cat.getInputStream());
+//	        int read = 0;
+//	        byte[] output = new byte[1024];
+//	        while ((read = catOutput.read(output)) != -1) {
+//	            System.out.println(output[read]);
+//	        }
+	            
+	            
 //			JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-//			
-//			if (compiler == null) {
-//			    throw new Exception("JDK required (running inside of JRE)");
-//			  }
-//			
-//		       StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
+//		    DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
 //
-//		       Iterable<? extends JavaFileObject> compilationUnits1 =
-//		           fileManager.getJavaFileObjectsFromFiles(Arrays.asList(files1));
-//		       compiler.getTask(null, fileManager, null, null, null, compilationUnits1).call();
-//		       
+//		    StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
+//
+//		    File[] files1 = new File[] {new File(javafile)};
+//	        Iterable<? extends JavaFileObject> compilationUnits1 = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(files1));
+//	       boolean success = compiler.getTask(null, fileManager, null, null, null, compilationUnits1).call();
+//	       
+//	       fileManager.flush();
+//
+//	       if (success)
+//	    	   System.out.println("compilation success!");
+//	       else
+//	    	   System.out.println("compilation failed!");
+//	       
+//	       fileManager.close();
+			
 		} catch (IOException ex) {
 			Log.log("IOException: Could not write to file for some reason :/");
 		} finally {

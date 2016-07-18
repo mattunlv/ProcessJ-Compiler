@@ -1,0 +1,18 @@
+import std.io;
+
+proc void foo(int j) [yield=true]{
+	println("foo: " + j);
+}
+
+proc void main(string[] args)[yield=true]{
+
+	par for(int i =0 ; i<10; i++) {
+
+		println(i);
+
+		par for (int j=0; j <5; j++) {
+			foo(j);
+		}
+
+	}
+}

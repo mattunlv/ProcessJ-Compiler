@@ -8,6 +8,25 @@ record K extends P {
 	//foo foo;
 }
 
+record Transaction {
+	int j;
+}
+
+public record Client {
+   //string full_name;
+   //string address1, city;
+   //int zip;
+   //Transaction[][][][] transactions; 
+   //string[][][] str;
+   //int[][] temp;
+   double[] temp1;
+}
+
 proc void foo() {
 	P myRecord = new P{1, 2, 3};
+	int[] temp;
+	Client client[];
+	string[][][] str;
 } 
+
+

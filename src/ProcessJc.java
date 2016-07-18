@@ -1,12 +1,13 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 
 import AST.AST;
 import AST.Compilation;
 import CodeGeneratorC.CodeGeneratorC;
 import CodeGeneratorJava.CodeGeneratorJava;
-import Instrument.Instrumenter;
 import Library.Library;
 import Parser.parser;
 import Printers.ParseTreePrinter;
@@ -202,7 +203,9 @@ public class ProcessJc {
 		String[] tokens = filename.split(File.separator);
 		String n = tokens[tokens.length - 1];
 		String name = n.substring(0, n.lastIndexOf("."));
+		
 		generator.setOriginalFilename(name);
+		generator.workdir = getWorkDirConfig();
 
 		c.visit(generator);
 
@@ -217,6 +220,35 @@ public class ProcessJc {
 //		}
 
 		return;
+	}
+
+	
+	public static String getWorkDirConfig() {
+		String home = System.getProperty("user.home");
+		String configPath = home + "/.pjconfig";
+		File in = new File(configPath);
+		String dir = null;
+
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(in)); 
+			
+			String line;
+			while((line = br.readLine()) != null) {
+				String[] tokens = line.split("=");
+				if (tokens.length != 2)
+					continue;
+
+				for (int i=0; i<tokens.length; i++) {
+					if ("workingdir".equals(tokens[0])) {
+						dir = tokens[1];
+						break;
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return dir;	
 	}
 
 	public static void displayFile(String name) {

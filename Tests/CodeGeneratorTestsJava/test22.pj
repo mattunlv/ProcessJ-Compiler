@@ -1,0 +1,9 @@
+proc void f(int x) [yield=true]{ }
+proc void g(int y) [yield=true]{ }
+
+proc void main() [yield=true]{
+ par {
+   f(8);
+   g(9);
+ }
+}

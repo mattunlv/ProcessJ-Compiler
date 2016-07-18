@@ -3,7 +3,8 @@ import std.io;
 proc void foo(chan<int>.read c1r, chan<int>.write c2w)[yield=true]{
 	int x;
 	par {
-		x = c1r.read({println("foo.x="+x);});	
+		//x = c1r.read({println("foo.x="+x);});	
+		x = c1r.read();	
 		c2w.write(10);
 	}
 }
@@ -11,14 +12,17 @@ proc void foo(chan<int>.read c1r, chan<int>.write c2w)[yield=true]{
 proc void bar(chan<int>.write c1w, chan<int>.read c2r)[yield=true]{
 	int y;
 	par {
-		y = c2r.read({println("bar.y="+y);});	
+		//y = c2r.read({println("bar.y="+y);});	
+		y = c2r.read();	
 		c1w.write(20);
 	}
 }
 
 proc void main(string[] args)[yield=true]{
 
-	par for (int i=0; i<10; i++) {
+	//int N = args[0];	
+	//par for (int i=0; i<N; i++) {
+	par for (int i=0; i<100000; i++) {
 		chan<int> c1;	
 		chan<int> c2;
 		par {
