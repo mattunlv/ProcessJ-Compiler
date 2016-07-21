@@ -1,17 +1,15 @@
-# ProcessJ Compiler.
+# The ProcessJ Compiler
 
 ## Description
-Compiler for ProcessJ. A process-oriented programming language.
+A compiler for ProcessJ. A process-oriented programming language featuring familiar Java syntax.
 
-## Install
-From this directory:
-
-1) Make CCSP library needed by C runtime of compiler:
-
+## Installation Instructions
+1) See readmeCCSP.txt
+2) Make CCSP library needed by C runtime of compiler:
    ./buildCCSP.sh
 
-2) Make compiler code:
+2) Make Java compiler code using ant:
    ant
 
-## Run
-   ./pjc -t c fileToMake.pjc
+## Compiling ProcessJ Code
+   ./pjc -t c file.pjc
