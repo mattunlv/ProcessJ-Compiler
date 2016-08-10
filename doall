@@ -52,5 +52,5 @@ filename="${@##*/}" ## $@ is the full path'ed filename of .pj file. we extract j
 just_filename="${filename%.*}" ## now extract just the name of the file
 echo "Main-Class: "$just_filename > $workingdir/META-INF/MANIFEST.MF ## write the manifest file
 
-jar cmvf $workingdir/META-INF/MANIFEST.MF $just_filename.jar $workingdir/*.class ## create the jar file
+jar cmvf $workingdir/META-INF/MANIFEST.MF $workingdir/$just_filename.jar $workingdir/*.class ## create the jar file
 

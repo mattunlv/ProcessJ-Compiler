@@ -264,7 +264,7 @@ InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, bar
 <endif>
 >>
 
-InvocationWithInvocationParameter(left, right, paramBlocks) ::= <<
+InvocationWithInvocationParamType(left, right, paramBlocks) ::= <<
 <if(paramBlocks)><paramBlocks; separator=";\n\n">;<endif>
 <if(left)><left>=<endif><right>
 >>

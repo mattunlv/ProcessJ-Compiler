@@ -26,8 +26,6 @@ proc void main(string[] args)[yield=true] {
     int[] temp;
     int mandelbrot[][] = new int[disp_height][disp_width];
    
-    chan<int> channels[] = new chan<int>[5];
-    
     double real_min = -0.7801785714285;
     double real_max = -0.7676785714285;
     double imag_min = -0.1279296875000;

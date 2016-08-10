@@ -115,6 +115,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	//used in visit recordaccess to do correct castings.
     private HashMap<String,String> protocolTagsSwitchedOn = new HashMap<String,String>();
 
+    private boolean addTrueMethod = false;
 	
 	private final String MAIN_SIGNATURE = "([T;)V";
 
@@ -605,7 +606,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		 * Adding proc for while(true)loops:
 		 * proc boolean getTrue() { return true; }
 		 */
-		typeDeclsStr.add((String)(((ST)group.getInstanceOf("GetTrue")).render()));
+		if (this.addTrueMethod) {
+			typeDeclsStr.add((String)(((ST)group.getInstanceOf("GetTrue")).render()));
+		}
 
 		template.add("typeDecls", typeDeclsStr);
 		template.add("packageName", this.originalFilename);
@@ -830,7 +833,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (left != null || !paramBlocks.isEmpty()) {
 
 			String invocationBlock = template.render();
-			template = group.getInstanceOf("InvocationWithInvocationParameter");
+			template = group.getInstanceOf("InvocationWithInvocationParamType");
 			
 			template.add("paramBlocks", paramBlocks);
 			template.add("left", left);
@@ -2087,6 +2090,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (ws.foreverLoop) {
 			State.set(State.FOREVER_LOOP, true);
 			expr = "getTrue()";
+
+			this.addTrueMethod = true;
 		}
 
 		Object stats = ws.stat().visit(this);
@@ -2243,61 +2248,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 			System.out.println(dir.getAbsolutePath() + this.originalFilename);		
 
-//			File pkg = new File(dir.getAbsoluteFile() + File.separator + this.originalFilename);
-
 			String javafile = dir.getAbsolutePath() + File.separator + filename + ".java";
 			System.out.println("JavaFile=" + javafile);
 
 			FileOutputStream fos = new FileOutputStream(javafile);
 			
-			
-			//-------old way
-//			String basePath = "/Users/cabel/Dropbox/github/ProcessJ-Compiler/src/Generated/";
-//			File pkg = new File(basePath + this.originalFilename);
-//			if (!pkg.exists())
-//				pkg.mkdir();
-//
-//			FileOutputStream fos = new FileOutputStream(pkg.getAbsolutePath()
-//					+ File.separator + filename + ".java");
-			
-			//-------------------
-			
-			
 			writer = new BufferedWriter(new OutputStreamWriter(fos, "utf-8"));
 			writer.write(finalOutput);
-			
-			
-			//TODO try compiling here?
-	        
-			
-			
-//			Runtime rt = Runtime.getRuntime();
-//	        Process cat = rt.exec("javac " + javafile);
-//	        BufferedInputStream catOutput= new BufferedInputStream(cat.getInputStream());
-//	        int read = 0;
-//	        byte[] output = new byte[1024];
-//	        while ((read = catOutput.read(output)) != -1) {
-//	            System.out.println(output[read]);
-//	        }
-	            
-	            
-//			JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-//		    DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-//
-//		    StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
-//
-//		    File[] files1 = new File[] {new File(javafile)};
-//	        Iterable<? extends JavaFileObject> compilationUnits1 = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(files1));
-//	       boolean success = compiler.getTask(null, fileManager, null, null, null, compilationUnits1).call();
-//	       
-//	       fileManager.flush();
-//
-//	       if (success)
-//	    	   System.out.println("compilation success!");
-//	       else
-//	    	   System.out.println("compilation failed!");
-//	       
-//	       fileManager.close();
 			
 		} catch (IOException ex) {
 			Log.log("IOException: Could not write to file for some reason :/");

@@ -22,14 +22,17 @@ proc void main(string[] args)[yield=true]{
 
 	//int N = args[0];	
 	//par for (int i=0; i<N; i++) {
-	par for (int i=0; i<100000; i++) {
+	println("starting to schedule");
+
+	println("loop starting....");
+	par for (int i=0; i<10; i++) {
+		println("i=" + i);
 		chan<int> c1;	
 		chan<int> c2;
 		par {
 			foo(c1.read, c2.write);	
 			bar(c1.write, c2.read);	
 		}
-	
-	
 	}
+	std.io.println("completed scheduling all processes");
 }
