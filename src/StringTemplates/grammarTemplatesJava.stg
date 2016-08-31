@@ -178,7 +178,7 @@ ClaimStat(stats, channels, ldstr, jmp) ::= <<
 <if(ldstr)><ldstr; separator=";\n">;<endif>
 label(<jmp>);
 <if(channels)>if(<channels:{c | !<c>.claim() }; separator = "||">) {
-	<channels:{c | <c>.unclaim()}; separator = ";\n">;
+	<!<channels:{c | <c>.unclaim()}; separator = ";\n">;!>
 	this.runLabel = <jmp>;
 	yield();
 }
