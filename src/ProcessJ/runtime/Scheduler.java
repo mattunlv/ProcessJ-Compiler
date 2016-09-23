@@ -57,6 +57,7 @@ public class Scheduler extends Thread {
         rq.insert(p);
       }
 
+//      System.out.println("rq=" + rq.size() + " inactivePool=" + inactivePool.getCount() + " timerqueue=" + tq.size());
       if (inactivePool.getCount() == rq.size() && rq.size() > 0 && tq.isEmpty()) {
         System.err.println("No processes ready to run. System is deadlocked");
         System.err.println("remaining processes:" + rq.size());
@@ -74,6 +75,7 @@ public class Scheduler extends Thread {
         System.exit(1);
       }
     }
+
     tq.kill();
 
     System.err.println("[Scheduler] Total Context Switches: " + contextSwitches);

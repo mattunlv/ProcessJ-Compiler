@@ -1,9 +1,23 @@
 package ProcessJ.runtime;
-
 import java.util.ArrayList;
 import java.util.List;
 
+/* JVMCSP is maintained at the University of Nevada Las Vegas.
+ * 
+ * For more information please contact matt.pedersen@unlv.edu
+ * or see processj.org
+ */
+
 /**
+ * The runtime representation of a ProcessJ 'barrier'.
+ *
+ * @author Cabel Shrestha
+ * @version 1.0
+ * @since 2016-05-01
+ */
+
+
+/*
  * ProcessJ code will have something of this sort:
  * 
  * enroll(b):                                                                                                                     
@@ -14,48 +28,59 @@ import java.util.List;
  *                                                                                                                                
  * b.decrement();                                                                                                                
  * yield(......., X);                                                                                                            
- *X: ...                                                                                                                           
-*/
+ * X: ...                                                                                                                           
+ */
 public class PJBarrier {
-	
-	List<PJProcess> sycned = new ArrayList<PJProcess>();
-	public int enrolled = 0;
 
-	/*
-	 * Any process that declares a barrier
-	 * is itself enrolled on it; so count is 1.
-	 */
-	public PJBarrier() {
-		this.enrolled = 1;
-	}
+    /**
+     * List of processes that have synced on the barrier.
+     */
+    public List<PJProcess> sycned = new ArrayList<PJProcess>();
+    /*
+     * The number of processes enrolled on the barrier.
+     */
+    public int enrolled = 0;
+    
+    /**
+     * Constructor. Any process that declares a barrier
+     * is itself enrolled on it; so enrolled count starts at 1.
+     */
+    public PJBarrier() {
+	this.enrolled = 1;
+    }
 
-	public synchronized void enroll(int m) {
-		this.enrolled = this.enrolled + m - 1;
-	}
-	
-	public synchronized void resign() {
-		/*
-		 * So that last guy doesn't decrement
-		 * the count. We want the declarer
-		 * to still be enrolled.
-		 */
-		System.out.println("resign being called!!!");
-		if (this.enrolled > 1) { 
-			this.enrolled = this.enrolled - 1;
-		}
-	}
+    /**
+     * Enroll on the barrier. (m-1) will be enrolled.
+     * @param m the number of processes to enroll.
+     */
+    public synchronized void enroll(int m) {
+	this.enrolled = this.enrolled + m - 1;
+    }
 
-	public synchronized void sync(PJProcess process) {
-//		System.out.println("a process is syncing!");
-		process.setNotReady();
-		sycned.add(process);
-//		System.out.println("pool.size=" + pool.size() + " enrolled=" + enrolled);
-		if (sycned.size() == enrolled) {
-			for(PJProcess p : sycned) {
-				p.setReady();
-			}
-//			System.out.println("clearning pool after all synced!!");
-			sycned.clear();
-		}
+    /**
+     * Resign from the barrier.
+     */
+    public synchronized void resign() {
+	if (this.enrolled > 1) { 
+	    this.enrolled = this.enrolled - 1;
 	}
+    }
+
+    /**
+     * Synchronizes on the barrier.
+     *
+     * @param process A reference to the process syncing - 
+     * this is needed to set all processes ready when everyone
+     * has synced
+     */
+    public synchronized void sync(PJProcess process) {
+	process.setNotReady();
+	sycned.add(process);
+	if (sycned.size() == enrolled) {
+	    for(PJProcess p : sycned) {
+		p.setReady();
+	    }
+	    sycned.clear();
+	}
+    }
 }

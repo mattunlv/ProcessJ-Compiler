@@ -2,6 +2,20 @@ package ProcessJ.runtime;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
+
+/* JVMCSP is maintained at the University of Nevada Las Vegas.
+ * 
+ * For more information please contact matt.pedersen@unlv.edu
+ * or see processj.org
+ */
+
+/**
+ * The runtime representation of the ProcessJ 'timer' type.
+ *
+ * @author Cabel Shrestha
+ * @version 1.0
+ * @since 2016-05-01
+ */
 public class PJTimer implements Delayed {
 	private PJProcess process;
 
@@ -11,7 +25,7 @@ public class PJTimer implements Delayed {
 	public boolean expired = false;
 
 	public final long timeout;
-
+	
 	public PJTimer() {
 		this.timeout = 0L;
 	}
@@ -24,7 +38,9 @@ public class PJTimer implements Delayed {
 	public void start() throws InterruptedException {
 		this.delay = System.currentTimeMillis() + timeout;
 		PJProcess.scheduler.insertTimer(this);
+
 		started = true;
+		System.out.println("Timer started");
 	}
 
 	public void expire() {
@@ -49,21 +65,31 @@ public class PJTimer implements Delayed {
 	
 	@Override
 	public long getDelay(TimeUnit unit) {
-		//FIXME DelayQueue document says getDelay return values should be
-		//TimeUnits.NANOSECONDS but we are using mili. verify that we will not 
-		//run into any issues.
 		long diff = delay - System.currentTimeMillis();
-		return unit.convert(diff, TimeUnit.MILLISECONDS);
+		
+		long retLong = unit.convert(diff, TimeUnit.MILLISECONDS);
+
+		System.out.println("timer.getDelay=" + retLong);
+		return retLong;
+//		return unit.convert(diff, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
 	public int compareTo(Delayed o) {
+		int retInt = 0;
 		if (this.delay < ((PJTimer) o).delay) {
-			return -1;
+//			return -1;
+			retInt = -1;
 		}
 		if (this.delay > ((PJTimer) o).delay) {
-			return 1;
+//			return 1;
+			retInt = 1;
 		}
-		return 0;
+//		System.out.println("timer.compare=" + retInt);
+//		return 0;
+//		return retInt;
+		int retVal = Long.valueOf(this.delay).compareTo(((PJTimer)o).delay);
+		System.out.println("-----timer.compare=" + retVal);
+		return retVal;
 	}
 }
