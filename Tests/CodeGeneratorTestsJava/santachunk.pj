@@ -154,9 +154,8 @@ proc void syncronize (shared chan<boolean>.write a,
  claim (b)
    b.write(true);
 }
-
 /*
-* cds verified: looks much like 4.occ
+* cds verfied: looks much like 4.occ
 */
 proc void reindeer (const int id,//ok
         const long seed,//ok
@@ -172,9 +171,6 @@ proc void reindeer (const int id,//ok
 	while (true) {
   		claim (report)
       		report.write(new Reindeer_msg{ holiday: id });
-  		// wait, my_seed := random (...)
-  		//t = tim.read();   
-  		//tim.timeout(1000);
   		
   		random_wait(wait, my_seed);
   		
@@ -349,7 +345,7 @@ proc void random_wait(long max_wait, long seed)[yield=true] {
 	long wait;
 	initRandom(seed);
 	wait = longRandom();
-	t.timeout(wait);
+	t.timeout(wait % max_wait);
 }
 
 proc void main(string[] args)[yield=true] {
