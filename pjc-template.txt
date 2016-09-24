@@ -1,0 +1,65 @@
+#!/bin/bash
+INSTALL_DIR="<<INSTALL_DIR>>"
+if [ $# -eq 0 ] ; then 
+    java -cp $INSTALL_DIR/bin:$INSTALL_DIR/src/Utilities/java_cup_runtime.jar:$INSTALL_DIR/src/Utilities/ST-4.0.7.jar:$INSTALL_DIR/src/Utilities/asm-all-3.3.1.jar:$INSTALL_DIR/lib/JVM:. ProcessJc 
+    exit
+fi
+
+homedir=~
+eval homedir=$homedir
+
+CONFIG_FILE=".pjconfig"
+if ! [ -e "$homedir/$CONFIG_FILE" ] ; then
+  echo "No ProcessJ configuration file found. Should be in '$homedir/$CONFIG_FILE'"
+  exit
+fi
+CONFIG_FILE="$homedir/$CONFIG_FILE"
+
+if ! grep "workingdir" "$CONFIG_FILE" > /dev/null ; then
+  echo "No working directory specified in '$CONFIG_FILE'."
+  echo "File must contain a line of the form 'workingdir=...'"
+  exit
+fi
+
+workingdir="$homedir/`grep workingdir $CONFIG_FILE | cut -d '=' -f 2 | sed 's/ //g'`"
+echo "the working directory is $workingdir"
+
+if ! [ -d "$workingdir" ] ; then
+  echo "Working directory '$workingdir' missing. "
+  read -r -p "Make '$workingdir'? [y/n] " response
+  case $response in
+  [yY])
+    mkdir $workingdir
+    chmod 755 $workingdir
+    ;;
+  *)
+    echo "Working directory not created"
+    exit
+    ;;
+  esac
+fi
+
+## clean the working directory
+rm -i -rf $workingdir/* > /dev/null
+
+## compile .pj code using ProcessJ compiler and generate the .java file in the working directory.
+java -cp $INSTALL_DIR/bin:$INSTALL_DIR/src/Utilities/java_cup_runtime.jar:$INSTALL_DIR/src/Utilities/ST-4.0.7.jar:$INSTALL_DIR/src/Utilities/asm-all-3.3.1.jar:$INSTALL_DIR/lib/JVM:. ProcessJc -t JVM $@
+
+## compile the .java file using Java compiler
+javac -classpath $INSTALL_DIR/bin/:$INSTALL_DIR//lib/JVM:. $workingdir/*.java
+
+## instrument the Java classes for resumption
+java -classpath $INSTALL_DIR/bin/:$INSTALL_DIR/src/Utilities/asm-all-3.3.1.jar:. Instrument/Instrumenter $workingdir/.
+
+## let's create an executable jar file now.
+pushd $workingdir
+mkdir META-INF ## create dir for manifest file
+filename="${@##*/}" ## $@ is the full path'ed filename of .pj file. we extract just the file name x.pj
+just_filename="${filename%.*}" ## now extract just the name of the file
+echo "Main-Class: "$just_filename > META-INF/MANIFEST.MF ## write the manifest file
+
+jar cmvf META-INF/MANIFEST.MF $just_filename.jar *.class ## create the jar file
+popd
+
+mv $workingdir/$just_filename.jar .
+
