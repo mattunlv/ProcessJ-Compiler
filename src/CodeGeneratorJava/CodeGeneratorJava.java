@@ -103,6 +103,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private int _altCnt = 1;
 	private String _parName = null;
 	private String _currentProcName = null;
+	boolean isReadingChannelEnd = false;
 
 	private List<String> barriers = new ArrayList<String>();
 	private String _protoTypeDeclName = null;
@@ -113,7 +114,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	private Map<String, String> _gRecordNameMap = new HashMap<String, String>();
 	 // Contains the protocol name and the corresponding tag that the switch label is currently using as constexpr.
 	//used in visit recordaccess to do correct castings.
-    private HashMap<String,String> protocolTagsSwitchedOn = new HashMap<String,String>();
+    private Map<String,String> _protocolTagsSwitchedOn = new HashMap<String,String>();
+
+    private static final int CHAN_READ_END = 1;
+    private static final int CHAN_WRITE_END = 2;
+    private int endType = 0;
+    private Map<String, Integer> _channelEndMap = new HashMap<String, Integer>();
+
 
     private boolean addTrueMethod = false;
 	
@@ -349,10 +356,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitArrayType(ArrayType at) {
 		Log.log(at.line + ": Visiting an ArrayType!");
-		System.out.println("at.typeName():" + at.typeName());
-
-		System.out.println("depth:" + at.getDepth());
-
 		String baseType = (String) at.baseType().visit(this);
 		return (T) (baseType + "[]");
 	}
@@ -396,7 +399,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitChannelEndExpr(ChannelEndExpr ce) {
 		Log.log(ce.line + ": Visiting a Channel End Expression!");
+
 		String channel = (String) ce.channel().visit(this);
+		
+		if (ce.isRead()) {
+            isReadingChannelEnd = true;
+        } else if (ce.isWrite()) {
+            isReadingChannelEnd = false;
+        }
+		
 		return (T) channel;
 	}
 
@@ -418,7 +429,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			maintype = "PJOne2OneChannel";
 		}
 		
-		//Getting the Channe<'basetype'>
+		//Getting the Channel<'basetype'>
 		Type t = ct.baseType();
 		String basetype = null;
 		if (t.isNamedType()) {
@@ -440,6 +451,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		} else {
 			chanEndType = maintype + "<" + basetype + ">";
 		}
+
+		if (ct.isRead()) {
+		    endType = CHAN_READ_END;
+	    } else if (ct.isWrite()) {
+	        endType = CHAN_WRITE_END;
+	    }
+
 		return (T) chanEndType;
 	}
 
@@ -637,9 +655,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	
 	public T visitClaimStat(ClaimStat cs) {
 		Log.log(cs.line + ": Visiting an ClaimStat");
+
+		State.set(State.CLAIMSTAT, true);
+
 		ST template = null;
 		
-		String[] channels = new String[cs.channels().size()];
+		Map<String, Boolean> chanNameToEndType = new HashMap<String, Boolean>();
+
 		String ldStr = null;
 		Sequence<AST> claimExprs = cs.channels();
 		
@@ -648,10 +670,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			if (ast instanceof LocalDecl) {
 				LocalDecl ld = (LocalDecl) ast;
 				ldStr = (String)ld.visit(this);
-				channels[k] = ld.var().name().getname();
+				chanNameToEndType.put(ld.var().name().getname(), isReadingChannelEnd);
 			} else {
-				channels[k] = (String) ast.visit(this);
+			    chanNameToEndType.put((String) ast.visit(this), isReadingChannelEnd);
 			}
+			
 		}
 		
 		Object stats = null;
@@ -664,13 +687,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		
 		template = group.getInstanceOf("ClaimStat");
 
-		template.add("channels", channels);
+		template.add("chanNameToReadEndType", chanNameToEndType);
 		template.add("ldstr", ldStr);
 		template.add("stats", stats);
 		
 		template.add("jmp", _jumpCnt);
 		_switchCases.add(getLookupSwitchCase(_jumpCnt));	
 		_jumpCnt++;
+
+		State.set(State.CLAIMSTAT, false);
 
 		return (T) template.render();
 	}
@@ -1217,6 +1242,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		String typeString = (String) ld.type().visit(this);
 		String name = (String)ld.var().name().visit(this);
 
+		if (ld.type() instanceof ChannelEndType ||
+		        (ld.type() instanceof ArrayType && ((ArrayType)ld.type()).baseType() instanceof ChannelEndType)) {
+		    _channelEndMap.put(name, endType);
+		}
+
 		boolean isTimerType = false; 
 		if (ld.type() instanceof PrimitiveType) {
 			isTimerType = ((PrimitiveType)ld.type()).isTimerType();
@@ -1370,7 +1400,19 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	public T visitNameExpr(NameExpr ne) {
 		Log.log(ne.line + ": Visiting NameExpr (" + ne.name().getname() + ")");
 
-		return (T) ne.name().visit(this);
+		String name = (String) ne.name().visit(this);
+
+		if (State.is(State.CLAIMSTAT)) {
+		   if (_channelEndMap.containsKey(name)) {
+		       if (_channelEndMap.get(name) == CHAN_READ_END) {
+		           isReadingChannelEnd = true;
+		       } else {
+		           isReadingChannelEnd = false;
+		       }
+		   }
+		}
+
+		return (T) name;
 	}
 
 	/**
@@ -1396,17 +1438,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 		ST template = group.getInstanceOf("ParamDecl");
 
+		String type = (String) pd.type().visit(this);
+
 		String name = pd.paramName().getname();
 		String gname = globalize(name, true);
-
 		pd.paramName().setName(name);
-
 		if (_gFormalNamesMap != null) {
 			_gFormalNamesMap.put(name, gname);
 		}
-
 		name = (String) pd.paramName().visit(this);
-		String type = (String) pd.type().visit(this);
+		
+		if (pd.type() instanceof ChannelEndType ||
+                (pd.type() instanceof ArrayType && ((ArrayType)pd.type()).baseType() instanceof ChannelEndType)) {
+            _channelEndMap.put(name, endType);
+        }
 
 		template.add("name", name);
 		template.add("type", type);
@@ -1783,7 +1828,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			System.out.println("found a record type");
 		} else if (tType.isProtocolType()) {
 			ProtocolTypeDecl pt = (ProtocolTypeDecl)ra.record().type;
-			String caseName = _gProtoTagNameMap.get(protocolTagsSwitchedOn.get(pt.name().getname()));
+			String caseName = _gProtoTagNameMap.get(_protocolTagsSwitchedOn.get(pt.name().getname()));
 			String protocolName = _gModifiedTagProtoNameMap.get(caseName);
 
 			template.add("protocolName", protocolName);
@@ -1912,7 +1957,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				//FIXME why am I just visiting one label? Can there not be more than one?
 				SwitchLabel sl = sg.labels().child(0);
 				
-				protocolTagsSwitchedOn.put(pt.name().getname(), ((NameExpr)sl.expr()).name().getname());
+				_protocolTagsSwitchedOn.put(pt.name().getname(), ((NameExpr)sl.expr()).name().getname());
 
 				String label = (String)sl.visit(this);
 				

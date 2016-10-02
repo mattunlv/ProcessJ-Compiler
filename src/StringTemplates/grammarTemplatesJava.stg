@@ -174,17 +174,17 @@ label(<jmp1>)<\\>
 
 ConstantDecl(type, var) ::= "public static final <type> <var>;"
 
-ClaimStat(stats, channels, ldstr, jmp) ::= <<
+ClaimStat(stats, chanNameToReadEndType, ldstr, jmp) ::= <<
 <if(ldstr)><ldstr; separator=";\n">;<endif>
 label(<jmp>);
-<if(channels)>if(<channels:{c | !<c>.claim() }; separator = "||">) {
-	<!<channels:{c | <c>.unclaim()}; separator = ";\n">;!>
+<if(chanNameToReadEndType.keys)>
+if(<chanNameToReadEndType.keys, chanNameToReadEndType.values: { k, v | <if(v)>!<k>.claimReadingEnd()<else>!<k>.claimWritingEnd()<endif>}; separator=" || ">) {
 	this.runLabel = <jmp>;
 	yield();
 }
 <endif>
 <stats; separator=";\n">;
-<channels:{c | <c>.unclaim()}; separator = ";\n">
+<chanNameToReadEndType.keys, chanNameToReadEndType.values: { k, v | <if(v)><k>.unclaimReadingEnd()<else><k>.unclaimWritingEnd()<endif>}; separator=";\n">
 >>
 
 TimerReadExpr(left) ::= "<left> = PJTimer.read()"
@@ -487,9 +487,10 @@ TimeoutStat(alt, name, delay, jmp) ::= <<
 <name> = new PJTimer(this, <delay>);
 <if(!alt)>
 try {
-	<name>.start();
-	setNotReady();
-	this.runLabel = <jmp>;
+		<name>.start();
+		setNotReady();
+		this.runLabel = <jmp>;
+		this._pd$seed = 0L;
 	yield();
 } catch (InterruptedException e) {
 	System.out.println("PJTimer Interrupted Exception!");

@@ -103,27 +103,6 @@ public abstract class PJChannel<T> {
      */
     public abstract void addWriter(PJProcess p);
 
-    /* ========= CODE TO BE DELETED ======= */
-
-    // TODO: claim should claim ENDS!
-    synchronized public boolean claim() {
-        boolean success = false;
-        if (!this.claimed) {
-            this.claimed = true;
-            success = true;
-        }
-        return success;
-    }
-
-    /**
-     * Unclaim a shared channel TODO: this is proabbly wrong.
-     */
-    synchronized public void unclaim() {
-        this.claimed = false;
-    }
-
-    /* ======== CODE TO BE DELETED ENDS HERE =========== */
-
     /* ======= NEW CODE ======= */
     protected boolean claimedForRead = false;
     protected boolean claimedForWrite = false;

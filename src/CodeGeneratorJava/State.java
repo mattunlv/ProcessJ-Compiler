@@ -3,6 +3,13 @@ package CodeGeneratorJava;
 import java.util.HashMap;
 import java.util.Map;
 
+/*
+ * FIXME put java doc stating why this class is necessary.
+ * 
+ * This handles the state of the codegen visitor. And is useful for
+ * nested visits to nodes such as par/parfor etc where old state needs to
+ * be maintained.
+ */
 public class State {
 	
 	public static final String PARAMS = "params";
@@ -13,6 +20,7 @@ public class State {
 	public static final String ALT = "alt";
 	public static final String ALT_GUARD = "altguard";
 	public static final String PROTOCOL_EXPR = "protocolexpr";
+	public static final String CLAIMSTAT= "claimstat"; //nested claims are not allowed. so maybe not necessary to put this here and instead just use a class var in code gen.
 
 	private static Map<String, Boolean> state_table= new HashMap<String, Boolean>();
 
@@ -25,6 +33,7 @@ public class State {
 		state_table.put(ALT, false);
 		state_table.put(ALT_GUARD, false);
 		state_table.put(PROTOCOL_EXPR, false);
+		state_table.put(CLAIMSTAT, false);
 		
 //		currentState();
 	}

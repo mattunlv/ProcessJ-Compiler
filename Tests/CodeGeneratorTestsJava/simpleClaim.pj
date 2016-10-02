@@ -15,9 +15,8 @@ proc void foo(chan<int>.read c) [yield=true] {
 	P[] p = new P[10];
 	R[] r = new R[10];
 
-	claim(a.read, b.read, c)
+	claim(a.write, b.read, c)
 		x = c.read();	
-		
 		
 	claim(shared chan<int>.read ccr = chanEnds[34]) {
 		x = ccr.read();	
