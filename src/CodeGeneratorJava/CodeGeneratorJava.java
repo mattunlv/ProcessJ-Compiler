@@ -78,6 +78,7 @@ import AST.UnaryPostExpr;
 import AST.UnaryPreExpr;
 import AST.Var;
 import AST.WhileStat;
+import Utilities.Error;
 import Utilities.Log;
 import Utilities.SymbolTable;
 import Utilities.Visitor;
@@ -249,7 +250,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				
 				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
 			} else {
-				System.out.println("Unknown statement in guards!!!");
+				Error.error("Unknown statement in guards!!!");
 			}	
 			
 			
@@ -1134,7 +1135,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				if (b.stats().size()==1 && b.stats().child(0) instanceof ExprStat && ((ExprStat)b.stats().child(0)).expr() instanceof Invocation) {
 					Invocation in = (Invocation)((ExprStat)b.stats().child(0)).expr();
 					rendered = (String) createInvocation(null, in, barriers, false, INV_WRAP_PARFOR);
-					System.out.println("normal invocation1");
 				} else {
 					rendered = (String)(new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(), new Sequence(), a, b)).visit(this);
 				}
@@ -1825,7 +1825,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Type tType = ra.record().type;
 
 		if (tType.isRecordType()) {
-			System.out.println("found a record type");
+			Log.log("found a record type");
 		} else if (tType.isProtocolType()) {
 			ProtocolTypeDecl pt = (ProtocolTypeDecl)ra.record().type;
 			String caseName = _gProtoTagNameMap.get(_protocolTagsSwitchedOn.get(pt.name().getname()));
@@ -2291,10 +2291,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			if (!dir.exists())
 				dir.mkdir();
 
-			System.out.println(dir.getAbsolutePath() + this.originalFilename);		
+			Log.log(dir.getAbsolutePath() + this.originalFilename);		
 
 			String javafile = dir.getAbsolutePath() + File.separator + filename + ".java";
-			System.out.println("JavaFile=" + javafile);
+			Log.log("JavaFile=" + javafile);
 
 			FileOutputStream fos = new FileOutputStream(javafile);
 			

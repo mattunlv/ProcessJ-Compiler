@@ -2,6 +2,8 @@ package AST;
 
 import Utilities.Visitor;
 
+//4/19/16: the 'channels' Sequence ONLY holds one channel.
+
 public class ClaimStat extends Statement {
 
     public ClaimStat(Sequence<AST> channels, Statement stat) {

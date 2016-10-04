@@ -38,25 +38,25 @@ public class TypeChecker extends Visitor<Type> {
         debug = true;
 	this.topLevelDecls = topLevelDecls;
 
-	println("======================================");
-    	println("*       T Y P E   C H E C K E R      *");
-    	println("======================================");
+	Log.log("======================================");
+    	Log.log("*       T Y P E   C H E C K E R      *");
+    	Log.log("======================================");
 
     }
 
     // All visit calls must call resolve	
     public Type resolve(Type t) {
-	System.out.println("  > Resolve: " + t);
+	Log.log("  > Resolve: " + t);
 		
 	if (t.isErrorType())
 	    return t;
 	if (t.isNamedType()) {
-	    println("  > Resolving named type: " + ((NamedType)t).name().getname());
+	    Log.log("  > Resolving named type: " + ((NamedType)t).name().getname());
 	    Type tt =  t.visit(this); // this resolves all NamedTypes
-	    println("  > Resolved " + ((NamedType)t).name().getname() + " -> " + tt.typeName());
+	    Log.log("  > Resolved " + ((NamedType)t).name().getname() + " -> " + tt.typeName());
 	    return tt;
 	} else {
-            println("  > Nothing to resolve - type remains: " + t);
+            Log.log("  > Nothing to resolve - type remains: " + t);
 	    return t;
         }
     }
@@ -64,7 +64,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** ALT CASE */ // ERROR TYPE OK // addError OK
     public Type visitAltCase(AltCase ac) {
-	println(ac.line + ": Visiting an alt case.");
+	Log.log(ac.line + ": Visiting an alt case.");
 		
 	// Check the pre-condition if there is one.
 	if (ac.precondition() != null) {
@@ -82,7 +82,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** ArrayAccessExpr */ // ERROR TYPE OK // addError OK
     public Type visitArrayAccessExpr(ArrayAccessExpr ae) {
-	println(ae.line + ": Visiting ArrayAccessExpr");
+	Log.log(ae.line + ": Visiting ArrayAccessExpr");
 	Type t = resolve(ae.target().visit(this));
 	if (!t.isArrayType()) {
 	    ae.type = Error.addError(ae,"Array type required, but found type " + t.typeName() + ".", 3000); // test ok
@@ -92,7 +92,7 @@ public class TypeChecker extends Visitor<Type> {
 		ae.type = at.baseType();
 	    else
 		ae.type = new ArrayType(at.baseType(), at.getDepth()-1);
-	    println(ae.line + ": ArrayAccessExpr has type " + ae.type);
+	    Log.log(ae.line + ": ArrayAccessExpr has type " + ae.type);
 	    Type indexType = resolve(ae.index().visit(this));
 	    // This error does not create an error type cause the baseType is still the 
 	    // array expression's type
@@ -105,21 +105,21 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** ARRAY LITERAL */ // ERROR TYPE OK
     public Type visitArrayLiteral(ArrayLiteral al) {
-	println(al.line + ": visiting an array literal.");
+	Log.log(al.line + ": visiting an array literal.");
 	Error.error(al,"Array literal with the keyword 'new'.", false, 3002); // TODO: not sure what this is and what it means
 	return null;
     }
 
     /** ArrayType */ // ERROR TYPE OK // addError OK
     public Type visitArrayType(ArrayType at) {
-	println(at.line + ": Visiting an ArrayType");
-	println(at.line + ": ArrayType type is " + at);
+	Log.log(at.line + ": Visiting an ArrayType");
+	Log.log(at.line + ": ArrayType type is " + at);
 	return at;
     }
 
     /** ASSIGNMENT */ // ERROR TYPE OK
     public Type visitAssignment(Assignment as) {
-	println(as.line + ": Visiting an assignment");
+	Log.log(as.line + ": Visiting an assignment");
 
 	as.type = null; // gets set to ErrorType if an error happens.
 		
@@ -181,14 +181,14 @@ public class TypeChecker extends Visitor<Type> {
 	}
 	if (as.type == null)
 	    as.type = vType;
-	println(as.line + ": Assignment has type: " + as.type);
+	Log.log(as.line + ": Assignment has type: " + as.type);
 
 	return vType;
     }
 	
     /** BINARY EXPRESSION */ // ERROR TYPE OK
     public Type visitBinaryExpr(BinaryExpr be) {
-	println(be.line + ": Visiting a Binary Expression");
+	Log.log(be.line + ": Visiting a Binary Expression");
 
 	Type lType =  resolve(be.left().visit(this));
 	Type rType =  resolve(be.right().visit(this));
@@ -197,7 +197,7 @@ public class TypeChecker extends Visitor<Type> {
 	// Handle errors from type checking operands
 	if (lType.isErrorType() || rType.isErrorType()) {
 	    be.type = new ErrorType();
-	    println(be.line + ": Binary Expression has type: " + be.type);
+	    Log.log(be.line + ": Binary Expression has type: " + be.type);
 	    return be.type;
 	}
 		
@@ -289,7 +289,7 @@ public class TypeChecker extends Visitor<Type> {
 	}
 	default: be.type = Error.addError(be,"Unknown operator '" + op + "'.", 3018);
 	}   
-	println(be.line + ": Binary Expression has type: " + be.type);
+	Log.log(be.line + ": Binary Expression has type: " + be.type);
 	return be.type;
     }
 	
@@ -299,7 +299,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     // CAST EXPRESSION // ERROR TYPE OK
     public Type visitCastExpr(CastExpr ce) {
-	println(ce.line + ": Visiting a cast expression");
+	Log.log(ce.line + ": Visiting a cast expression");
 
 	Type exprType = resolve(ce.expr().visit(this));
 	Type castType = resolve(ce.type()); // Not sure the 'resolve' is needed here
@@ -312,7 +312,7 @@ public class TypeChecker extends Visitor<Type> {
 		
 	if (exprType.isNumericType() && castType.isNumericType()) {
 	    ce.type = castType;
-	    println(ce.line + ": Cast Expression has type: " + ce.type);
+	    Log.log(ce.line + ": Cast Expression has type: " + ce.type);
 	    return castType;
 	}
         // Turns out that casts like this are illegal:
@@ -323,26 +323,26 @@ public class TypeChecker extends Visitor<Type> {
 
         // BUT record can be cast and probably protocols too!
         if (castType.isRecordType() || castType.isProtocolType())
-            System.out.println("TODO: TypeChecker.visitCastExpr(): no implementation for protocol and record types.");
+            Log.log("TODO: TypeChecker.visitCastExpr(): no implementation for protocol and record types.");
         ce.type = castType;
 
 	// TODO: other types here!	
 
-	println(ce.line + ": Cast Expression has type: " + ce.type);
+	Log.log(ce.line + ": Cast Expression has type: " + ce.type);
 	return ce.type;
     }
 	
     /** CHANNEL TYPE */ // ERROR TYPE OK
     public Type visitChannelType(ChannelType ct) {
-	println(ct.line + ": Visiting a channel type.");
+	Log.log(ct.line + ": Visiting a channel type.");
 	ct.baseType().visit(this);
-	println(ct.line + ": Channel type has type: " + ct);
+	Log.log(ct.line + ": Channel type has type: " + ct);
 	return ct;
     }
 	
     /** CHANNEL END EXPRESSION */ // ERROR TYPE OK
     public Type visitChannelEndExpr(ChannelEndExpr ce) {
-	println(ce.line + ": Visiting a channel end expression.");
+	Log.log(ce.line + ": Visiting a channel end expression.");
 	Type t = resolve(ce.channel().visit(this));
 		
 	// Handle error types
@@ -370,22 +370,22 @@ public class TypeChecker extends Visitor<Type> {
 					 ChannelEndType.SHARED : ChannelType.NOT_SHARED, ct.baseType(), end);
 	else
 	    ce.type = Error.addError(ce,"Unknown sharing status for channel end expression.", 3020);
-	println(ce.line + ": Channel End Expr has type: " + ce.type);
+	Log.log(ce.line + ": Channel End Expr has type: " + ce.type);
 	return ce.type;
     }
 	
     /** CHANNEL END TYPE */ // ERROR TYPE OK
     public Type visitChannelEndType(ChannelEndType ct) {
-	println(ct.line + ": Visiting a channel end type.");
+	Log.log(ct.line + ": Visiting a channel end type.");
 
 	ct.baseType().visit(this);
-	println(ct.line + ": Channel end type " + ct);
+	Log.log(ct.line + ": Channel end type " + ct);
 	return ct;
     }
 	
     /** CHANNEL READ EXPRESSION */ // ERROR TYPE OK
     public Type visitChannelReadExpr(ChannelReadExpr cr) {
-	println(cr.line + ": Visiting a channel read expression.");
+	Log.log(cr.line + ": Visiting a channel read expression.");
 		
 	// TODO: targetType MAY be a channelType:
 	// chan<int> c;
@@ -410,13 +410,13 @@ public class TypeChecker extends Visitor<Type> {
 		
 	if (cr.extRV() != null)
 	    cr.extRV().visit(this);
-	println(cr.line + ": Channel read expression has type: " + cr.type);
+	Log.log(cr.line + ": Channel read expression has type: " + cr.type);
 	return cr.type;
     }
 	
     /** CHANNEL WRITE STATEMENT */ // ERROR TYPE OK
     public Type visitChannelWriteStat(ChannelWriteStat cw) {
-	println(cw.line + ": Visiting a channel write stat.");
+	Log.log(cw.line + ": Visiting a channel write stat.");
 	Type t = resolve(cw.channel().visit(this));
 	// Check that the expression is of channel end type or channel type
 	if (!(t.isChannelEndType() || t.isChannelType()))
@@ -433,7 +433,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** DO STATEMENT */ //ERROR TYPE OK - I THINK
     public Type visitDoStat(DoStat ds) {
-	println(ds.line + ": Visiting a do statement");
+	Log.log(ds.line + ": Visiting a do statement");
 
 	// Compute the type of the expression
 	Type eType =  resolve(ds.expr().visit(this));
@@ -455,7 +455,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** FOR STATEMENT */ // ERROR TYPE OK
     public Type visitForStat(ForStat fs) {
-	println(fs.line + ": Visiting a for statement");
+	Log.log(fs.line + ": Visiting a for statement");
 
 	int i=0;
 	// TODO: must block be par to enroll on barriers??
@@ -487,7 +487,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** IF STATEMENT */ // ERROR TYPE OK
     public Type visitIfStat(IfStat is) {
-	println(is.line + ": Visiting a if statement");
+	Log.log(is.line + ": Visiting a if statement");
 
 	Type eType =  resolve(is.expr().visit(this));
 		
@@ -505,7 +505,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     // Invocation
     public Type visitInvocation(Invocation in) {
-	println(in.line + ": visiting invocation (" + in.procedureName() + ")");
+	Log.log(in.line + ": visiting invocation (" + in.procedureName() + ")");
 	
 	in.params().visit(this);
 
@@ -520,7 +520,7 @@ public class TypeChecker extends Visitor<Type> {
 		ProcTypeDecl ptd = (ProcTypeDecl)pd;
 		if (ptd.formalParams().size() == in.params().size()) {
 		    boolean candidate = true;
-		    System.out.println("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");                                                                                                            
+		    Log.log("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");                                                                                                            
 		    for (int i=0; i<in.params().size(); i++) {
 			candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
 		    }
@@ -544,7 +544,7 @@ public class TypeChecker extends Visitor<Type> {
 		    if (ptd.formalParams().size() == in.params().size()) {
 			// TODO: this should store this somwhere 
 			boolean candidate = true;
-			System.out.println(" checking if Assignment Compatible proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");
+			Log.log(" checking if Assignment Compatible proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");
 			for (int i=0; i<in.params().size(); i++) {
 			    candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
 			}
@@ -562,16 +562,16 @@ public class TypeChecker extends Visitor<Type> {
 	    firstTable = false;
 	}
 	
-	println("Found these candidates: ");
-	println("| " + candidateProcs.size() + " candidate(s) were found:");
+	Log.log("Found these candidates: ");
+	Log.log("| " + candidateProcs.size() + " candidate(s) were found:");
         for( int i=0;i<candidateProcs.size();i++) {
 	    ProcTypeDecl pd = candidateProcs.child(i);
-            print("|   " + in.procedureName().getname() + "(");
-	    print(pd.signature());
-            println(" )");
+            Log.logNoNewline("|   " + in.procedureName().getname() + "(");
+	    Log.logNoNewline(pd.signature());
+            Log.log(" )");
 	}
 	
-	System.out.println(candidateProcs.size());
+	Log.log("" + candidateProcs.size());
 	int noCandidates = candidateProcs.size();
 		
 	if (noCandidates == 0) {
@@ -614,11 +614,11 @@ public class TypeChecker extends Visitor<Type> {
 		    }
 		    if (candidate) {
 			// ptd1 is more specialized than ptd2, so throw ptd2 away.                                 
-			print("|   " +  in.procedureName().getname() + "(");
-			print(ptd2.signature());
-			print(" ) is less specialized than " + in.procedureName().getname() + "(");
-			print(ptd1.signature());
-			println(" ) and is thus thrown away!");
+			Log.logNoNewline("|   " +  in.procedureName().getname() + "(");
+			Log.logNoNewline(ptd2.signature());
+			Log.logNoNewline(" ) is less specialized than " + in.procedureName().getname() + "(");
+			Log.logNoNewline(ptd1.signature());
+			Log.log(" ) and is thus thrown away!");
 			// Remove ptd2
 			candidateProcs.set(j, null);
 			noCandidates--;
@@ -630,29 +630,29 @@ public class TypeChecker extends Visitor<Type> {
 	}
 	if (noCandidates != 1) {
 	    // we found more than one!
-	    println("| " + candidateProcs.size() + " candidate(s) were found:");
+	    Log.log("| " + candidateProcs.size() + " candidate(s) were found:");
 	    for( int i=0;i<candidateProcs.size();i++) {
 		ProcTypeDecl pd = candidateProcs.child(i);
 		if (pd != null) {
-		    print("|   " + in.procedureName().getname() + "(");
-		    print(pd.signature());
-		    println(" )");
+		    Log.logNoNewline("|   " + in.procedureName().getname() + "(");
+		    Log.logNoNewline(pd.signature());
+		    Log.log(" )");
 		}
 	    }
 	    Error.error(in,"Found more than one candidate - cannot chose between them!",false,3038);	      
 	    return null;
 	} else {
 	    // we found just one!
-	    println("| We were left with exactly one candidate to call!");
-	    println("+------------- End of findMethod --------------");
+	    Log.log("| We were left with exactly one candidate to call!");
+	    Log.log("+------------- End of findMethod --------------");
 	    for (int i=0; i<candidateProcs.size(); i++)
 		if (candidateProcs.child(i) != null) {
 		    in.targetProc = candidateProcs.child(i);
 		    in.type = in.targetProc.returnType();
 		}
 	}
-	println("myPackage: " + in.targetProc.myPackage);
-	println(in.line + ": invocation has type: " + in.type);
+	Log.log("myPackage: " + in.targetProc.myPackage);
+	Log.log(in.line + ": invocation has type: " + in.type);
 	return in.type;
 	
     }
@@ -663,7 +663,7 @@ public class TypeChecker extends Visitor<Type> {
     
     /** NAMED TYPE */
     public Type visitNamedType(NamedType nt) {
-	println(nt.line + ": visiting a named type (" + nt.name().getname() + ").");
+	Log.log(nt.line + ": visiting a named type (" + nt.name().getname() + ").");
 	// TODO: not sure how to handle error type here 
 	if (nt.type() == null) {
 	    // go look up the type and set the type field of nt.
@@ -681,14 +681,14 @@ public class TypeChecker extends Visitor<Type> {
 	    } 
 	    nt.setType(t);
 	}
-	println(nt.line + ": named type has type: " + nt.type());
+	Log.log(nt.line + ": named type has type: " + nt.type());
 		
 	return nt.type();
     }
 	
     /** NAME EXPRESSION */ // ERROR TYPE OK
     public Type visitNameExpr(NameExpr ne) {
-	println(ne.line + ": Visiting a Name Expression (" + ne.name().getname() + ").");
+	Log.log(ne.line + ": Visiting a Name Expression (" + ne.name().getname() + ").");
 	if (ne.myDecl instanceof LocalDecl || 
 	    ne.myDecl instanceof ParamDecl ||
 	    ne.myDecl instanceof ConstantDecl) {
@@ -698,7 +698,7 @@ public class TypeChecker extends Visitor<Type> {
 	} else
 	    ne.type = Error.addError(ne,"Unknown name expression '" + ne.name().getname() + "'.", 3029);
 
-	println(ne.line + ": Name Expression (" + ne.name().getname() + ") has type: " + ne.type);
+	Log.log(ne.line + ": Name Expression (" + ne.name().getname() + ") has type: " + ne.type);
 	return ne.type;
     }
 	
@@ -733,7 +733,7 @@ public class TypeChecker extends Visitor<Type> {
 
     /** NewArray */ // ERROR TYPE OK
     public Type visitNewArray(NewArray ne) {
-	println(ne.line + ": Visiting a NewArray " + ne.dimsExpr().size() + " " + ne.dims().size());
+	Log.log(ne.line + ": Visiting a NewArray " + ne.dimsExpr().size() + " " + ne.dims().size());
 	
 	//  check that each dimension is of integer type
 	for (Expression exp : ne.dimsExpr()) {
@@ -749,7 +749,7 @@ public class TypeChecker extends Visitor<Type> {
 		Error.error(ne, "Array Initializer is not compatible with " + ne.type.typeName(), false, 3032);
 	    ne.init().type = ne.type;
 	}       
-	println(ne.line + ": NewArray type is " + ne.type);
+	Log.log(ne.line + ": NewArray type is " + ne.type);
 	return ne.type;
     }
     
@@ -766,7 +766,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** PRIMITIVE LITERAL */
     public Type visitPrimitiveLiteral(PrimitiveLiteral pl) {
-	println(pl.line + ": Visiting a primitive literal (" + pl.getText() + ").");
+	Log.log(pl.line + ": Visiting a primitive literal (" + pl.getText() + ").");
 		
 	// Remember that the constants in PrimitiveType are defined from the ones                                                      
 	// in Literal, so its it ok to just use li.kind! -- except for the null literal.                                               
@@ -774,25 +774,25 @@ public class TypeChecker extends Visitor<Type> {
 	//	if (pl.getKind() == PrimitiveLiteral.NullKind)
 	//    pl.type = null; // new NullType(li); TODO: Perhaps we need a null type and a null value too ??
 	//else {
-	    System.out.println("Setting Primitive Literal Type");
+	    Log.log("Setting Primitive Literal Type");
 	    pl.type = new PrimitiveType(pl.getKind());
 	    //}
 	                                                                                                                       
 
-	println(pl.line + ": Primitive literal has type: " + pl.type);
+	Log.log(pl.line + ": Primitive literal has type: " + pl.type);
 	return pl.type;
     }
 
     /** PRIMITIVE TYPE */ // ERROR TYPE OK
     public Type visitPrimitiveType(PrimitiveType pt) {
-	println(pt.line + ": Visiting a primitive type.");
-	println(pt.line + ": Primitive type has type: " + pt);
+	Log.log(pt.line + ": Visiting a primitive type.");
+	Log.log(pt.line + ": Primitive type has type: " + pt);
 	return pt;
     }
 	
     /** PROTOCOL TYPE DELCARATION */ // ERROR TYPE OK
     public Type visitProcTypeDecl(ProcTypeDecl pd) {
-	println(pd.line + ": visiting a procedure type declaration (" + pd.name().getname() + ").");
+	Log.log(pd.line + ": visiting a procedure type declaration (" + pd.name().getname() + ").");
 	currentProcedure = pd;
 	super.visitProcTypeDecl(pd);
 	return null;
@@ -800,7 +800,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** PROTOCOL LITERAL */
     public Type visitProtocolLiteral(ProtocolLiteral pl) {
-	println(pl.line + ": Visiting a protocol literal");
+	Log.log(pl.line + ": Visiting a protocol literal");
 		
 	// tag already checked in NameChecker
 
@@ -819,7 +819,7 @@ public class TypeChecker extends Visitor<Type> {
 		Error.error(pl,"Cannot assign value of type '" + eType + "' to protocol field '" + name.getname() + "' of type '" +
 			    vType + "'.", false, 3034);
 	}			
-	println(pl.line + ": protocol literal has type: " + pl.myTypeDecl);
+	Log.log(pl.line + ": protocol literal has type: " + pl.myTypeDecl);
 	return pl.myTypeDecl;
     }
 	
@@ -827,14 +827,14 @@ public class TypeChecker extends Visitor<Type> {
     
     /** PROTOCOL TYPE DECLARATION */ // ERROR TYPE OK
     public Type visitProtocolTypeDecl(ProtocolTypeDecl pt) {
-	println(pt.line + ": Visiting a protocol type decl.");
-	println(pt.line + ": Protocol type decl has type: " + pt);
+	Log.log(pt.line + ": Visiting a protocol type decl.");
+	Log.log(pt.line + ": Protocol type decl has type: " + pt);
 	return pt;
     }
 	    
     /** RECORD ACCESS */ // ERROR TYPE OK
     public Type visitRecordAccess(RecordAccess ra) {
-	println(ra.line + ": visiting a record access expression (" + ra.field().getname() + ")");
+	Log.log(ra.line + ": visiting a record access expression (" + ra.field().getname() + ")");
 	Type tType = resolve(ra.record().visit(this));
 	tType = tType.visit(this);
 	
@@ -844,12 +844,12 @@ public class TypeChecker extends Visitor<Type> {
 	if (tType.isArrayType() && ra.field().getname().equals("size")) {
             ra.type = new PrimitiveType(PrimitiveType.IntKind);
             ra.isArraySize = true;
-            println(ra.line + ": Array size expression has type: " + ra.type);
+            Log.log(ra.line + ": Array size expression has type: " + ra.type);
             return ra.type;
 	} if (tType.isStringType() && ra.field().getname().equals("length")) {
             ra.type = new PrimitiveType(PrimitiveType.IntKind);      // TODO: should this be long ???
             ra.isStringLength = true;
-            println(ra.line + ": string length expression has type: " + ra.type);
+            Log.log(ra.line + ": string length expression has type: " + ra.type);
             return ra.type;
         } else {
             if (!(tType.isRecordType() || tType.isProtocolType())) {
@@ -887,7 +887,7 @@ public class TypeChecker extends Visitor<Type> {
 		// there better be a field in pc that has that name!
 		boolean found = false;
 		for (RecordMember rm : pc.body()) {
-		    System.out.println("Looking at field " + rm.name().getname());
+		    Log.log("Looking at field " + rm.name().getname());
 		    if (rm.name().getname().equals(fieldName)) {
 			// yep we found it; now set the type
 			Type rmt = resolve(rm.type().visit(this));
@@ -902,13 +902,13 @@ public class TypeChecker extends Visitor<Type> {
 		}		
 	    }
 	}
-	println(ra.line + ": record access expression has type: " + ra.type);
+	Log.log(ra.line + ": record access expression has type: " + ra.type);
 	return ra.type;
     }
     
     /** RECORD LITERAL */
     public Type visitRecordLiteral(RecordLiteral rl) {
-	println(rl.line + ": visiting a record literal (" + rl.name().getname() + ").");
+	Log.log(rl.line + ": visiting a record literal (" + rl.name().getname() + ").");
 	RecordTypeDecl rt = rl.myTypeDecl;
 
 	// TODO: be careful here if a record type extends another record type, then the record literal must contains 
@@ -921,16 +921,16 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** RECORD TYPE DECLARATION */ // ERROR TYPE OK
     public Type visitRecordTypeDecl(RecordTypeDecl rt) {
-	println(rt.line + ": Visiting a record type decl.");
+	Log.log(rt.line + ": Visiting a record type decl.");
 		
 		
-	println(rt.line + ": Record type decl has type: " + rt);
+	Log.log(rt.line + ": Record type decl has type: " + rt);
 	return rt;
     }
 	
     /** RETURN STATEMENT */ // ERROR TYPE OK
     public Type visitReturnStat(ReturnStat rs) {
-	println(rs.line + ": visiting a return statement");
+	Log.log(rs.line + ": visiting a return statement");
 		
 	Type returnType = resolve(currentProcedure.returnType());
 		
@@ -959,7 +959,7 @@ public class TypeChecker extends Visitor<Type> {
 
     /** SUSPEND STATEMENT */ // ERROR TYPE OK
     public Type visitSuspendStat(SuspendStat ss) {
-	println(ss.line + ": Visiting a suspend stat.");
+	Log.log(ss.line + ": Visiting a suspend stat.");
 	if (!Modifier.hasModifierSet(currentProcedure.modifiers(), Modifier.MOBILE)) 
 	    Error.error(ss,"Non-mobile procedure cannot suspend.", false, 3043);
 	return null;
@@ -969,7 +969,7 @@ public class TypeChecker extends Visitor<Type> {
     // SwitchLabel -- nothing to do - handled in SwitchStat
   	
     ProtocolCase findProtocolCase(ProtocolTypeDecl pt, String switchLabelName) {
-	System.out.println("fpc" +  pt );
+	Log.log("fpc" +  pt );
 	if (pt.body() != null)
 	    for (ProtocolCase pc : pt.body() ) {
 		String name = pc.name().getname();
@@ -989,7 +989,7 @@ public class TypeChecker extends Visitor<Type> {
 
     /** SWITCH STATEMENT */ 
     public Type visitSwitchStat(SwitchStat ss) {
-	println(ss.line + ": Visiting a Switch statement");
+	Log.log(ss.line + ": Visiting a Switch statement");
 
 	boolean inSwitchOld = inSwitch;
 	inSwitch = true;
@@ -1094,7 +1094,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** SYNC STAT */ //ERROR TYPE OK
     public Type visitSyncStat(SyncStat ss) {
-	println(ss.line + ": visiting a sync stat.");
+	Log.log(ss.line + ": visiting a sync stat.");
 	Type t = resolve(ss.barrier().visit(this));
 	if (!t.isBarrierType())
 	    Error.error(ss, "Non-barrier type in sync statement.", false, 3048);
@@ -1103,7 +1103,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     // Ternary
     public Type visitTernary(Ternary te) {
-	println(te.line + ": Visiting a ternary expression");
+	Log.log(te.line + ": Visiting a ternary expression");
 
 	Type eType = resolve(te.expr().visit(this));
 	Type trueBranchType  = te.trueBranch().visit(this);
@@ -1123,13 +1123,13 @@ public class TypeChecker extends Visitor<Type> {
 	} else
 	    Error.error(te,"Both branches of a ternary expression must be of assignment compatible types.");       
 		
-	println(te.line + ": Ternary has type: " + te.type);
+	Log.log(te.line + ": Ternary has type: " + te.type);
 	return te.type;
     }
 	
     /** TIMEOUT STATEMENT */ // ERROR TYPE OK
     public Type visitTimeoutStat(TimeoutStat ts) {
-	println(ts.line + ": visiting a timeout statement.");
+	Log.log(ts.line + ": visiting a timeout statement.");
 	Type dType = resolve( ts.delay().visit(this));
 	if (!dType.isIntegralType())
 	    Error.error(ts,"Invalid type in timeout statement, integral type required.", false, 3049);
@@ -1141,7 +1141,7 @@ public class TypeChecker extends Visitor<Type> {
 	
     /** UNARY POST EXPRESSION */ // ERROR TYPE OK
     public Type visitUnaryPostExpr(UnaryPostExpr up) {
-	println(up.line + ": Visiting a unary post expression");
+	Log.log(up.line + ": Visiting a unary post expression");
 	up.type = null;
 	Type eType = resolve(up.expr().visit(this));
 
@@ -1155,13 +1155,13 @@ public class TypeChecker extends Visitor<Type> {
 	if (up.type == null)
 	    up.type = eType;
 	
-	println(up.line + ": Unary Post Expression has type: " + up.type);
+	Log.log(up.line + ": Unary Post Expression has type: " + up.type);
 	return up.type;
     }
 
     /** UnaryPreExpr */ // ERROR TYPE OK
     public Type visitUnaryPreExpr(UnaryPreExpr up) {
-	println(up.line + ": Visiting a unary pre expression");
+	Log.log(up.line + ": Visiting a unary pre expression");
 	up.type = null;
 	Type eType =  resolve(up.expr().visit(this));
 
@@ -1190,13 +1190,13 @@ public class TypeChecker extends Visitor<Type> {
 	}
 	if (up.type == null)
 	    up.type = eType;
-	println(up.line + ": Unary Pre Expression has type: " + up.type);
+	Log.log(up.line + ": Unary Pre Expression has type: " + up.type);
 	return up.type;
     }
 
     /** VAR */ // ERROR TYPE OK
     public Type visitVar(Var va) {
-	println(va.line + ": Visiting a var ("+va.name().getname()+").");
+	Log.log(va.line + ": Visiting a var ("+va.name().getname()+").");
 
 	if (va.init() != null) {
 	    Type vType = resolve(va.myDecl.type());
@@ -1213,7 +1213,7 @@ public class TypeChecker extends Visitor<Type> {
     
     /** WHILE STATEMENT */
     public Type visitWhileStat(WhileStat ws) {
-	println(ws.line + ": Visiting a while statement"); 
+	Log.log(ws.line + ": Visiting a while statement"); 
 	Type eType =  resolve(ws.expr().visit(this));
 
 	if (!eType.isBooleanType())

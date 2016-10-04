@@ -13,15 +13,6 @@ public abstract class Visitor<T extends Object> {
 	// extending class.
 	protected boolean debug;
 
-	public void print(String info) {
-		if (debug)
-			System.out.print(info);
-	}
-
-	public void println(String info) {
-		if (debug) 
-			System.out.println(info);
-	}
 	public T visitAnnotation(Annotation at) {
 	    return null;
 	}
@@ -29,7 +20,6 @@ public abstract class Visitor<T extends Object> {
 	    return null;
 	}
 	public T visitAltCase(AltCase ac) {
-		System.out.println(Error.fileName + ":" + ac.line + " Visiting an alt-case." + ac.children.length);
 		return ac.visitChildren(this);
 	}
 	public T visitAltStat(AltStat as) {
@@ -78,7 +68,6 @@ public abstract class Visitor<T extends Object> {
 		return cs.visitChildren(this);
 	}
 	public T visitCompilation(Compilation co) {
-		System.out.println("Visitor.Compilation");
 		return co.visitChildren(this);
 	}
 	public T visitConstantDecl(ConstantDecl cd) {
@@ -103,7 +92,6 @@ public abstract class Visitor<T extends Object> {
 		return fs.visitChildren(this);
 	}
 	public T visitGuard(Guard gu) {
-		System.out.println(Error.fileName + ":" + gu.line + " Visiting an guard." + gu.children.length);
 		return gu.visitChildren(this);
 	}
 	public T visitIfStat(IfStat is) {

@@ -29,7 +29,7 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 	private Object resolveName(Name na) {
 	    Log.log("resolveName: resolving name: "+ na);
 		if (!na.isSimple()) {
-		    System.out.println("Found : " +  na.resolvedPackageAccess);
+		    Log.log("Found : " +  na.resolvedPackageAccess);
 		    return na.resolvedPackageAccess;
 		} else {
 			String name = na.getname();
@@ -37,13 +37,13 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 			// look in currentScope
 			Object o = currentScope.get(name);
 			if (o != null) {
-			    System.out.println("Found : " + o);
+			    Log.log("Found : " + o);
 			    return o;
 			}
 			// if not found look in topScope
 			o = topScope.getIncludeImports(name);
 			if (o != null) {
-			    System.out.println("Found : " + o);
+			    Log.log("Found : " + o);
 			    return o;
 			}
 			Log.log("Nothing found in resolveName");
@@ -84,7 +84,7 @@ public class NameChecker<T extends Object> extends Visitor<T> {
 	/** COMPILATION */
 	public T visitCompilation(Compilation co) {
 		super.visitCompilation(co);
-		System.out.println("---=== Name Checker done ===---");
+		Log.log("---=== Name Checker done ===---");
 		return  null;
 	}
 

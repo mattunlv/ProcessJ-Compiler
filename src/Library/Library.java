@@ -24,7 +24,6 @@ public class Library {
 		int index = 0;
 		for (String s : validPragmas) 
 			ht.put(s, index++);
-		System.out.println(ht);
 	}
 
 	/**
@@ -276,9 +275,9 @@ public class Library {
 			file.newLine();                      
 			file.close();
 
-			System.out.println("Generated file \"" + pjClibFileName + ".h\" - this file must be moved to lib/C/include/");
-			System.out.println("Generated file \"" + pjClibFileName + ".c\" - this file must be moved to lib/C/include/");
-			System.out.println("Provided file \"" + pjHeaderFileName + ".pj must be moved to inlcude/C/" + c.packageName().getname() + "/" +  pjHeaderFileName + ".inc");
+			Log.log("Generated file \"" + pjClibFileName + ".h\" - this file must be moved to lib/C/include/");
+			Log.log("Generated file \"" + pjClibFileName + ".c\" - this file must be moved to lib/C/include/");
+			Log.log("Provided file \"" + pjHeaderFileName + ".pj must be moved to inlcude/C/" + c.packageName().getname() + "/" +  pjHeaderFileName + ".inc");
 
 			headerFile.close();
 			file.close();
@@ -303,9 +302,9 @@ public class Library {
 		public T visitCompilation(Compilation c) {	
 			pjClibFileName = c.packageName().getname() + "_" + pragmaTable.get("FILE");
 			pjHeaderFileName = pragmaTable.get("FILE");
-			Log.log("Library.GenerateNativeCode.visitCompilation: ProcessJ C header file: " + pjClibFileName + ".h");
-			Log.log("Library.GenerateNativeCode.visitCompilation: ProcessJ C implementation file: " + pjClibFileName + ".c");
-			Log.log("Library.GenerateNativeCode.visitCompilation: ProcessJ header file: " + pjHeaderFileName + ".pj");
+			System.out.println("Library.GenerateNativeCode.visitCompilation: ProcessJ C header file: " + pjClibFileName + ".h");
+			System.out.println("Library.GenerateNativeCode.visitCompilation: ProcessJ C implementation file: " + pjClibFileName + ".c");
+			System.out.println("Library.GenerateNativeCode.visitCompilation: ProcessJ header file: " + pjHeaderFileName + ".pj");
 
 			packageName = c.packageName().getname();
 

@@ -45,7 +45,7 @@ public class State {
 	public static boolean set(String field, boolean value) {
 		boolean old = state_table.get(field);
 		state_table.put(field, value);
-		printStateChange(field);
+		//printStateChange(field);
 		return old;
 	}
 	

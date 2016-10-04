@@ -1,7 +1,14 @@
 package NameChecker;
 
+import AST.AST;
+import AST.ArrayType;
+import AST.ConstantDecl;
+import AST.LocalDecl;
+import AST.Name;
+import AST.ParamDecl;
+import AST.Type;
+import Utilities.Log;
 import Utilities.Visitor;
-import AST.*;
 
 /**
  * ArrayTypeConstructor traverses the parse tree and converts
@@ -25,9 +32,9 @@ public class ArrayTypeConstructor extends Visitor<AST> {
 
 	public ArrayTypeConstructor() {
 		debug = true;
-		println("======================================");
-		println("*  A R R A Y   C O N S T R U C T O R *");
-		println("======================================");
+		Log.log("======================================");
+		Log.log("*  A R R A Y   C O N S T R U C T O R *");
+		Log.log("======================================");
 		
 	}
 

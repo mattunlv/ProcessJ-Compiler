@@ -1,4 +1,5 @@
 package AST;
+import Utilities.Log;
 import Utilities.Visitor;
 
 public abstract class AST  {
@@ -54,12 +55,12 @@ public abstract class AST  {
 	public void print(java.io.PrintStream out, int depth) {
 		out.print("line " + this.intToString(line, 3) + ": ");
 		tab(out, depth * 2);
-		out.println(this.getClass().getName() + " " + this.toString());
+		Log.log(this.getClass().getName() + " " + this.toString());
 		for (int c = 0; c < nchildren; c++) {
 			if (children[c] == null) {
 				out.print("line " + this.intToString(line, 3) + ": ");
 				tab(out, depth * 2 + 2);
-				out.println("empty");
+				Log.log("empty");
 			} else {
 				children[c].print(out, depth + 1);
 			}

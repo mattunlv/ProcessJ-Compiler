@@ -1,6 +1,7 @@
 package Utilities;
 
 import java.util.*;
+import Utilities.Log;
 
 /** The symbol table class.  Each symbol table contains a Vector that
  * contains the symbols defined in the scope that it corresponds to, and a
@@ -134,21 +135,21 @@ public class SymbolTable implements AST.TopLevelDecl {
 	public void print(String indent) {
 		if (parent != null) {
 			parent.print(indent + "  ");
-			System.out.println(indent + "-->");
+			Log.log(indent + "-->");
 		}
 		Enumeration<String> col = entries.keys();
-		System.out.println(indent + "Name: " + name + "(" + entries.size() + ")");
-		System.out.println(indent + "Has importParent? " + (importParent != null));
+		Log.log(indent + "Name: " + name + "(" + entries.size() + ")");
+		Log.log(indent + "Has importParent? " + (importParent != null));
 		for (; col.hasMoreElements(); ) {
 			String element = col.nextElement();
 			Object o = entries.get(element);
 			System.out.print(indent + element + "\t" + (o.getClass().getName().equals("Utilities.SymbolTable") ? "Procedure: " : o.getClass().getName()));
 			if (o instanceof SymbolTable) {
-				System.out.println("\n" + indent+"  --------------------------------");
+				Log.log("\n" + indent+"  --------------------------------");
 				((SymbolTable)o).print(indent + "  ");
-				System.out.println(indent + "  ================================");
+				Log.log(indent + "  ================================");
 				
-			} else { System.out.println(); }
+			} else { Log.log(""); }
 		}
 	}
 
@@ -174,16 +175,16 @@ public class SymbolTable implements AST.TopLevelDecl {
 
 	// result of the -sts compiler flag
 	public void printStructure(String indent) {
-		System.out.println(indent + "name.........: " + this.name);
-		System.out.println(indent + "Content ");
+		Log.log(indent + "name.........: " + this.name);
+		Log.log(indent + "Content ");
 		for (Object o : entries.keySet().toArray()) {
 		    Object o2 = entries.get((String)o);		      
-		    System.out.println("  [*] " + ((String)o) + " == " + o2);
+		    Log.log("  [*] " + ((String)o) + " == " + o2);
 		}
-		System.out.println(indent + "parent.......: " + (parent == null ? "--//" : ""));
+		Log.log(indent + "parent.......: " + (parent == null ? "--//" : ""));
 		if (parent != null)
 			parent.printStructure(indent + "|  ");;
-		System.out.println(indent + "importParent.: " + (importParent == null ? "--//" : ""));
+		Log.log(indent + "importParent.: " + (importParent == null ? "--//" : ""));
 		if (importParent != null)
 			importParent.printStructure(indent + "|  ");
 	}

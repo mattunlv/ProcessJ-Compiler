@@ -12,7 +12,6 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -25,6 +24,8 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.util.CheckClassAdapter;
+
+import Utilities.Log;
 
 /**
  * This class does the necessary bytecode
@@ -42,16 +43,16 @@ public class Instrumenter {
   
   public Instrumenter(String folder) {
 	  
-	System.out.println("in instrumenter!!");
+	Log.log("in instrumenter!!");
 
 //    this.fullPath = Instrumenter.class.getResource("../"+ folder +"/").getPath();
     this.fullPath = folder;
     
-    System.out.println("================================");
-    System.out.println("*  Instrumenting classes in:   *");
-    System.out.println("================================");
-    System.out.println("Path:" + fullPath);
-    System.out.println("--------------------------------");
+    Log.log("================================");
+    Log.log("*  Instrumenting classes in:   *");
+    Log.log("================================");
+    Log.log("Path:" + fullPath);
+    Log.log("--------------------------------");
   
   }
 
@@ -59,7 +60,7 @@ public class Instrumenter {
 
     File directory = new File(fullPath);
     if(!directory.exists())
-    	System.out.println("doesnt exist!!");
+    	Log.log("doesnt exist!!");
 
     File[] directoryListing = directory.listFiles();
 
@@ -67,7 +68,7 @@ public class Instrumenter {
       for (File file: directoryListing) {
         if (file.isFile() && isClassFile(file)){
         	
-        	System.out.println("Instrumenting => " + file.getName());
+        	Log.log("Instrumenting => " + file.getName());
           
           FileInputStream is = new FileInputStream(file);
           ClassReader cr = new ClassReader(is);
@@ -84,7 +85,7 @@ public class Instrumenter {
       }
     }
     
-    System.out.println("Done!!");
+    Log.log("Done!!");
   }
   
   
@@ -180,7 +181,7 @@ public class Instrumenter {
         if (min.owner.equals(workingClassName)) {
 
           if (min.name.equals(MARK_YIELD)) {
-//        	  System.out.println("found yield!!");
+//        	  Log.log("found yield!!");
             yields.add(min);
 
           } else if (min.name.equals(MARK_RESUME)) {
@@ -267,7 +268,7 @@ public class Instrumenter {
 
     int ret_opcode = retNode.getOpcode();
     
-    System.out.println("ret_opcode=" + ret_opcode);
+    Log.log("ret_opcode=" + ret_opcode);
 
     switch(ret_opcode) {
       case Opcodes.RETURN: //doesn't have any preceding operation
@@ -303,9 +304,9 @@ public class Instrumenter {
   
   private void verifyModifiedClass(ClassWriter cw) {
 
-    System.out.println("==============================");
-    System.out.println("*  Verifying modified class  *");
-    System.out.println("==============================");
+    Log.log("==============================");
+    Log.log("*  Verifying modified class  *");
+    Log.log("==============================");
 
     StringWriter sw = new StringWriter();
     PrintWriter pw = new PrintWriter(sw);
@@ -317,7 +318,7 @@ public class Instrumenter {
     CheckClassAdapter.verify(new ClassReader(cw.toByteArray()), true, pw);
 
     //if result is empty, verification passed.
-    System.out.println("Result:" + sw.toString());
+    Log.log("Result:" + sw.toString());
   }
   
   private boolean isClassFile(File file) throws Exception {
@@ -342,7 +343,7 @@ public class Instrumenter {
             VarInsnNode vis = (VarInsnNode) node;
             int opvis = vis.getOpcode();
                 int var = vis.var;
-                System.out.println(" > vis opcode=" + opvis + " value=" + var);
+                Log.log(" > vis opcode=" + opvis + " value=" + var);
             break;
           case AbstractInsnNode.INT_INSN: //handles yields on values >5
             IntInsnNode iin = (IntInsnNode) node;
@@ -388,9 +389,9 @@ public class Instrumenter {
     while(it.hasNext()) {
       AbstractInsnNode n = (AbstractInsnNode)it.next();
       if (n.getOpcode() == Opcodes.ATHROW)
-        System.out.println("athrow found");//we want to remove this
+        Log.log("athrow found");//we want to remove this
       else if (n.getOpcode() == Opcodes.NOP)
-        System.out.println("nop found");//we want to remove this
+        Log.log("nop found");//we want to remove this
     }
     
     //for(AbstractInsnNode n1: remove)
@@ -404,12 +405,13 @@ public class Instrumenter {
         Instrumenter obj = new Instrumenter(args[0]);
         obj.execute();
       } else {
-        System.out.println("Print Usage!!!");
+        Log.log("Print Usage!!!");
       }
 
     } catch (Exception e) {
       e.printStackTrace();
     }
+    Log.log("** INSTRUMENTATION SUCCEEDED **");
   }
 
 }
