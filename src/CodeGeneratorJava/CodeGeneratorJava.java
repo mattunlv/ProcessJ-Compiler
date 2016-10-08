@@ -1577,6 +1577,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		
 		String currentProcName = this._currentProcName;
 		this._currentProcName = (String) pd.name().visit(this);
+		String templateProcName = getTemplateProcName(this._currentProcName);
 		
 		boolean anonymous = false;
 		if (_currentProcName.equals("Anonymous")) {
@@ -1640,7 +1641,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			State.set(State.FOREVER_LOOP, false);
 
 			String qualifiedPkg = getQualifiedPkg(pd);
-			String qualifiedProc = qualifiedPkg + "." + _currentProcName;
+			String qualifiedProc = qualifiedPkg + "." + templateProcName;
 
 			String returnType = (String) pd.returnType().visit(this);
 			
@@ -1660,7 +1661,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 			template.add("packageName", this.originalFilename);
 			template.add("returnType", returnType);
-			template.add("name", _currentProcName);
+			template.add("name", templateProcName);
 			if (formals.length != 0) {
 				template.add("formals", formals);
 			}
@@ -1694,7 +1695,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		return (T) rendered;
 	}
 	
-	/**
+	private String getTemplateProcName(String name) {
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("proc");
+	    sb.append(name.substring(0, 1).toUpperCase());
+	    sb.append(name.substring(1));
+        return sb.toString();
+    }
+
+    /**
 	 * Protocol Literal
 	 */
 	public T visitProtocolLiteral(ProtocolLiteral pl) {
@@ -2227,6 +2236,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			//for now lets assume that all imports are done from 
 			//include.JVM. So, get everything after that. Re-visit if this changes.
 			int i = myPkg.indexOf(".", (myPkg.indexOf(".")+1));
+			System.out.println("qualified package before substring=" + myPkg);
 			return myPkg.substring(i+1);
 		}
 	}

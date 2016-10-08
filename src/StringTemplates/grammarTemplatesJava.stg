@@ -356,16 +356,9 @@ public static class <name> extends PJProcess {
 ProcTypeDeclToMain(qualifiedProc) ::= <<
 public static void main(String[] args) {
 	Scheduler scheduler = new Scheduler();
-
 	PJProcess.scheduler = scheduler;
-	System.out.println("Added _main process to scheduler...");
-		
 	(new <qualifiedProc>(args)).schedule();
-	
-	System.out.println("Starting the scheduler...");
 	PJProcess.scheduler.start();
-		
-	System.out.println("Scheduler thread.start() done.");
 }
 >>
 			
