@@ -15,6 +15,7 @@ import Scanner.Scanner;
 import Utilities.Error;
 import Utilities.Settings;
 import Utilities.SymbolTable;
+import Utilities.Log;
 
 public class ProcessJc {
 	public static void usage() {
@@ -95,8 +96,8 @@ public class ProcessJc {
 					sts = true;
 					continue;
 				} else {
-					System.out.println("Setting scanner");
-					Error.setFileName(argv[i]);
+				    //System.out.println("Setting scanner");
+				    Error.setFileName(argv[i]);
 					Error.setPackageName(argv[i]);
 					s = new Scanner(new java.io.FileReader(argv[i]));
 				}
@@ -119,11 +120,13 @@ public class ProcessJc {
 				System.exit(1);
 			}
 
+			Log.stopLogging();
+			
 			// cast the result from the parse to a Compilation - this is the root of the tree
 			Compilation c = (Compilation) root;
 
 			// SYNTAX TREE PRINTER
-			c.visit(new ParseTreePrinter());
+			//c.visit(new ParseTreePrinter());
 
 			// Decode pragmas - these are used for generating stubs from libraries. 
 			// No regular program would have them.
@@ -143,17 +146,18 @@ public class ProcessJc {
 			c.visit(new NameChecker.ResolvePackedTypes());
 
 			if (sts) // dump the symbol table structure
-				globalTypeTable.printStructure("");
+			    globalTypeTable.printStructure("");
 			////////////////////////////////////////////////////////////////////////////////
 			// NAME CHECKER
 			c.visit(new NameChecker.NameChecker<AST>(globalTypeTable));
 			if (Error.errorCount != 0) {
-				System.out.println("---------- Error Report ----------");
-				System.out
-						.println(Error.errorCount
-								+ " errors in symbol resolution - fix these before type checking.");
-				System.out.println(Error.errors);
-				System.exit(1);
+			    System.out.println("---------- Error Report ----------");
+			    System.out
+				.println(Error.errorCount
+					 + " errors in symbol resolution - fix these before type checking.");
+			    System.out.println(Error.errors);
+			    System.out.println("** COMPILATION FAILED **");
+			    System.exit(1);
 			}
 
 			// Re-construct Array Types correctly
@@ -190,8 +194,7 @@ public class ProcessJc {
 				System.out.println("Unknown target language selected");
 				System.exit(1);
 			}
-			System.out
-					.println("============= S = U = C = C = E = S = S =================");
+			System.out.println("** COMPILATION SUCCEEDED **");
 		}
 	}
 
@@ -219,7 +222,11 @@ public class ProcessJc {
 //			e.printStackTrace();
 //		}
 
+
+
 		return;
+
+		
 	}
 
 	

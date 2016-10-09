@@ -1409,7 +1409,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	
 	public T visitNamedType(NamedType nt) {
 		Log.log(nt.line + ": Visiting NamedType (" + nt.name().getname() + ")");
-		
 		return (T) nt.name().visit(this);
 	}
 
@@ -1420,7 +1419,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		Log.log(ne.line + ": Visiting NameExpr (" + ne.name().getname() + ")");
 
 		String name = (String) ne.name().visit(this);
-
 		if (State.is(State.CLAIMSTAT)) {
 		   if (_channelEndMap.containsKey(name)) {
 		       if (_channelEndMap.get(name) == CHAN_READ_END) {

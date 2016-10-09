@@ -12,25 +12,29 @@
 	<property name="jflexJar" location="src/Utilities/JFlex.jar"/>
 	<property name="stringtemplatejar" location="src/Utilities/ST-4.0.7.jar"/>
 	<property name="asmjar" location="src/Utilities/asm-all-3.3.1.jar"/>
-        <property name="classpath" value="${cupJar}:${cupRuntimeJar}:${jflexJar}:${stringtemplatejar}:${asmjar}:."/>
+    <property name="classpath" value="${cupJar}:${cupRuntimeJar}:${jflexJar}:${stringtemplatejar}:${asmjar}:."/>
 	<description>
 		Build File for Processj Compiler Project
 	</description>
-
+	
 	<target name="javac" depends="init, scanner, parser, pjc">
 	</target>
-
+		        
 	<target name="compile" depends="initlight, pjc">
 	</target>
 
 	<target name="pjc">
-			<javac srcdir="${src}" destdir="${build}"
-			       optimize="${optimize}"
-		               debug="${debug}"
-			       classpath="${classpath}"
-			       includeantruntime="false" />
+		<javac srcdir="${src}" destdir="${build}" 
+		       optimize="${optimize}" 
+	               debug="${debug}" 
+		       classpath="${classpath}" 
+		       includeantruntime="false">
+			<exclude name="Generated/**" />
+			<exclude name="SampleTests/**" />
+		</javac>
+		
 	</target>
-
+	
 	<target name="parser">
 		<java jar="${cupJar}" input="src/Parser/ProcessJ.cup" fork="true" failonerror="true">
 			<arg value="-package"/>
@@ -39,7 +43,7 @@
 		<move file="parser.java" todir="${src}/Parser" />
 		<move file="sym.java" todir="${src}/Parser" />
 	</target>
-
+		
 	<target name="scanner">
 		<java jar="${jflexJar}" fork="true" failonerror="true">
 			<arg value="-d"/>
@@ -47,7 +51,7 @@
 			<arg value="src/Scanner/ProcessJ.flex"/>
 		</java>
 	</target>
-
+			
 	<target name="init" depends="clean">
 		<mkdir dir="${build}" />
 	</target>
@@ -73,9 +77,9 @@
 	    	<fileset dir="${src}" includes="**/*~" defaultexcludes="no" />
 	    </delete>
 	</target>
-
+	
 	<target name="run">
-		<java classpath="${classpath}:${build}" classname="ProcessJc">
+		<java classpath="${classpath}:${build}" classname="ProcessJc"> 
 			<arg value=""/>
 	        <arg value="test.pj"/>
 		</java>

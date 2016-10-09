@@ -1,7 +1,7 @@
 package AST;
 import Utilities.Visitor;
 
-public class NamedType extends Type {
+public class NamedType extends Type implements TopLevelDecl {
 
     private TopLevelDecl resolvedTopLevelDecl = null; // could be a SymbolTable
    private Type type = null;

@@ -432,9 +432,9 @@ type_declaration ::=
 // Name :> AST
 extern_type ::= 
           IDENTIFIER:i       {: RESULT = new Name(i); :}
-        | extern_type:e MULT {: e.setName(e.getname() + "*"); RESULT = e; :}
+        | extern_type:e DOT IDENTIFIER:i {: e.setName(e.getname() + i.lexeme); RESULT = e; :}
         ; 
-// TODO: the extern type should probably be any string ....
+
 
 // **************************************************
 // 2.1 Procedure Types

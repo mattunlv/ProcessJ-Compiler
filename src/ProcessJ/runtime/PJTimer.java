@@ -40,7 +40,6 @@ public class PJTimer implements Delayed {
 		PJProcess.scheduler.insertTimer(this);
 
 		started = true;
-		System.out.println("Timer started");
 	}
 
 	public void expire() {
@@ -89,7 +88,7 @@ public class PJTimer implements Delayed {
 //		return 0;
 //		return retInt;
 		int retVal = Long.valueOf(this.delay).compareTo(((PJTimer)o).delay);
-		System.out.println("-----timer.compare=" + retVal);
+//		System.out.println("-----timer.compare=" + retVal);
 		return retVal;
 	}
 }
