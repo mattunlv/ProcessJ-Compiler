@@ -212,6 +212,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			ST altCase = group.getInstanceOf("AltCase");
 
 			statementList = new ArrayList<String>();
+			String[] stats = null;
+
 			AltCase ac = altCaseList.child(i);
 			Statement caseExprStmt = ac.guard().guard();
 
@@ -225,8 +227,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				timers.add((String)ts.visit(this));
 				State.set(State.ALT_GUARD, oldAltGuard);
 				
-				
-				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the timer
+		        stats = getStatements(ac.stat());
+				statementList.addAll(Arrays.asList(stats)); //the statements in the timer
 
 			} else if (caseExprStmt instanceof ExprStat){ //Channel
 				Expression e = ((ExprStat) caseExprStmt).expr();
@@ -243,12 +245,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 				State.set(State.ALT_GUARD, oldAltGuard);
 
 				statementList.add(chanRead);
-				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
+
+		        stats = getStatements(ac.stat());
+				statementList.addAll(Arrays.asList(stats)); //the statements in the channelexpr guard 
 				
 			} else if (caseExprStmt instanceof SkipStat){
 				guards[i] = "PJAlt.SKIP_GUARD";
 				
-				statementList.addAll(Arrays.asList((String[]) ac.stat().visit(this))); //the statements in the skip 
+		        stats = getStatements(ac.stat());
+				statementList.addAll(Arrays.asList(stats)); //the statements in the skip guard
 			} else {
 				Error.error("Unknown statement in guards!!!");
 			}	
@@ -678,16 +683,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 			
 		}
 		
-		Object stats = null;
-		if (cs.stat() instanceof Block) {
-			Block b = (Block) cs.stat();
-			stats = (String[]) b.visit(this);
-		} else {
-			stats = (String) cs.stat().visit(this);
-		}
+		String[] stats = getStatements(cs.stat());
 		
 		template = group.getInstanceOf("ClaimStat");
-
 		template.add("chanNameToReadEndType", chanNameToEndType);
 		template.add("ldstr", ldStr);
 		template.add("stats", stats);
@@ -699,6 +697,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		State.set(State.CLAIMSTAT, false);
 
 		return (T) template.render();
+	}
+	
+	private String[] getStatements(AST stat) {
+	    String[] stats = null;
+	    
+	    if (stat instanceof Block) {
+            Block b = (Block) stat;
+            stats = (String[]) b.visit(this);
+        } else {
+            stats = new String[1];
+            stats[0] = (String) stat.visit(this);
+        }
+	    
+	    return stats;
 	}
 
 	/**
@@ -755,13 +767,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	}
 
 	public T createInvocation(String left, Invocation in, List<String> barriers, boolean isParamInvocation, int invocationWrapper) {
-		String invocationProcName = in.procedureName().getname();
-		Log.log(in.line + ": Creating Invocation ("+ invocationProcName + ") with LHS as " + left);
+		Log.log(in.line + ": Creating Invocation ("+ in.procedureName().getname() + ") with LHS as " + left);
+
 
 	    ST template = null;
 	    ProcTypeDecl pd = in.targetProc;
 	    String qualifiedPkg = getQualifiedPkg(pd);
-	    String qualifiedProc = qualifiedPkg + "." + in.procedureName().getname();
+	    
+	    String procName = null;
+	    if (pd.myPackage.contains(this.originalFilename)) { //invoking proc in the same file
+	        procName = getTemplateProcName(in.procedureName().getname());
+	    } else {
+	        procName = in.procedureName().getname(); //invoking proc from import
+	    }
+	    String qualifiedProc = qualifiedPkg + "." + procName;
 
 		List<String> paramLst = new ArrayList<String>();
 		List<String> paramBlocks = new ArrayList<String>();
@@ -1889,20 +1908,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 	 */
 	public T visitSequence(Sequence se) {
 		Log.log(se.line + ": Visiting a Sequence");
-		String[] returnArray = new String[se.size()];
-		String value = null;
+		List<String> children = new ArrayList<String>();
+		String[] stats = null;
 
-		// Iterate through all children placing results in array.
 		for (int i = 0; i < se.size(); i++) {
 			if (se.child(i) != null) {
-				value = (String) se.child(i).visit(this);
-				if (value != null && !value.isEmpty()) {
-					returnArray[i] = value;
+			    stats = getStatements(se.child(i));
+				if (stats != null && stats.length != 0) {
+					children.addAll(Arrays.asList(stats));
 				}
-			}else {
-				returnArray[i] = null;
 			}
 		}
+		
+		String[] returnArray = new String[children.size()];
+		returnArray = children.toArray(returnArray);
 
 		return (T) returnArray;
 	}
