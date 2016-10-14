@@ -16,7 +16,7 @@ hs_err_pid*
 cds-notes/
 src/SampleTests/
 src/Generated/
+bin/
 src/Parser/parser.java
 src/Parser/sym.java
 src/Scanner/Scanner.java
-bin/
