@@ -80,13 +80,14 @@ import AST.Var;
 import AST.WhileStat;
 import Utilities.Error;
 import Utilities.Log;
+import Utilities.Settings;
 import Utilities.SymbolTable;
 import Utilities.Visitor;
 
 public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
 	/** Relative location of our group string template file. */
-	private final String grammarStFile = "src/StringTemplates/grammarTemplatesJava.stg";
+	private final String grammarStFile = "StringTemplates/grammarTemplatesJava.stg";
 	private static final int INV_WRAP_PAR = 0;
 	private static final int INV_WRAP_PARFOR = 1;
 
@@ -2250,11 +2251,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 		if (myPkg.contains(this.originalFilename)) { //invocation from the same file
 			return originalFilename;
 		} else { //invocation from imported file
-			//for now lets assume that all imports are done from 
-			//include.JVM. So, get everything after that. Re-visit if this changes.
-			int i = myPkg.indexOf(".", (myPkg.indexOf(".")+1));
-			System.out.println("qualified package before substring=" + myPkg);
-			return myPkg.substring(i+1);
+	        String includeDirPath = Settings.includeDir + File.separator + Settings.targetLanguage + File.separator;
+	        includeDirPath = includeDirPath.replaceAll(File.separator, "\\."); // replace all '/' with '.'
+	        myPkg = myPkg.replaceAll(includeDirPath, "");
+	        return myPkg;
 		}
 	}
 
