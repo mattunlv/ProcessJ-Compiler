@@ -4,20 +4,20 @@ public abstract class Expression extends AST {
 
     public Type type = null;
 
-	public Expression(Token t) {
-		super(t);
-	}
+    public Expression(Token t) {
+        super(t);
+    }
 
-	public Expression(AST a) {
-		super(a);
-	}
+    public Expression(AST a) {
+        super(a);
+    }
 
-	public boolean isConstant() {
-		return false;
-	}
+    public boolean isConstant() {
+        return false;
+    }
 
-	public Object constantValue() {
-		return null;
-	}
+    public Object constantValue() {
+        return null;
+    }
 
 }

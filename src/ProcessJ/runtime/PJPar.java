@@ -28,32 +28,34 @@ public class PJPar {
     /**
      * Constructor.
      *
-     * @param processCount The number of processes inside the par block.
-     * @param p A reference to the process in which the par appears.
+     * @param processCount
+     *            The number of processes inside the par block.
+     * @param p
+     *            A reference to the process in which the par appears.
      */
     public PJPar(int processCount, PJProcess p) {
-	this.processCount = processCount;
-	this.process = p;
+        this.processCount = processCount;
+        this.process = p;
     }
 
     /**
      * Mutator for setting the process count of the par block.
-     * @param count The number of processes in the par block.
+     * 
+     * @param count
+     *            The number of processes in the par block.
      */
     public void setProcessCount(int count) {
-	this.processCount = count;
+        this.processCount = count;
     }
 
     /**
-     * Decrements the number of processes in the par block.
-     * The last process of the par block to call this method
-     * causes the process in which the par appers to become 
-     * ready to run again.
+     * Decrements the number of processes in the par block. The last process of the par block to call this method causes
+     * the process in which the par appers to become ready to run again.
      */
     public void decrement() {
-	processCount--;
-	if (processCount == 0) {
-	    process.setReady();
-	}
+        processCount--;
+        if (processCount == 0) {
+            process.setReady();
+        }
     }
 }

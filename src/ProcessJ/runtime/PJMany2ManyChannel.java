@@ -1,6 +1,6 @@
 package ProcessJ.runtime;
 
-import java.util.*;
+import java.util.LinkedList;
 
 /* JVMCSP is maintained at the University of Nevada Las Vegas.
  * 

@@ -19,7 +19,8 @@ public abstract class PJChannel<T> {
     /**
      * Channel type constants.
      */
-    protected final static int TYPE_ONE2ONE = 0, TYPE_ONE2MANY = 1, TYPE_MANY2ONE = 2, TYPE_MANY2MANY = 3;
+    protected final static int TYPE_ONE2ONE = 0, TYPE_ONE2MANY = 1,
+            TYPE_MANY2ONE = 2, TYPE_MANY2MANY = 3;
 
     /**
      * The data item communicated on the channel.

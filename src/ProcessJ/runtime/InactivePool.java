@@ -7,14 +7,12 @@ package ProcessJ.runtime;
  */
 
 /**
- * Currently only used to keep a count of the number of processes that 
- * are not ready to run.
+ * Currently only used to keep a count of the number of processes that are not ready to run.
  *
  * @author Cabel Shrestha
  * @version 1.0
  * @since 2016-05-01
  */
-
 
 public class InactivePool {
 
@@ -27,21 +25,22 @@ public class InactivePool {
      * Decremenet the number of inactive processes.
      */
     public synchronized void decrement() {
-	this.count--;
+        this.count--;
     }
 
     /**
      * Increment the number of inactive processes.
      */
     public synchronized void increment() {
-	this.count++;
+        this.count++;
     }
 
-    /** 
+    /**
      * Returns the number of inactive processes.
+     * 
      * @return The number of inactive processes.
      */
     public int getCount() {
-	return this.count;
+        return this.count;
     }
 }

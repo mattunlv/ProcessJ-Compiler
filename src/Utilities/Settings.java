@@ -10,5 +10,4 @@ public class Settings {
     public static String absolutePath = new File("").getAbsolutePath() + "/";
     // TODO: includeDir should be ABSOLUTE in some way
 
-
 }

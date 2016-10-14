@@ -7,11 +7,11 @@ public abstract class LoopStatement extends Statement {
     public boolean foreverLoop = false;
 
     public LoopStatement(AST a) {
-	super(a);
-    }
-    public LoopStatement(Token a) {
-	super(a);
+        super(a);
     }
 
+    public LoopStatement(Token a) {
+        super(a);
+    }
 
 }
