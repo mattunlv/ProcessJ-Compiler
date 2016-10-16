@@ -1,5 +1,4 @@
 package Utilities;
-
 import java.io.File;
 
 public class Settings {
@@ -9,5 +8,4 @@ public class Settings {
 
     public static String absolutePath = new File("").getAbsolutePath() + "/";
     // TODO: includeDir should be ABSOLUTE in some way
-
 }

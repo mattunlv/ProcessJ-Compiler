@@ -3,6 +3,7 @@ package AST;
 import Utilities.Visitor;
 
 public class Name extends AST {
+
     public AST myDecl; // used for places in the the grammar where a Name is used (e.g., in extends of protocols) instead of a NameExpr.
 
     private String id;
@@ -55,7 +56,6 @@ public class Name extends AST {
 
     public String getname() {
         return toString(); //this.id;  // TODO: changed back to full name 
-
     }
 
     public String simplename() {

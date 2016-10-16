@@ -9,6 +9,7 @@ public class ChannelEndType extends Type {
 
     public static final int READ_END = 0;
     public static final int WRITE_END = 1;
+    public static final int byteSizeC = 4; //32-bit pointer.
 
     private int shared;
     private int end;
@@ -26,6 +27,10 @@ public class ChannelEndType extends Type {
     }
 
     // TODO: perhaps the base type of a channel end type ought to be a channel ;->
+
+    public int byteSizeC() {
+        return byteSizeC;
+    }
 
     public String signature() {
         return "{" + baseType().signature() + ";" + (isRead() ? "?" : "!");

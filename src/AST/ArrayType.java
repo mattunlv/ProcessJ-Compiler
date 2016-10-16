@@ -4,6 +4,8 @@ import Utilities.Visitor;
 
 public class ArrayType extends Type {
 
+    public static final int byteSizeC = 4;
+
     private int depth = 0; // How many set of [ ] were there?
 
     public ArrayType(Type baseType, int depth) {
@@ -20,6 +22,10 @@ public class ArrayType extends Type {
     public void setBaseType(Type t) {
         children[0] = t;
         // TODO: be careful about depth .... should it be set back to 0 or should it reflect the correct value.
+    }
+
+    public int byteSizeC() {
+        return byteSizeC;
     }
 
     public int getDepth() {
@@ -41,7 +47,7 @@ public class ArrayType extends Type {
     public String signature() {
         String s = baseType().signature();
         for (int i = 0; i < depth; i++)
-            s = "[" + s + ";";
+            s = "A" + s;
         return s;
     }
 

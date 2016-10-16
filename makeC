@@ -1,0 +1,4 @@
+#! /bin/bash
+
+echo compiling!
+gcc -O3 -g -std=c99 -L lib/CCSP/lib/  -I lib/CCSP/include/kroc -fomit-frame-pointer -fno-defer-pop -m32 -DKROC_USES_PTHREADS codeGenerated.c -o codeGenerated -lccsp -lpthread -Wl,-rpath,lib/CCSP/lib/

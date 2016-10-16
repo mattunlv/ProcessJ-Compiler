@@ -57,4 +57,14 @@ public class Sequence<T extends AST> extends AST implements Iterable<T> {
     public <W extends Object> W visit(Visitor<W> v) {
         return v.visitSequence(this);
     }
+
+    /**
+     * Given an index it will return the element at that index.
+     * added by Omar. This is repeat of child function at some point I will get rid of
+     * this and use only child(). TODO.
+     */
+    public T getElementN(int n){
+        return children.get(n);
+
+    }
 }

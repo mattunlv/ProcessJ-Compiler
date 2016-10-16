@@ -14,7 +14,7 @@ import java.util.Hashtable;
  */
 
 public class SymbolTable implements AST.TopLevelDecl {
-    // This hook is used to hold on the global type table 
+    // This hook is used to hold on the global type table
     // and to transport the closest table from TopLevelDecls.
     public static SymbolTable hook = null;
 
@@ -46,8 +46,6 @@ public class SymbolTable implements AST.TopLevelDecl {
         this(parent, "<anonymous>");
         this.parent = parent;
     }
-
-    // ----------
 
     public void setParent(SymbolTable st) {
         parent = st;

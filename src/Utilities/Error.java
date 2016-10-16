@@ -6,6 +6,7 @@ import AST.AST;
 import AST.ErrorType;
 import AST.Type;
 
+
 public class Error {
     public static String fileName = "";
     public static int errorCount = 0;
@@ -25,10 +26,10 @@ public class Error {
 
     public static void setFileName(String name) {
         // remove all double //:
-        String str = name.replaceAll("//", "/");
+        String str = name.replaceAll("//","/");
         // Now remove the absolute path
         String absPath = new File("").getAbsolutePath() + "/";
-        str = str.replaceAll(absPath, "");
+        str = str.replaceAll(absPath,"");
         fileName = str;
     }
 
@@ -52,8 +53,7 @@ public class Error {
         System.out.print(fileName + ":" + e.line + ": ");
         System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
         System.out.print("Error number: ");
-        System.out
-                .println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
+        System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
         if (terminate)
             System.exit(1);
         else {
@@ -67,8 +67,7 @@ public class Error {
         System.out.print(fileName + ":" + e.line + ": ");
         System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
         System.out.print("Warning number: ");
-        System.out
-                .println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
+        System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
         errors += "\n" + fileName + ":" + e.line + ": " + msg;
         errors += "\n" + "Warning number: " + errorno;
     }
@@ -77,13 +76,10 @@ public class Error {
         System.out.print(fileName + ":" + e.line + ": ");
         System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
         System.out.print("Error number: ");
-        System.out
-                .println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
+        System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
         errorCount++;
-        errors += "\n" + fileName + ":" + e.line + ": "
-                + ColorCodes.ParseColors(":red,n:" + msg + "[RC]");
-        errors += "\n" + "Error number: "
-                + ColorCodes.ParseColors(":red,n:" + errorno + "[RC]");
+        errors += "\n" + fileName + ":" + e.line + ": " + ColorCodes.ParseColors(":red,n:" + msg + "[RC]");
+        errors += "\n" + "Error number: " + ColorCodes.ParseColors(":red,n:" + errorno + "[RC]");
         return new ErrorType();
     }
 

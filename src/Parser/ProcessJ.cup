@@ -1560,14 +1560,15 @@ literal ::=
 
 // RecordLiteral :> Literal :> Expression :> AST
 record_literal ::=
-       NEW type_name:tn LBRACE argument_list:l RBRACE {: RESULT = new RecordLiteral(tn, l); :}
-        ;
+         NEW type_name:tn LBRACE argument_list:l RBRACE {: RESULT = new RecordLiteral(tn, l); :}
+       | NEW type_name:tn LBRACE RBRACE {: RESULT = new RecordLiteral(tn, new Sequence()); :}
+       ;
 
 // ProtocolLiteral :> Literal :> Expression :> AST
 protocol_literal ::=
-       NEW type_name:tn LBRACE IDENTIFIER:id2 COLON argument_list_opt:l RBRACE 
-	  {: RESULT = new ProtocolLiteral(tn
-, new Name(id2), l); :}
+        NEW type_name:tn LBRACE IDENTIFIER:id2 COLON argument_list_opt:l RBRACE 
+	  {: RESULT = new ProtocolLiteral(tn, new Name(id2), l); :}
+	  //      | NEW type_name:tn LBRACE IDENTIFIER:id2 COLON RBRACE
       ;
 
 // -----------------------------------------------------------------------------

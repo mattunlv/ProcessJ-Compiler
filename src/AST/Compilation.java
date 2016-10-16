@@ -4,10 +4,13 @@ import Utilities.Visitor;
 
 public class Compilation extends AST {
 
+
     public boolean visited = false;
 
-    public Compilation(Sequence<Pragma> pragmas, Name packageName,
-            Sequence<Import> imports, Sequence<Type> typeDecls) {
+    public Compilation(Sequence<Pragma> pragmas, 
+                       Name packageName, 
+                       Sequence<Import> imports, 
+                       Sequence<Type> typeDecls) {
         super(typeDecls);
         nchildren = 4;
         children = new AST[] { pragmas, packageName, imports, typeDecls };

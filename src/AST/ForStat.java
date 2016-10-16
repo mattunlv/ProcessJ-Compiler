@@ -7,9 +7,12 @@ public class ForStat extends LoopStatement {
     /* Note that init() and incr() can be null */
     public boolean par;
 
-    public ForStat(Token t, Sequence<Statement> init, Expression expr,
-            Sequence<ExprStat> incr, Sequence<Expression> barriers,
-            Statement stat, boolean par) {
+    public ForStat(Token t, Sequence<Statement> init,
+                   Expression expr,
+                   Sequence<ExprStat> incr ,
+                   Sequence<Expression> barriers,
+                   Statement stat,
+                   boolean par) {
         super(t);
         nchildren = 5;
         this.par = par;
