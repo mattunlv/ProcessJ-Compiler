@@ -1,7 +1,0 @@
-
-proc void foo() {
-}
-
-public record B {
-  foo foo;
-}

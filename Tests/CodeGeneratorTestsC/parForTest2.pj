@@ -1,9 +1,0 @@
-import std.io;
-
-proc void main(){
-  int x = 0;
-  int y = 0;
-  par for(int i = 0; i < 10; j += 2, i++){
-      println("Hello: " + i + " " + j);
-  }
-}

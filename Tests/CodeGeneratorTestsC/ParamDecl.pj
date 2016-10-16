@@ -1,7 +1,0 @@
-/**
- * CastExpr program!
- */
-proc void main(int x, double z, const char c){
-
-  return;
-}

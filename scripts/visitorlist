@@ -1,2 +1,0 @@
-#!/bin/sh
-grep T src/Utilities/Visitor.java  | sed 's/public Object//g' | sed 's/([^)]*)//g' | sed 's/ {//g' | sed 's/visit/\/\/ /g'
