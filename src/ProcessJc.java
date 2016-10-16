@@ -17,19 +17,15 @@ import Utilities.SymbolTable;
 public class ProcessJc {
     public static void usage() {
         System.out.println("ProcessJ Version 1.0");
-        System.out
-                .println("usage: pjc [-I dir] [-pp language] [-t language] input");
-        System.out
-                .println("  -I dir\tSets the include directory (default is include)");
-        System.out
-                .println("  -pp\tDo not output code but produce a pretty print");
+        System.out.println("usage: pjc [-I dir] [-pp language] [-t language] input");
+        System.out.println("  -I dir\tSets the include directory (default is include)");
+        System.out.println("  -pp\tDo not output code but produce a pretty print");
         System.out.println("     \tlanguage can be one of:");
         System.out.println("     \tlatex : produce latex includable output.");
         System.out.println("     \tprocessj : produce ProcessJ output.");
         System.out.println("  -t\tSets the target language.");
         System.out.println("     \tlanguage can be one of:");
-        System.out
-                .println("     \tc: c source is written, compiled and linked with the CCSP runtime.");
+        System.out.println("     \tc: c source is written, compiled and linked with the CCSP runtime.");
         System.out.println("     \tjvm: JVM class files are written.");
         System.out.println("     \tjs: JavaScript is written.");
         System.out.println("  -sts\tDumps the global symbole table structure.");
@@ -70,14 +66,12 @@ public class ProcessJc {
                     s = new Scanner(System.in);
                 } else if (argv[i].equals("-I")) {
                     if (argv[i + 1].charAt(argv[i + 1].length() - 1) == '/')
-                        argv[i + 1] = argv[i + 1].substring(0,
-                                argv[i + 1].length() - 1);
+                        argv[i + 1] = argv[i + 1].substring(0, argv[i + 1].length() - 1);
                     Settings.includeDir = argv[i + 1];
                     i++;
                     continue;
                 } else if (argv[i].equals("-t")) {
-                    if (argv[i + 1].equals("c") || argv[i + 1].equals("JVM")
-                            || argv[i + 1].equals("js")) {
+                    if (argv[i + 1].equals("c") || argv[i + 1].equals("JVM") || argv[i + 1].equals("js")) {
                         Settings.targetLanguage = argv[i + 1];
                         i++;
                         continue;
@@ -131,8 +125,7 @@ public class ProcessJc {
             Library.generateLibraries(c);
 
             // This table will hold all the top level types
-            SymbolTable globalTypeTable = new SymbolTable("Main file: "
-                    + Error.fileName);
+            SymbolTable globalTypeTable = new SymbolTable("Main file: " + Error.fileName);
 
             ////////////////////////////////////////////////////////////////////////////////
             // TOP LEVEL DECLARATIONS
@@ -149,9 +142,7 @@ public class ProcessJc {
             c.visit(new NameChecker.NameChecker<AST>(globalTypeTable));
             if (Error.errorCount != 0) {
                 System.out.println("---------- Error Report ----------");
-                System.out
-                        .println(Error.errorCount
-                                + " errors in symbol resolution - fix these before type checking.");
+                System.out.println(Error.errorCount + " errors in symbol resolution - fix these before type checking.");
                 System.out.println(Error.errors);
                 System.out.println("** COMPILATION FAILED **");
                 System.exit(1);
@@ -166,9 +157,7 @@ public class ProcessJc {
 
             if (Error.errorCount != 0) {
                 System.out.println("---------- Error Report ----------");
-                System.out
-                        .println(Error.errorCount
-                                + " errors in type checking - fix these before code generation.");
+                System.out.println(Error.errorCount + " errors in type checking - fix these before code generation.");
                 System.out.println(Error.errors);
                 System.exit(1);
             }
@@ -194,19 +183,17 @@ public class ProcessJc {
         }
     }
 
-    private static void generateCodeJava(Compilation c, String filename,
-            SymbolTable topLevelDecls) {
-        CodeGeneratorJava<Object> generator = new CodeGeneratorJava<Object>(
-                topLevelDecls);
+    private static void generateCodeJava(Compilation c, String filename, SymbolTable topLevelDecls) {
+        CodeGeneratorJava<Object> generator = new CodeGeneratorJava<Object>(topLevelDecls);
         /*
-         * Ignoring the path and .pj extension and getting just the filename.
+         * Extracting the filename without the path and extension (.pj).
          */
         String[] tokens = filename.split(File.separator);
         String n = tokens[tokens.length - 1];
         String name = n.substring(0, n.lastIndexOf("."));
 
-        generator.setOriginalFilename(name);
-        generator.workdir = getWorkDirConfig();
+        generator.setSourceFilename(name);
+        generator.setWorkingDirectory(getWorkDirConfig());
 
         c.visit(generator);
 

@@ -43,7 +43,6 @@ public class Instrumenter {
 
         Log.log("in instrumenter!!");
 
-        //    this.fullPath = Instrumenter.class.getResource("../"+ folder +"/").getPath();
         this.fullPath = folder;
 
         Log.log("================================");

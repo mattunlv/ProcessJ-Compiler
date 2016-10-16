@@ -3,7 +3,7 @@ package Utilities;
 import java.io.File;
 
 public class Settings {
-    public static String includeDir = "include/";
+    public static String includeDir = "include";
     public static String targetLanguage = "C";
     public static String importFileExtension = "pj";
 

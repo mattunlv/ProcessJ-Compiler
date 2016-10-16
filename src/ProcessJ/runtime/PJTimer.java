@@ -65,30 +65,12 @@ public class PJTimer implements Delayed {
     @Override
     public long getDelay(TimeUnit unit) {
         long diff = delay - System.currentTimeMillis();
-
-        long retLong = unit.convert(diff, TimeUnit.MILLISECONDS);
-
-        System.out.println("timer.getDelay=" + retLong);
-        return retLong;
-        //		return unit.convert(diff, TimeUnit.MILLISECONDS);
+        return unit.convert(diff, TimeUnit.MILLISECONDS);
     }
 
     @Override
     public int compareTo(Delayed o) {
-        int retInt = 0;
-        if (this.delay < ((PJTimer) o).delay) {
-            //			return -1;
-            retInt = -1;
-        }
-        if (this.delay > ((PJTimer) o).delay) {
-            //			return 1;
-            retInt = 1;
-        }
-        //		System.out.println("timer.compare=" + retInt);
-        //		return 0;
-        //		return retInt;
         int retVal = Long.valueOf(this.delay).compareTo(((PJTimer) o).delay);
-        //		System.out.println("-----timer.compare=" + retVal);
         return retVal;
     }
 }

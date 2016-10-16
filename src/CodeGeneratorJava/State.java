@@ -4,8 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 /*
- * FIXME put java doc stating why this class is necessary.
- * 
  * This handles the state of the codegen visitor. And is useful for
  * nested visits to nodes such as par/parfor etc where old state needs to
  * be maintained.

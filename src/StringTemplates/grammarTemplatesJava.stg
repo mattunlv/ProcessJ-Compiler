@@ -269,35 +269,33 @@ InvocationWithInvocationParamType(left, right, paramBlocks) ::= <<
 <if(left)><left>=<endif><right>
 >>
 
-LocalDeclNormalProc(typeStr, var, chanType, protoType, recType, barrierType, timerType, rEmpty) ::= <<
-<if(chanType)>
-<typeStr> <var><if(rEmpty)> = new <typeStr>()<endif><\\>
-<elseif(protoType)>
-PJProtocolCase <var><if(rEmpty)> = null<endif><\\>
-<elseif(recType)>
-<typeStr> <var><if(rEmpty)> = null<endif><\\>
-<elseif(barrierType)>
-<typeStr> <var><if(rEmpty)> = new PJBarrier()<endif><\\>
-<elseif(timerType)>
-<! Initialization handled by TimeoutStat. We still want LocalDecl to take care of
-creating fields. !>
+LocalDeclNormalProc(typeStr, var, isChanType, isProtoType, isRecType, isBarrierType, isTimerType, notInitialized) ::= <<
+<if(isChanType)>
+<typeStr> <var><if(notInitialized)> = new <typeStr>()<endif><\\>
+<elseif(isProtoType)>
+PJProtocolCase <var><if(notInitialized)> = null<endif><\\>
+<elseif(isRecType)>
+<typeStr> <var><if(notInitialized)> = null<endif><\\>
+<elseif(isBarrierType)>
+<typeStr> <var><if(notInitialized)> = new PJBarrier()<endif><\\>
+<elseif(isTimerType)>
+<! Initialization handled by TimeoutStat. We still want LocalDecl to take care of creating fields. !>
 <else>
 <typeStr> <var><\\>
 <endif>
 >>
 
-LocalDeclYieldingProc(typeStr, var, chanType, protoType, recType, barrierType, timerType, rEmpty) ::= <<
-<if(chanType)>
-<var><if(rEmpty)> = new <typeStr>()<endif><\\>
-<elseif(protoType || recType)>
-<var><if(rEmpty)> = null<endif><\\>
-<elseif(barrierType)>
-<var><if(rEmpty)> = new PJBarrier()<endif><\\>
-<elseif(timerType)>
-<! Initialization handled by TimeoutStat. We still want LocalDecl to take care of
-creating fields. !>
+LocalDeclYieldingProc(typeStr, var, isChanType, isProtoType, isRecType, isBarrierType, isTimerType, notInitialized) ::= <<
+<if(isChanType)>
+<var><if(notInitialized)> = new <typeStr>()<endif><\\>
+<elseif(isProtoType || isRecType)>
+<var><if(notInitialized)> = null<endif><\\>
+<elseif(isBarrierType)>
+<var><if(notInitialized)> = new PJBarrier()<endif><\\>
+<elseif(isTimerType)>
+<! Initialization handled by TimeoutStat. We still want LocalDecl to take care of creating fields. !>
 <else>
-<if(!rEmpty)><var><endif><\\>
+<if(!notInitialized)><var><endif><\\>
 <endif>
 >>
 
