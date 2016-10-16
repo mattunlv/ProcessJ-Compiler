@@ -1,7 +1,0 @@
-proc void g(chan<int> c) {
-}
-
-proc void f() {
-  chan<int> c;
-  g(c);
-}

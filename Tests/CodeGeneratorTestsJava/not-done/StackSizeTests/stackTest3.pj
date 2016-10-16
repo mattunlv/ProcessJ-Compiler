@@ -1,5 +1,0 @@
-import std.io;
-
-proc void myMain(){
-  println("Hello World!");
-}

@@ -1,8 +1,0 @@
-/**
- * ArrayAccessExpr program!
- */
-proc void main(){
-  int[] x = {3, 4, 5};
-  int[] a = new int[2];
-  return;
-}

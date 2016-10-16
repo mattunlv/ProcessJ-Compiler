@@ -1,8 +1,0 @@
-import std.io;
-
-proc void main() {
-
-  println("This is print from JVM generator");
-
-  return;
-}

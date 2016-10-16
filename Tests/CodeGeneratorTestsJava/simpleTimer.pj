@@ -1,6 +1,0 @@
-proc void foo() [yield=true]{
-	timer t;
-	long time = t.read();
-	
-	t.timeout(1000000);
-}

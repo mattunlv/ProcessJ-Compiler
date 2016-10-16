@@ -3,6 +3,21 @@
 homedir=~
 eval homedir=$homedir
 
+if [ "$#" -eq 0 ] ; then
+  echo -e "Usage:"
+  echo "./doall <ProcessJ source file path>"
+  echo "    - compiles .pj file and generates .java files in workspace defined in .pjconfig"
+  echo "    - compiles generated .java file"
+  echo "    - instruments .class file/s"
+  echo "    - creates executable jar file"
+  echo " -------------------------------"
+  echo "./doall -java"
+  echo "    - compiles .java file in the workspace defined in .pjconfig"
+  echo "    - instruments .class file/s"
+  echo "    - creates executable jar file"
+  exit 0
+fi
+
 CONFIG_FILE=".pjconfig"
 if ! [ -e "$homedir/$CONFIG_FILE" ] ; then
   echo "No ProcessJ configuration file found. Should be in '$homedir/$CONFIG_FILE'"
@@ -34,22 +49,25 @@ if ! [ -d "$workingdir" ] ; then
   esac
 fi
 
-## clean the working directory
-rm -i -rf $workingdir/* > /dev/null
+if [ "$#" -ne 2 ] ; then
+  ## clean the working directory
+  rm -i -rf $workingdir/* > /dev/null
 
-## compile .pj code using ProcessJ compiler and generate the .java file in the working directory.
-java -cp bin:src/Utilities/java_cup_runtime.jar:src/Utilities/ST-4.0.7.jar:src/Utilities/asm-all-3.3.1.jar:lib/JVM:. ProcessJc -t JVM $@
+  ## compile .pj code using ProcessJ compiler and generate the .java file in the working directory.
+  java -cp bin:src/Utilities/java_cup_runtime.jar:src/Utilities/ST-4.0.7.jar:src/Utilities/asm-all-3.3.1.jar:lib/JVM:. ProcessJc -t JVM $1
+
+  ## let's create an executable jar file now.
+  mkdir $workingdir/META-INF ## create dir for manifest file
+  filename="${1##*/}" ## $@ is the full path'ed filename of .pj file. we extract just the file name x.pj
+  just_filename="${filename%.*}" ## now extract just the name of the file
+fi
 
 ## compile the .java file using Java compiler
 javac -classpath bin/:lib/JVM:. $workingdir/*.java
 
 ## instrument the Java classes for resumption
-java -classpath bin/:src/Utilities/asm-all-3.3.1.jar:. Instrument/Instrumenter $workingdir/.
+java -classpath bin/:src/Utilities/asm-all-3.3.1.jar:. Instrument/Instrumenter $workingdir
 
-## let's create an executable jar file now.
-mkdir $workingdir/META-INF ## create dir for manifest file
-filename="${@##*/}" ## $@ is the full path'ed filename of .pj file. we extract just the file name x.pj
-just_filename="${filename%.*}" ## now extract just the name of the file
 echo "Main-Class: "$just_filename > $workingdir/META-INF/MANIFEST.MF ## write the manifest file
 
 jar cmvf $workingdir/META-INF/MANIFEST.MF $workingdir/$just_filename.jar $workingdir/*.class ## create the jar file

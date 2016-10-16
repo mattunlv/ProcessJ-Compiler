@@ -1,7 +1,0 @@
-/**
- * Simple program!
- */
-proc void myMain(){
-
-  return;
-}

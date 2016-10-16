@@ -1,5 +1,0 @@
-
-
-public  record r {
-  int a;
-}
