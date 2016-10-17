@@ -3,6 +3,8 @@ package ProcessJ.runtime;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.DelayQueue;
 
+import Utilities.Log;
+
 /* JVMCSP is maintained at the University of Nevada Las Vegas.
  * 
  * For more information please contact matt.pedersen@unlv.edu
@@ -65,7 +67,7 @@ public class TimerQueue {
      * start() is called once from the Scheduler class.
      */
     public void start() {
-        System.err.println("[TimerQueue] Timer Queue Running");
+        Log.log("[TimerQueue] Timer Queue Running");
         this.timerThread.start();
     }
 
