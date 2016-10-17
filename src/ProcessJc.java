@@ -323,8 +323,10 @@ public class ProcessJc {
      */
     public static Hashtable<String, Integer> readSuFile(String fileName){
         Hashtable<String, Integer> suTable = new Hashtable();
+        BufferedReader br = null;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(fileName))){
+        try {
+            br = new BufferedReader(new FileReader(fileName));
             String currentLine;
 
             while( (currentLine = br.readLine()) != null ){
@@ -341,10 +343,16 @@ public class ProcessJc {
 
                 suTable.put(name, size);
             }
-
-        }
-        catch (IOException e){
+        } catch (IOException e){
             Error.error("Failed to read in .su file!");
+        } finally {
+            try {
+                if (br != null) {
+                    br.close();
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }   
         }
 
         return suTable;
