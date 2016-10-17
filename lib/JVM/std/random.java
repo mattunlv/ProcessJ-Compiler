@@ -1,15 +1,13 @@
 package std;
 
-public class Random {
+public class random {
     static java.util.Random r = new java.util.Random(0);
 
-    public void initRandom(long seed) {
-	r = new java.util.Random(seed);
+    public static void initRandom(long seed) {
+        r = new java.util.Random(seed);
     }
 
-    public long longRandom() {
-	return r.nextLong();
+    public static long longRandom() {
+        return r.nextLong();
     }
 }
-
-
