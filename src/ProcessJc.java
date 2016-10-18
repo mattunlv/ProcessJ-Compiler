@@ -2,11 +2,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-
-import Scanner.Scanner;
-import Parser.parser;
-
 import java.util.Hashtable;
+import java.util.Properties;
 import java.util.Set;
 
 import AST.AST;
@@ -15,12 +12,17 @@ import AllocateStackSize.AllocateStackSize;
 import CodeGeneratorC.CodeGeneratorC;
 import CodeGeneratorJava.CodeGeneratorJava;
 import Library.Library;
+import Parser.parser;
+import Scanner.Scanner;
 import Utilities.Error;
 import Utilities.Log;
 import Utilities.Settings;
 import Utilities.SymbolTable;
 
 public class ProcessJc {
+    
+    private static Properties config = null;
+
     //========================================================================================
     public static void usage() {
         System.out.println("ProcessJ Version 1.0");
@@ -60,6 +62,8 @@ public class ProcessJc {
     //========================================================================================
     public static void main(String argv[]) {
         AST root = null;
+        
+        config = Utilities.ConfigFileReader.getConfiguration();
 
         if (argv.length == 0) {
             System.out.println("ProcessJ Compiler version 1.00");
@@ -196,47 +200,19 @@ public class ProcessJc {
     private static void generateCodeJava(Compilation c, String filename, SymbolTable topLevelDecls) {
         CodeGeneratorJava<Object> generator = new CodeGeneratorJava<Object>(topLevelDecls);
         /*
-         * Extracting the filename without the path and extension (.pj).
+         * Extracting the filename without the path and the extension (.pj).
          */
-        String[] tokens = filename.split(File.separator);
-        String n = tokens[tokens.length - 1];
-        String name = n.substring(0, n.lastIndexOf("."));
+        File f = new File(filename);
+        String name = f.getName();
+        name = name.substring(0, name.lastIndexOf("."));
 
         generator.setSourceFilename(name);
-        generator.setWorkingDirectory(getWorkDirConfig());
+        generator.setWorkingDirectory(config.getProperty("workingdir"));
 
         c.visit(generator);
 
         return;
 
-    }
-
-    public static String getWorkDirConfig() {
-        String home = System.getProperty("user.home");
-        String configPath = home + "/.pjconfig";
-        File in = new File(configPath);
-        String dir = null;
-
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(in));
-
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] tokens = line.split("=");
-                if (tokens.length != 2)
-                    continue;
-
-                for (int i = 0; i < tokens.length; i++) {
-                    if ("workingdir".equals(tokens[0])) {
-                        dir = tokens[1];
-                        break;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return dir;
     }
 
     //========================================================================================
