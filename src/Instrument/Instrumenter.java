@@ -414,7 +414,7 @@ public class Instrumenter {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Log.log("** INSTRUMENTATION SUCCEEDED **");
+        System.out.println("** INSTRUMENTATION SUCCEEDED **");
     }
 
 }
