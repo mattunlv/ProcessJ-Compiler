@@ -1,0 +1,14 @@
+#!/bin/bash
+
+INSTALL_DIR="<<INSTALL_DIR>>"
+
+homedir=~
+eval homedir=$homedir
+
+pushd $homedir > /dev/null
+cp $INSTALL_DIR/pjconfig .pjconfig
+WORKING_DIR=`grep workingdir .pjconfig | cut -d '=' -f 2`
+if [ ! -d "$WORKING_DIR" ]; then
+  mkdir $WORKING_DIR 2>&1
+fi
+popd > /dev/null
