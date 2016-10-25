@@ -17,281 +17,362 @@ public class Yield extends Visitor<Boolean> {
     private static final Boolean FALSE = new Boolean(false);
 
     public Boolean visitAnnotation(Annotation at) {
+	System.out.println("visiting an Annotation");
         return FALSE;
     }
 
     public Boolean visitAnnotations(Annotations as) {
+	System.out.println("visiting Annotations");
         return FALSE;
     }
 
     public Boolean visitAltCase(AltCase ac) {
+	System.out.println("visiting an AltCase");
         return TRUE;
     }
 
     public Boolean visitAltStat(AltStat as) {
+	System.out.println("visiting an AltStat");
         return TRUE;
     }
 
     public Boolean visitArrayAccessExpr(ArrayAccessExpr ae) {
-        return FALSE;
+	System.out.println("visiting an ArrayAccessExpr");
+        return ae.target().visit(this) || ae.index().visit(this);
     }
 
     public Boolean visitArrayLiteral(ArrayLiteral al) {
-        return FALSE;
+	System.out.println("visiting an ArrayLiteral");
+	boolean b = false;
+        for (int i=0; i<al.elements().size(); i++) {
+            boolean bb = al.elements().child(i).visit(this);
+            b = b || bb;
+        }
+        return new Boolean(b);
     }
 
     public Boolean visitArrayType(ArrayType at) {
+	System.out.println("visiting an ArrayType");
         return FALSE;
     }
 
     public Boolean visitAssignment(Assignment as) {
-        return FALSE;
+	System.out.println("visiting an Assignment");
+	return new Boolean(as.left().visit(this) || as.right().visit(this));
     }
 
     public Boolean visitBinaryExpr(BinaryExpr be) {
-        return FALSE;
+	System.out.println("visiting a BinaryExpr");
+        return new Boolean(be.left().visit(this) || be.right().visit(this));
     }
 
     public Boolean visitBlock(Block bl) {
+	System.out.println("visiting a Block");
 	boolean b = false;
-	for (int i=0; i<bl.stats().nchildren; i++)
-	    b =b || bl.stats().child(i).visit(this);
+	for (int i=0; i<bl.stats().size(); i++) {
+	    boolean bb = bl.stats().child(i).visit(this);
+	    b = b || bb;
+	}
         return new Boolean(b);
     }
 
     public Boolean visitBreakStat(BreakStat bs) {
+	System.out.println("visiting a BreakStat");
         return FALSE;
     }
 
     public Boolean visitCastExpr(CastExpr ce) {
-        return FALSE;
+	System.out.println("visiting a CastExpr");
+        return ce.expr().visit(this);
     }
 
     public Boolean visitChannelType(ChannelType ct) {
+	System.out.println("visiting a ChannelType");
         return FALSE;
     }
 
     public Boolean visitChannelEndExpr(ChannelEndExpr ce) {
-        return FALSE;
+	System.out.println("visiting a ChannelEndExpr");
+        return ce.channel().visit(this);
     }
 
     public Boolean visitChannelEndType(ChannelEndType ct) {
+	System.out.println("visitChannelEndType");
         return FALSE;
     }
 
     public Boolean visitChannelReadExpr(ChannelReadExpr cr) {
+	System.out.println("visiting a ChannelReadExpr");
         return TRUE;
     }
 
     public Boolean visitChannelWriteStat(ChannelWriteStat cw) {
+	System.out.println("visiting a ChannelWriteExpr");
         return TRUE;
     }
 
     public Boolean visitClaimStat(ClaimStat cs) {
+	System.out.println("visiting a ClaimStat");
         return TRUE;
     }
 
     public Boolean visitCompilation(Compilation co) {
+	System.out.println("visiting a Compilation");
+	super.visitCompilation(co);
         return FALSE;
     }
 
     public Boolean visitConstantDecl(ConstantDecl cd) {
+	System.out.println("visiting a ConstantDecl");
         return FALSE;
     }
 
     public Boolean visitContinueStat(ContinueStat cs) {
+	System.out.println("visiting a ContinueStat");
         return FALSE;
     }
 
     public Boolean visitDoStat(DoStat ds) {
+	System.out.println("visiting a DoStat");
         return new Boolean(ds.expr().visit(this) || ds.stat().visit(this));
     }
 
     public Boolean visitErrorType(ErrorType et) {
+	System.out.println("visiting an ErrorType");
         return FALSE;
     }
 
     public Boolean visitExprStat(ExprStat es) {
+	System.out.println("visiting an ExprStat");
         return es.expr().visit(this);
     }
 
     public Boolean visitExternType(ExternType et) {
+	System.out.println("visiting a ExternType");
         return FALSE;
     }
 
     public Boolean visitForStat(ForStat fs) {
+	System.out.println("visiting a ForStat");
 	boolean b = fs.init().visit(this) || fs.expr().visit(this) || 
 	    fs.incr().visit(this) || fs.stats().visit(this);
         return new Boolean(b);
     }
 
     public Boolean visitGuard(Guard gu) {
+	System.out.println("visiting a Guard");
         return TRUE;
     }
 
     public Boolean visitIfStat(IfStat is) {
+	System.out.println("visiting an IfStat");
 	boolean b = is.expr().visit(this) || is.thenpart().visit(this);
-	if (is.elsepart() != null)
-	    b = b || is.elsepart().visit(this);
-        return new Boolean(b);
+	if (is.elsepart() != null) {
+	    boolean bb = is.elsepart().visit(this); 
+	    b = b || bb;
+	}
+	return new Boolean(b);
     }
 
     public Boolean visitImplicitImport(ImplicitImport ii) {
+	System.out.println("visiting an ImplicitImport");
         return FALSE;
     }
 
     public Boolean visitImport(Import im) {
+	System.out.println("visiting an Import");
         return FALSE;
     }
 
     public Boolean visitInvocation(Invocation in) {
+	System.out.println("visiting a Invocation");
         return in.params().visit(this);
     }
 
     public Boolean visitLocalDecl(LocalDecl ld) {
+	System.out.println("visiting a LocalDecl");
         return FALSE;
     }
 
     public Boolean visitModifier(Modifier mo) {
+	System.out.println("visiting a Modifier");
         return FALSE;
     }
 
     public Boolean visitName(Name na) {
+	System.out.println("visiting a Name");
         return FALSE;
     }
 
     public Boolean visitNamedType(NamedType nt) {
+	System.out.println("visiting a NamedType");
         return FALSE;
     }
 
     public Boolean visitNameExpr(NameExpr ne) {
+	System.out.println("visiting a NameExpr");
         return FALSE;
     }
 
     public Boolean visitNewArray(NewArray ne) {
+	System.out.println("visiting a NewArray");
         return new Boolean(ne.dimsExpr().visit(this) || ne.init().visit(this));
     }
 
     public Boolean visitNewMobile(NewMobile nm) {
+	System.out.println("visiting a NewMobile");
         return FALSE;
     }
 
     public Boolean visitParamDecl(ParamDecl pd) {
+	System.out.println("visiting a ParamDecl");
         return FALSE;
     }
 
     public Boolean visitParBlock(ParBlock pb) {
+	System.out.println("visiting a ParBlock");
         return TRUE;
     }
 
     public Boolean visitPragma(Pragma pr) {
+	System.out.println("visiting a Pragma");
         return FALSE;
     }
 
     public Boolean visitPrimitiveLiteral(PrimitiveLiteral li) {
+	System.out.println("visiting a PrimitiveLiteral");
         return FALSE;
     }
 
     public Boolean visitPrimitiveType(PrimitiveType py) {
+	System.out.println("visiting a PrimitiveType");
         return FALSE;
     }
 
     public Boolean visitProcTypeDecl(ProcTypeDecl pd) {
+	System.out.println("visiting a ProcTypeDecl");
 	boolean b = pd.body().visit(this);
-	if (!pd.annotations().isDefined("yield") && b)
+	if (!pd.annotations().isDefined("yield") && b) {
 	    pd.annotations().add("yield","true");
+	    System.out.println("  Setting [yield=true] for " + pd.name() + ".");
+	}
         return FALSE;
     }
 
     public Boolean visitProtocolLiteral(ProtocolLiteral pl) {
+	System.out.println("visiting a ProtocolLiteral");
 	return pl.expressions().visit(this);
     }
 
     public Boolean visitProtocolCase(ProtocolCase pc) {
+	System.out.println("visiting a ProtocolCase");
         return FALSE;
     }
 
     public Boolean visitProtocolTypeDecl(ProtocolTypeDecl pd) {
+	System.out.println("visiting a ProtocolType");
         return FALSE;
     }
 
     public Boolean visitQualifiedName(QualifiedName qn) {
+	System.out.println("visiting a QualifiedName");
         return FALSE;
     }
 
     public Boolean visitRecordAccess(RecordAccess ra) {
+	System.out.println("visiting a RecordAccess");
         return ra.record().visit(this);
     }
 
     public Boolean visitRecordLiteral(RecordLiteral rl) {
+	System.out.println("visiting a RecordLiteral");
         return rl.members().visit(this);
     }
 
     public Boolean visitRecordMember(RecordMember rm) {
+	System.out.println("visiting a RecordMember");
         return FALSE;
     }
 
     public Boolean visitRecordTypeDecl(RecordTypeDecl rt) {
+	System.out.println("visiting a RecordTypeDecl");
         return FALSE;
     }
 
     public Boolean visitReturnStat(ReturnStat rs) {
+	System.out.println("visiting a ReturnStat");
         return rs.expr().visit(this);
     }
 
     public Boolean visitSequence(Sequence se) {
+	System.out.println("visiting a Sequence");
 	boolean b = false;
-        for (int i = 0; i < se.size(); i++)
-            if (se.child(i) != null)
-                b = b || se.child(i).visit(this);
+        for (int i = 0; i < se.size(); i++) {
+            if (se.child(i) != null) {
+		boolean bb = se.child(i).visit(this); 
+                b = b || bb;
+	    }
+	}
         return new Boolean(b);
     }
 
     public Boolean visitSkipStat(SkipStat ss) {
+	System.out.println("visiting a SkipStat");
         return FALSE;
     }
 
     public Boolean visitStopStat(StopStat ss) {
+	System.out.println("visiting a StopStat");
         return FALSE;
     }
 
     public Boolean visitSuspendStat(SuspendStat ss) {
+	System.out.println("visiting a SuspendStat");
         return TRUE;
     }
 
     public Boolean visitSwitchGroup(SwitchGroup sg) {
+	System.out.println("visiting a SwitchGroup");
         return sg.statements().visit(this);
     }
 
     public Boolean visitSwitchLabel(SwitchLabel sl) {
+	System.out.println("visiting a SwitchLabel");
         return FALSE;
     }
 
     public Boolean visitSwitchStat(SwitchStat st) {
+	System.out.println("visiting a SwitchBlock");
         return st.switchBlocks().visit(this);
     }
 
     public Boolean visitSyncStat(SyncStat st) {
+	System.out.println("visiting a SyncStat");
         return TRUE;
     }
 
     public Boolean visitTernary(Ternary te) {
+	System.out.println("visiting a Ternary");
         return new Boolean(te.expr().visit(this) || te.trueBranch().visit(this) || te.falseBranch().visit(this));
     }
 
     public Boolean visitTimeoutStat(TimeoutStat ts) {
+	System.out.println("visiting a TimeoutStat");
         return TRUE;
     }
 
     public Boolean visitUnaryPostExpr(UnaryPostExpr up) {
+	System.out.println("visiting a UnaryPostExpr");
         return up.expr().visit(this);
     }
 
     public Boolean visitUnaryPreExpr(UnaryPreExpr up) {
+	System.out.println("visiting a UnaryPreExpr");
         return up.expr().visit(this);
     }
 
     public Boolean visitVar(Var va) {
+	System.out.println("visiting a Var");
 	if (va.init() != null)
 	    return va.init().visit(this);
 	else
@@ -299,6 +380,7 @@ public class Yield extends Visitor<Boolean> {
     }
 
     public Boolean visitWhileStat(WhileStat ws) {
+	System.out.println("visiting a WhileStat");
         return new Boolean(ws.expr().visit(this) || (ws.stat() == null? false : ws.stat().visit(this)));
     }
 }
