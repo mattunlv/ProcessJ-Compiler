@@ -37,6 +37,7 @@ import AST.ContinueStat;
 import AST.DoStat;
 import AST.ExprStat;
 import AST.Expression;
+import AST.ExternType;
 import AST.ForStat;
 import AST.IfStat;
 import AST.Invocation;
@@ -230,9 +231,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     private Map<String, String> _recNameToPrefixedName = new HashMap<String, String>();
 
     /**
-     * Map of protocal tag name and the protocol name that it belongs to.
+     * Map of protocol tag name and the protocol name that it belongs to.
      */
     private Map<String, String> _protoTagNameToProtoName = new HashMap<String, String>();
+    
+    /**
+     * Map of ProcessJ type to its external type;
+     */
+    Map<String, String> _pjTypeToExternType = new HashMap<String, String>();
 
     /**
      * Map of protocol name and the corresponding tag that the switch label is currently using as const. expression.
@@ -1195,6 +1201,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         return (T) es.expr().visit(this);
     }
+    
+    /**
+     * ExternType
+     */
+    public T visitExternType(ExternType et) {
+        Log.log(et.line + ": Visiting an ExternType (" + et.name() +")");
+        return (T) et.name().getname();
+    }
 
     /**
      * ForStat
@@ -1503,7 +1517,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
     public T visitNamedType(NamedType nt) {
         Log.log(nt.line + ": Visiting NamedType (" + nt.name().getname() + ")");
-        return (T) nt.name().visit(this);
+        
+        String pjTypeName = (String) nt.name().visit(this);
+        
+        if (nt.type() instanceof ExternType) {
+            String externTypeName = (String)nt.type().visit(this);
+            _pjTypeToExternType.put(pjTypeName, externTypeName);
+            return null;
+        } 
+        
+        if (_pjTypeToExternType.containsKey(pjTypeName)) {
+            return (T)_pjTypeToExternType.get(pjTypeName);
+        } else {
+            return (T) nt.name().visit(this);
+        }
     }
 
     /**

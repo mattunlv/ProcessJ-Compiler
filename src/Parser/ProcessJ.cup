@@ -432,7 +432,7 @@ type_declaration ::=
 // Name :> AST
 extern_type ::= 
           IDENTIFIER:i       {: RESULT = new Name(i); :}
-        | extern_type:e DOT IDENTIFIER:i {: e.setName(e.getname() + i.lexeme); RESULT = e; :}
+        | extern_type:e DOT IDENTIFIER:i {: e.setName(e.getname() + "." + i.lexeme); RESULT = e; :}
         ; 
 
 
