@@ -392,7 +392,7 @@ public class TopLevelDecls<T extends AST> extends Visitor<T> {
         System.out.println("Toplevel Named Type:" + nt);
         if (!symtab.put(nt.name().getname(), nt))
             Error.error(nt, "Type with name '" + nt.name().getname()
-                    + "' already declared in this scope.", false, 0000);
+                    + "' already declared in this scope.", false, 2111);
         return null;
     }
 

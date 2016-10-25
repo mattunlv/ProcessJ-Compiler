@@ -181,7 +181,7 @@ public class ProcessJc {
 
             c.visit(new Reachability.Reachability());
             c.visit(new ParallelUsageCheck.ParallelUsageCheck());
-
+	    c.visit(new Yield.Yield());
             ////////////////////////////////////////////////////////////////////////////////
             // CODE GENERATOR
 

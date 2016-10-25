@@ -214,10 +214,10 @@ public class NameChecker<T extends Object> extends Visitor<T> {
           } else */
         // TODO: if :: types like a record contain types that aren't in the hierarchy it will fail to find them....
 
-        Log.log("Before");
+        //Log.log("Before");
         //    if (o != null)
         //((AST)o).visit(this);  // < -------- this visit doesn't have to happen ... what ever type gets visited when the file is loaded.
-        Log.log("After");
+        //Log.log("After");
         nt.setResolvedTopLevelDecl((TopLevelDecl) o);
         return null;
     }
@@ -276,8 +276,7 @@ public class NameChecker<T extends Object> extends Visitor<T> {
     // PrimitiveType - nothing to do
 
     public T visitProcTypeDecl(ProcTypeDecl pd) {
-        Log.log(pd.line + ": Visiting ProcTypeDecl (" + pd.name().getname()
-                + ").");
+        Log.log(pd.line + ": Visiting ProcTypeDecl (" + pd.name().getname() + ").");
         currentScope = currentScope.openScope();
         pd.formalParams().visit(this);
 
