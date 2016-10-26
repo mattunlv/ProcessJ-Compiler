@@ -131,7 +131,7 @@ public class ProcessJc {
             Compilation c = (Compilation) root;
 
             // SYNTAX TREE PRINTER
-            c.visit(new Printers.ParseTreePrinter());
+	    //            c.visit(new Printers.ParseTreePrinter());
 
             // Decode pragmas - these are used for generating stubs from libraries. 
             // No regular program would have them.
