@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR="/opt/ProcessJ"
+INSTALL_DIR="./"
 
 homedir=~
 eval homedir=$homedir
@@ -39,12 +39,10 @@ fi
 ## clean the working directory
 rm -i -rf $workingdir/* > /dev/null
 
-echo "WORKING DIR IS $workingdir"
-
 ## compile .pj code using ProcessJ compiler and generate the .java file in the working directory.
-O=`java -cp $INSTALL_DIR/bin:$INSTALL_DIR/src/Utilities/java_cup_runtime.jar:$INSTALL_DIR/src/Utilities/ST-4.0.7.jar:$INSTALL_DIR/src/Utilities/asm-all-3.3.1.jar:$INSTALL_DIR/lib/JVM:$INSTALL_DIR:. ProcessJc -t JVM $@`
+O=`java -cp $INSTALL_DIR/bin:$INSTALL_DIR/src/Utilities/java_cup_runtime.jar:$INSTALL_DIR/src/Utilities/ST-4.0.7.jar:$INSTALL_DIR/src/Utilities/asm-all-3.3.1.jar:$INSTALL_DIR:$INSTALL_DIR/src:. ProcessJc -t JVM -I /opt/ProcessJ/include $@`
 ERRORS=`echo "${O}" | awk -v n=1 '{if(NR>n) print a[NR%n]; a[NR%n]=$0}'`
-#echo "${O}"
+echo "${O}"
 STATUS=`echo "${O}" | awk '/./{line=$0} END{print line}'`
 #echo "Status ${STATUS}"
 

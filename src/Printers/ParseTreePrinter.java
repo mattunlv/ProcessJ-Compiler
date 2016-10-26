@@ -416,14 +416,15 @@ public class ParseTreePrinter extends Visitor<AST> {
     public AST visitSequence(Sequence se) {
         System.out.println(indent(se.line) + "Sequence:[" + se.size() + " nodes]");
         int i = 0;
-        for (Object a : se) {
+        for (Object a : se) { 
             AST b = (AST)a;
             if (b != null) {
                 System.out.println(indent(b.line) + "Sequence[" + i++ + "]:");
                 indent += 2;
                 b.visit(this);
                 indent -= 2;
-            }
+            } else
+		System.out.println(indent(b.line) + "Sequence[" + i++ + "]: = null");
         }
         return null;
     }

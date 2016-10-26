@@ -1065,8 +1065,8 @@ barrier_sync_statement ::=
 
 // TimeoutStat :> Statement :> AST
 timeout_statement ::= 
-          IDENTIFIER:id DOT TIMEOUT LPAREN expression:e RPAREN   {: RESULT = new TimeoutStat(new NameExpr(new Name(id)), e); :}
-        | primary:p DOT TIMEOUT LPAREN expression:e RPAREN       {: RESULT = new TimeoutStat(p, e); :}
+          IDENTIFIER:id DOT TIMEOUT LPAREN expression:e RPAREN SEMICOLON  {: RESULT = new TimeoutStat(new NameExpr(new Name(id)), e); :}
+        | primary:p DOT TIMEOUT LPAREN expression:e RPAREN SEMICOLON      {: RESULT = new TimeoutStat(p, e); :}
         ;
 
 // **************************************************
