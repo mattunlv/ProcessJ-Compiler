@@ -70,8 +70,11 @@ public class Yield extends Visitor<Boolean> {
 	System.out.println("visiting a Block");
 	boolean b = false;
 	for (int i=0; i<bl.stats().size(); i++) {
-	    boolean bb = bl.stats().child(i).visit(this);
-	    b = b || bb;
+	    boolean bb;
+	    if (bl.stats().child(i) != null) {
+		bb = bl.stats().child(i).visit(this);
+		b = b || bb;
+	    }
 	}
         return new Boolean(b);
     }
@@ -134,7 +137,9 @@ public class Yield extends Visitor<Boolean> {
 
     public Boolean visitDoStat(DoStat ds) {
 	System.out.println("visiting a DoStat");
-        return new Boolean(ds.expr().visit(this) || ds.stat().visit(this));
+	boolean b1 = ds.expr().visit(this);
+	boolean b2 = ds.stat().visit(this);
+        return new Boolean(b1 || b2);
     }
 
     public Boolean visitErrorType(ErrorType et) {
@@ -154,8 +159,23 @@ public class Yield extends Visitor<Boolean> {
 
     public Boolean visitForStat(ForStat fs) {
 	System.out.println("visiting a ForStat");
-	boolean b = fs.init().visit(this) || fs.expr().visit(this) || 
-	    fs.incr().visit(this) || fs.stats().visit(this);
+	boolean b = false;
+	if (fs.init() != null) {
+	    boolean bb = fs.init().visit(this);
+	    b = b || bb;
+	}
+	if (fs.expr() != null) {
+	    boolean bb = fs.expr().visit(this);
+	    b = b || bb;
+	}
+	if (fs.incr() != null) {
+	    boolean bb = fs.incr().visit(this);
+	    b = b || bb;
+	}
+	if (fs.stats() != null) {
+	    boolean bb = fs.stats().visit(this);
+	    b = b || bb;
+	}
         return new Boolean(b);
     }
 
@@ -301,7 +321,10 @@ public class Yield extends Visitor<Boolean> {
 
     public Boolean visitReturnStat(ReturnStat rs) {
 	System.out.println("visiting a ReturnStat");
-        return rs.expr().visit(this);
+	if (rs.expr() != null)
+	    return rs.expr().visit(this);
+	else
+	    return FALSE;
     }
 
     public Boolean visitSequence(Sequence se) {

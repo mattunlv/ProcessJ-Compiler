@@ -57,28 +57,27 @@ public class Scheduler extends Thread {
             }
 
             //      System.out.println("rq=" + rq.size() + " inactivePool=" + inactivePool.getCount() + " timerqueue=" + tq.size());
-            if (inactivePool.getCount() == rq.size() && rq.size() > 0
-                    && tq.isEmpty()) {
-                //        System.err.println("No processes ready to run. System is deadlocked");
-                //        System.err.println("remaining processes:" + rq.size());
+            if (inactivePool.getCount() == rq.size() && rq.size() > 0 && tq.isEmpty()) {
+		System.err.println("No processes ready to run. System is deadlocked");
+		System.err.println("remaining processes:" + rq.size());
                 tq.kill();
-
-                //        System.err.println("[Scheduler] Total Context Switches: " + contextSwitches);
-                //        System.err.println("[Scheduler] Max RunQueue Size: " + maxrqsize);
-
+		
+		System.err.println("[Scheduler] Total Context Switches: " + contextSwitches);
+                        System.err.println("[Scheduler] Max RunQueue Size: " + maxrqsize);
+		
                 final long endTime = System.nanoTime();
                 long elapsedTime = endTime - startTime;
                 double seconds = (double) elapsedTime / 1000000000.0;
                 System.out.println("Total execution time: " + (seconds));
-
+		
                 System.exit(1);
             }
         }
 
         tq.kill();
 
-        //    System.err.println("[Scheduler] Total Context Switches: " + contextSwitches);
-        //    System.err.println("[Scheduler] Max RunQueue Size: " + maxrqsize);
+            System.err.println("[Scheduler] Total Context Switches: " + contextSwitches);
+            System.err.println("[Scheduler] Max RunQueue Size: " + maxrqsize);
 
         final long endTime = System.nanoTime();
         long elapsedTime = endTime - startTime;

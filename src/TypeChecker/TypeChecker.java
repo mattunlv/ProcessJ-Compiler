@@ -164,7 +164,7 @@ public class TypeChecker extends Visitor<Type> {
     // ERROR TYPE OK
     public Type visitArrayLiteral(ArrayLiteral al) {
         Log.log(al.line + ": visiting an array literal.");
-        Error.error(al, "Array literal with the keyword 'new'.", false, 3002); // TODO: not sure what this is and what it means
+        Error.error(al, "Array literal without the keyword 'new'.", false, 3002); // TODO: not sure what this is and what it means
         return null;
     }
 
@@ -246,13 +246,13 @@ public class TypeChecker extends Visitor<Type> {
                             as,
                             "Left hand side operand of operator '"
                                     + as.opString()
-                                    + "' must be of integer type.", 3007);
+                                    + "' must be of integral type.", 3007);
                 if (!eType.isIntegralType())
                     as.type = Error.addError(
                             as,
                             "Right hand side operand of operator '"
                                     + as.opString()
-                                    + "' must be of integer type.", 3008);
+                                    + "' must be of integral type.", 3008);
                 break;
             case Assignment.ANDEQ:
             case Assignment.OREQ:
@@ -262,9 +262,9 @@ public class TypeChecker extends Visitor<Type> {
                     as.type = Error
                             .addError(
                                     as,
-                                    "Both right and left hand side operands of operator '"
+                                    "Both right and left-hand-side operands of operator '"
                                             + as.opString()
-                                            + "' must be either of boolean or integer type.",
+                                            + "' must be either of boolean or integral type.",
                                     3009);
                 break;
         }
@@ -352,13 +352,8 @@ public class TypeChecker extends Visitor<Type> {
                         be.type = new PrimitiveType(PrimitiveType.IntKind);
 
                 } else
-                    be.type = Error
-                            .addError(
-                                    be,
-                                    "Operator '"
-                                            + op
-                                            + "' requires both operands of either integral or boolean type.",
-                                    3014);
+                    be.type = Error.addError(be, "Operator '" + op +
+                                                 "' requires both operands of either integral or boolean type.", 3014);
                 break;
             }
             // + - * / % : Type must be numeric
@@ -371,18 +366,14 @@ public class TypeChecker extends Visitor<Type> {
                     be.type = new PrimitiveType(PrimitiveType.ceiling(
                             (PrimitiveType) lType, (PrimitiveType) rType));
 
-                    if (be.type.isByteType() || be.type.isShortType()
-                            || be.type.isCharType())
+                    if (be.type.isByteType() || be.type.isShortType() || be.type.isCharType())
                         be.type = new PrimitiveType(PrimitiveType.IntKind);
-                } else if ((lType.isStringType() && (rType.isNumericType()
-                        || rType.isBooleanType() || rType.isStringType()))
-                        || (rType.isStringType() && (lType.isNumericType()
-                                || lType.isBooleanType() || lType
-                                    .isStringType())))
+                } else if ((lType.isStringType() && (rType.isNumericType() || rType.isBooleanType() || rType.isStringType()))
+                        || (rType.isStringType() && (lType.isNumericType() || lType.isBooleanType() || lType.isStringType())))
                     be.type = new PrimitiveType(PrimitiveType.StringKind);
                 else
                     be.type = Error.addError(be, "Operator '" + op
-                            + "' requires operands of numeric type.", 3015);
+                            + "' requires operands of numeric type or string/boolean, string/numeric, or string/string type.", 3015);
                 break;
             }
             // << >> >>>: 
@@ -390,23 +381,14 @@ public class TypeChecker extends Visitor<Type> {
             case BinaryExpr.RSHIFT:
             case BinaryExpr.RRSHIFT: {
                 if (!lType.isIntegralType())
-                    be.type = Error
-                            .addError(
-                                    be,
-                                    "Operator '"
-                                            + op
-                                            + "' requires left operand of integral type.",
-                                    3016);
+                    be.type = Error.addError(be, "Operator '" + op + "' requires left operand of integral type.", 3016);
                 if (!rType.isIntegralType())
-                    be.type = Error.addError(be, "Operator '" + op
-                            + "' requires right operand of integral type.",
-                            3017);
+                    be.type = Error.addError(be, "Operator '" + op + "' requires right operand of integral type.", 3017);
                 be.type = lType;
                 break;
             }
             default:
-                be.type = Error.addError(be, "Unknown operator '" + op + "'.",
-                        3018);
+                be.type = Error.addError(be, "Unknown operator '" + op + "'.", 3018);
         }
         Log.log(be.line + ": Binary Expression has type: " + be.type);
         return be.type;
@@ -482,22 +464,17 @@ public class TypeChecker extends Visitor<Type> {
         int end = (ce.isRead() ? ChannelEndType.READ_END
                 : ChannelEndType.WRITE_END);
         if (ct.shared() == ChannelType.NOT_SHARED)
-            ce.type = new ChannelEndType(ChannelEndType.NOT_SHARED,
-                    ct.baseType(), end);
+            ce.type = new ChannelEndType(ChannelEndType.NOT_SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_READ_WRITE)
-            ce.type = new ChannelEndType(ChannelEndType.SHARED, ct.baseType(),
-                    end);
+            ce.type = new ChannelEndType(ChannelEndType.SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_READ)
-            ce.type = new ChannelEndType(
-                    (ce.isRead() && ct.shared() == ChannelType.SHARED_READ) ? ChannelEndType.SHARED
-                            : ChannelType.NOT_SHARED, ct.baseType(), end);
+            ce.type = new ChannelEndType((ce.isRead() && ct.shared() == ChannelType.SHARED_READ) ? ChannelEndType.SHARED
+					 : ChannelType.NOT_SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_WRITE)
-            ce.type = new ChannelEndType(
-                    (ce.isWrite() && ct.shared() == ChannelType.SHARED_WRITE) ? ChannelEndType.SHARED
-                            : ChannelType.NOT_SHARED, ct.baseType(), end);
+            ce.type = new ChannelEndType((ce.isWrite() && ct.shared() == ChannelType.SHARED_WRITE) ? ChannelEndType.SHARED
+					 : ChannelType.NOT_SHARED, ct.baseType(), end);
         else
-            ce.type = Error.addError(ce,
-                    "Unknown sharing status for channel end expression.", 3020);
+            ce.type = Error.addError(ce, "Unknown sharing status for channel end expression.", 3020);
         Log.log(ce.line + ": Channel End Expr has type: " + ce.type);
         return ce.type;
     }
@@ -524,9 +501,7 @@ public class TypeChecker extends Visitor<Type> {
         Type targetType = resolve(cr.channel().visit(this));
         if (!(targetType.isChannelEndType() || targetType.isTimerType() || targetType
                 .isChannelType())) {
-            cr.type = Error.addError(cr,
-                    "Channel or Timer type required in channel/timer read.",
-                    3021);
+            cr.type = Error.addError(cr, "Channel or Timer type required in channel/timer read.", 3021);
             return cr.type;
         }
         if (targetType.isChannelEndType()) {
@@ -539,8 +514,7 @@ public class TypeChecker extends Visitor<Type> {
             cr.type = new PrimitiveType(PrimitiveType.LongKind);
         }
         if (targetType.isTimerType() && cr.extRV() != null)
-            Error.addError(cr,
-                    "Timer read cannot have extended rendez-vous block.", 3022);
+            Error.addError(cr, "Timer read cannot have extended rendez-vous block.", 3022);
 
         if (cr.extRV() != null)
             cr.extRV().visit(this);
@@ -561,6 +535,8 @@ public class TypeChecker extends Visitor<Type> {
     }
 
     // ClaimStat
+    // TODO: check that you are only claiming channel ends
+
     // Compilation -- Probably nothing to 
     // ConstantDecl -- ??
 
@@ -576,9 +552,7 @@ public class TypeChecker extends Visitor<Type> {
 
         // Check that the type of the expression is a boolean
         if (!eType.isBooleanType())
-            Error.error(ds,
-                    "Non boolean Expression found as test in do-statement.",
-                    false, 3024);
+            Error.addError(ds, "Non boolean Expression found as test in do-statement.", 3024);
 
         // Type check the statement of the do statement;
         if (ds.stat() != null)
@@ -602,9 +576,7 @@ public class TypeChecker extends Visitor<Type> {
         for (Expression e : fs.barriers()) {
             Type t = resolve(e.visit(this));
             if (!t.isBarrierType())
-                Error.error(fs.barriers().child(i),
-                        "Barrier type expected, found '" + t + "'.", false,
-                        3025);
+                Error.addError(fs.barriers().child(i), "Barrier type expected, found '" + t + "'.", 3025);
             i++;
         }
 
@@ -616,9 +588,7 @@ public class TypeChecker extends Visitor<Type> {
             Type eType = resolve(fs.expr().visit(this));
 
             if (!eType.isBooleanType())
-                Error.error(fs,
-                        "Non boolean Expression found in for-statement.",
-                        false, 3026);
+                Error.addError(fs, "Non-boolean expression found in for-statement.", 3026);
         }
         if (fs.stats() != null)
             fs.stats().visit(this);
@@ -636,9 +606,7 @@ public class TypeChecker extends Visitor<Type> {
         Type eType = resolve(is.expr().visit(this));
 
         if (!eType.isBooleanType())
-            Error.error(is,
-                    "Non boolean Expression found as test in if-statement.",
-                    false, 3027);
+            Error.addError(is, "Non-boolean expression found as test in if-statement.", 3027);
         if (is.thenpart() != null)
             is.thenpart().visit(this);
         if (is.elsepart() != null)
@@ -659,24 +627,6 @@ public class TypeChecker extends Visitor<Type> {
         boolean firstTable = true;
         SymbolTable st = topLevelDecls;
         Sequence<ProcTypeDecl> candidateProcs = new Sequence<ProcTypeDecl>();
-
-        // transfer in.candidates to candidateProcs.
-        /*	if (in.candidateMethods != null && false)
-            for (Object pd : in.candidateMethods.entries.values().toArray()) {
-        	ProcTypeDecl ptd = (ProcTypeDecl)pd;
-        	if (ptd.formalParams().size() == in.params().size()) {
-        	    boolean candidate = true;
-        	    Log.log("proc: " + ptd.typeName() + " ( " + ptd.signature() + " ) ");                                                                                                            
-        	    for (int i=0; i<in.params().size(); i++) {
-        		candidate = candidate && Type.assignmentCompatible(((ParamDecl)ptd.formalParams().child(i)).type(), in.params().child(i).type);
-        	    }
-        	    if (candidate) {
-        		candidateProcs.append(ptd);
-        		Log.log("Possible proc: " + ptd.typeName() + " " + ptd.formalParams());
-        	    }
-        	}
-            }
-        */
 
         while (st != null) {
 
@@ -799,10 +749,7 @@ public class TypeChecker extends Visitor<Type> {
                     Log.log(" )");
                 }
             }
-            Error.error(
-                    in,
-                    "Found more than one candidate - cannot chose between them!",
-                    false, 3038);
+            Error.addError(in, "Found more than one candidate - cannot chose between them!", 3038);
             return null;
         } else {
             // we found just one!
@@ -841,33 +788,31 @@ public class TypeChecker extends Visitor<Type> {
                     // TODO: the file should probably be inserted somewhere .....
                     // TODO: what about anything that types imported with :: refers to ? 
                     //       how should that be handled?
-                } else
-                    Error.error(nt, "Undefined named type '"
-                            + nt.name().getname() + "'.", false, 3028);
+                } else {
+                    Error.addError(nt, "Undefined named type '" + nt.name().getname() + "'.", 3028);
+		    //	    TODO: t = new error type!
+		}
             }
             nt.setType(t);
         }
         Log.log(nt.line + ": named type has type: " + nt.type());
 
         return nt.type();
-    }
+	}
 
     /** NAME EXPRESSION */
     // ERROR TYPE OK
     public Type visitNameExpr(NameExpr ne) {
-        Log.log(ne.line + ": Visiting a Name Expression ("
-                + ne.name().getname() + ").");
+        Log.log(ne.line + ": Visiting a Name Expression (" + ne.name().getname() + ").");
         if (ne.myDecl instanceof LocalDecl || ne.myDecl instanceof ParamDecl
-                || ne.myDecl instanceof ConstantDecl) {
+	    || ne.myDecl instanceof ConstantDecl) {
             // TODO: what about ConstantDecls ???
             // TODO: don't think a resolve is needed here
             ne.type = resolve(((VarDecl) ne.myDecl).type());
         } else
-            ne.type = Error.addError(ne, "Unknown name expression '"
-                    + ne.name().getname() + "'.", 3029);
+            ne.type = Error.addError(ne, "Unknown name expression '" + ne.name().getname() + "'.", 3029);
 
-        Log.log(ne.line + ": Name Expression (" + ne.name().getname()
-                + ") has type: " + ne.type);
+        Log.log(ne.line + ": Name Expression (" + ne.name().getname() + ") has type: " + ne.type);
         return ne.type;
     }
 
@@ -886,50 +831,37 @@ public class TypeChecker extends Visitor<Type> {
             boolean b = true;
             for (int i = 0; i < al.elements().size(); i++) {
                 if (at.getDepth() == 1)
-                    b = b
-                            && arrayAssignmentCompatible(at.baseType(),
-                                    (Expression) al.elements().child(i));
+                    b = b && arrayAssignmentCompatible(at.baseType(), (Expression) al.elements().child(i));
                 else {
-                    ArrayType at1 = new ArrayType(at.baseType(),
-                            at.getDepth() - 1);
-                    b = b
-                            && arrayAssignmentCompatible(at1, (Expression) al
-                                    .elements().child(i));
+                    ArrayType at1 = new ArrayType(at.baseType(), at.getDepth() - 1);
+                    b = b && arrayAssignmentCompatible(at1, (Expression) al.elements().child(i));
                 }
             }
             return b;
         } else if (t instanceof ArrayType && !(e instanceof ArrayLiteral))
-            Error.error(t,
-                    "Cannot assign non array to array type `" + t.typeName()
-                            + "'", false, 3039);
+            Error.addError(t, "Cannot assign non-array to array type '" + t.typeName() + "'", 3039);
         else if (!(t instanceof ArrayType) && (e instanceof ArrayLiteral))
-            Error.error(t,
-                    "Cannot assign value `" + ((ArrayLiteral) e).toString()
-                            + "' to type `" + t.typeName() + "'.", false, 3030);
+            Error.addError(t, "Cannot assign value '" + ((ArrayLiteral) e).toString() + "' to type '" + t.typeName() + "'.", 3030);
         return Type.assignmentCompatible(t, e.visit(this));
     }
 
     /** NewArray */
     // ERROR TYPE OK
     public Type visitNewArray(NewArray ne) {
-        Log.log(ne.line + ": Visiting a NewArray " + ne.dimsExpr().size() + " "
-                + ne.dims().size());
+        Log.log(ne.line + ": Visiting a NewArray " + ne.dimsExpr().size() + " " + ne.dims().size());
 
         //  check that each dimension is of integer type
         for (Expression exp : ne.dimsExpr()) {
             Type dimT = resolve(exp.visit(this));
             if (!dimT.isIntegralType())
-                Error.error(exp, "Array dimension must be of integral type",
-                        false, 3031);
+                Error.addError(exp, "Array dimension must be of integral type.", 3031);
         }
         // if there is an initializer, then make sure it is of proper and equal depth.
-        ne.type = new ArrayType(ne.baseType(), ne.dims().size()
-                + ne.dimsExpr().size());
+        ne.type = new ArrayType(ne.baseType(), ne.dims().size() + ne.dimsExpr().size());
         if (ne.init() != null) {
             // The elements of ne.init() get visited in the last line of arrayAssignmentCompatible.
             if (!arrayAssignmentCompatible(ne.type, ne.init()))
-                Error.error(ne, "Array Initializer is not compatible with "
-                        + ne.type.typeName(), false, 3032);
+                Error.addError(ne, "Array Initializer is not compatible with type '" + ne.type.typeName() + "'.", 3032);
             ne.init().type = ne.type;
         }
         Log.log(ne.line + ": NewArray type is " + ne.type);
@@ -948,8 +880,7 @@ public class TypeChecker extends Visitor<Type> {
 
     /** PRIMITIVE LITERAL */
     public Type visitPrimitiveLiteral(PrimitiveLiteral pl) {
-        Log.log(pl.line + ": Visiting a primitive literal (" + pl.getText()
-                + ").");
+        Log.log(pl.line + ": Visiting a primitive literal (" + pl.getText() + ").");
 
         // Remember that the constants in PrimitiveType are defined from the ones                                                      
         // in Literal, so its it ok to just use li.kind! -- except for the null literal.                                               
@@ -976,8 +907,7 @@ public class TypeChecker extends Visitor<Type> {
     /** PROTOCOL TYPE DELCARATION */
     // ERROR TYPE OK
     public Type visitProcTypeDecl(ProcTypeDecl pd) {
-        Log.log(pd.line + ": visiting a procedure type declaration ("
-                + pd.name().getname() + ").");
+        Log.log(pd.line + ": visiting a procedure type declaration (" + pd.name().getname() + ").");
         currentProcedure = pd;
         super.visitProcTypeDecl(pd);
         return null;
@@ -995,17 +925,14 @@ public class TypeChecker extends Visitor<Type> {
         ProtocolCase pc = pl.myChosenCase;
         ProtocolTypeDecl pd = pl.myTypeDecl;
         if (pc.body().size() != pl.expressions().size())
-            Error.error(pl,
-                    "Incorrect number of expressions in protocol literal '"
-                            + pd.name().getname() + "'", false, 3033);
+            Error.addError(pl, "Incorrect number of expressions in protocol literal '" + pd.name().getname() + "'.", 3033);
         for (int i = 0; i < pc.body().size(); i++) {
             Type eType = resolve(pl.expressions().child(i).visit(this));
             Type vType = resolve(((RecordMember) pc.body().child(i)).type());
             Name name = ((RecordMember) pc.body().child(i)).name();
             if (!Type.assignmentCompatible(vType, eType))
-                Error.error(pl, "Cannot assign value of type '" + eType
-                        + "' to protocol field '" + name.getname()
-                        + "' of type '" + vType + "'.", false, 3034);
+                Error.addError(pl, "Cannot assign value of type '" + eType + "' to protocol field '" + name.getname()
+                        + "' of type '" + vType + "'.", 3034);
         }
         Log.log(pl.line + ": protocol literal has type: " + pl.myTypeDecl);
         return pl.myTypeDecl;
@@ -1045,9 +972,7 @@ public class TypeChecker extends Visitor<Type> {
             return ra.type;
         } else {
             if (!(tType.isRecordType() || tType.isProtocolType())) {
-                ra.type = Error.addError(ra, "Request for member '"
-                        + ra.field().getname()
-                        + "' in something not a record orprotocol type.", 3061);
+                ra.type = Error.addError(ra, "Request for member '" + ra.field().getname() + "' in something not a record or protocol type.", 3061);
                 return ra.type;
             }
 
@@ -1055,14 +980,10 @@ public class TypeChecker extends Visitor<Type> {
 
             if (tType.isRecordType()) {
                 // Now find the field and make the type of the record access equal to the field.
-                RecordMember rm = ((RecordTypeDecl) tType).getMember(ra.field()
-                        .getname());
+                RecordMember rm = ((RecordTypeDecl) tType).getMember(ra.field().getname());
                 if (rm == null) {
-                    ra.type = Error.addError(ra,
-                            "Record type '"
-                                    + ((RecordTypeDecl) tType).name().getname()
-                                    + "' has no member '"
-                                    + ra.field().getname() + "'.", 3062);
+                    ra.type = Error.addError(ra, "Record type '" + ((RecordTypeDecl) tType).name().getname()
+                                    + "' has no member '" + ra.field().getname() + "'.", 3062);
                     return ra.type;
                 }
                 Type rmt = resolve(rm.type().visit(this));
@@ -1081,8 +1002,7 @@ public class TypeChecker extends Visitor<Type> {
                 ProtocolTypeDecl pt = (ProtocolTypeDecl) tType;
                 // Lookup the appropriate ProtocolCase associated with the protocol's name in
                 // protocolTagsSwitchedOn
-                ProtocolCase pc = protocolTagsSwitchedOn.get(pt.name()
-                        .getname());
+                ProtocolCase pc = protocolTagsSwitchedOn.get(pt.name().getname());
                 String fieldName = ra.field().getname();
                 // there better be a field in pc that has that name!
                 boolean found = false;
@@ -1097,10 +1017,8 @@ public class TypeChecker extends Visitor<Type> {
                     }
                 }
                 if (!found) {
-                    Error.error(ra, "Unknown field reference '" + fieldName
-                            + "' in protocol tag '" + pc.name().getname()
-                            + "' in protocol '" + pt.name().getname() + "'.",
-                            false, 0000);
+                    Error.addError(ra, "Unknown field reference '" + fieldName + "' in protocol tag '" + pc.name().getname()
+                            + "' in protocol '" + pt.name().getname() + "'.", 0000);
                     ra.type = new ErrorType();
                 }
             }
@@ -1111,8 +1029,7 @@ public class TypeChecker extends Visitor<Type> {
 
     /** RECORD LITERAL */
     public Type visitRecordLiteral(RecordLiteral rl) {
-        Log.log(rl.line + ": visiting a record literal (" + rl.name().getname()
-                + ").");
+        Log.log(rl.line + ": visiting a record literal (" + rl.name().getname() + ").");
         RecordTypeDecl rt = rl.myTypeDecl;
 
         // TODO: be careful here if a record type extends another record type, then the record literal must contains 
@@ -1144,21 +1061,16 @@ public class TypeChecker extends Visitor<Type> {
         if (returnType instanceof PrimitiveType) {
             PrimitiveType pt = (PrimitiveType) returnType;
             if (pt.isVoidType() && rs.expr() != null)
-                Error.error(
-                        rs,
-                        "Procedure return type is void; return statement cannot return a value.",
-                        false, 3040);
+                Error.addError(rs, "Procedure return type is void; return statement cannot return a value.", 3040);
             if (!pt.isVoidType() && rs.expr() == null)
-                Error.error(rs, "Procedure return type is `" + pt
-                        + "' but procedure return type is void.", false, 3041);
+                Error.addError(rs, "Procedure return type is '" + pt + "' but procedure return type is void.", 3041);
             if (pt.isVoidType() && rs.expr() == null)
                 return null;
         }
 
         Type eType = resolve(rs.expr().visit(this));
         if (!Type.assignmentCompatible(returnType, eType))
-            Error.error(rs, "Incompatible type in return statement.", false,
-                    3042);
+            Error.addError(rs, "Incompatible type in return statement.", 3042);
 
         return null;
     }
@@ -1171,9 +1083,8 @@ public class TypeChecker extends Visitor<Type> {
     // ERROR TYPE OK
     public Type visitSuspendStat(SuspendStat ss) {
         Log.log(ss.line + ": Visiting a suspend stat.");
-        if (!Modifier.hasModifierSet(currentProcedure.modifiers(),
-                Modifier.MOBILE))
-            Error.error(ss, "Non-mobile procedure cannot suspend.", false, 3043);
+        if (!Modifier.hasModifierSet(currentProcedure.modifiers(), Modifier.MOBILE))
+            Error.addError(ss, "Non-mobile procedure cannot suspend.", 3043);
         return null;
     }
 
@@ -1215,79 +1126,49 @@ public class TypeChecker extends Visitor<Type> {
         Type eType = resolve(ss.expr().visit(this));
         Set<String> ht = new HashSet<String>();
         // TODO: RecordAccessExpr of protocols is OK!
-        if ((!eType.isIntegralType() && !eType.isProtocolType())
-                || eType.isLongType())
-            Error.error(
-                    ss,
-                    "Switch statement expects value of type int or a protocol tag.",
-                    false, 3043);
+        if ((!eType.isIntegralType() && !eType.isProtocolType()) || eType.isLongType())
+            Error.addError(ss, "Switch statement expects value of type int or a protocol tag.", 3062);
 
         // check if we have alrady switched on a protocol of a similar name - if not add it (after we have the appropriate case.
         if (eType.isProtocolType()) {
             ProtocolTypeDecl pt = (ProtocolTypeDecl) eType;
             if (protocolTagsSwitchedOn.containsKey(pt.name().getname()))
-                Error.error(
-                        ss.expr(),
-                        "Nested switch statements on the same protocol type is not allowed.",
-                        false, 0000);
+                Error.addError(ss.expr(), "Nested switch statements on the same protocol type is not allowed.", 3063);
         }
 
         ProtocolTypeDecl pt = null;
         for (SwitchGroup sg : ss.switchBlocks()) {
             // Only one protocol tag per case, so only one label per switch group. (no fall through)
             if (eType.isProtocolType() && sg.labels().size() > 1)
-                Error.error(
-                        sg,
-                        "Fall-through cases in protocol switch statement not allowed.",
-                        false, 0);
+                Error.addError(sg, "Fall-through cases in protocol switch statement not allowed.", 3064);
             for (SwitchLabel sl : sg.labels()) {
                 // No default case in protocol switches 
                 if (sl.isDefault()) {
                     if (eType.isProtocolType())
-                        Error.error(sl.expr(),
-                                "Default case not allowed in protocol switch.",
-                                false, 0000);
+                        Error.addError(sl.expr(), "Default case not allowed in protocol switch.", 3065);
                     else
                         continue;
                 }
-
-                // TODO: protocol switches should not allow fall through!!!
 
                 lType = null;
                 if (!(sl.expr() instanceof NameExpr))
                     lType = resolve(sl.expr().visit(this));
 
-                if ((!(sl.expr() instanceof NameExpr))
-                        && (!lType.isIntegralType() || lType.isLongType()))
-                    Error.error(
-                            sl,
-                            "Switch labels must be of type int or a protocol tag.",
-                            false, 3044);
-                else if (sl.expr() instanceof NameExpr
-                        && !eType.isProtocolType())
-                    Error.error(sl.expr(),
-                            "Switch label must be of integer type.", false,
-                            0000);
-                else if ((!(sl.expr() instanceof NameExpr))
-                        && eType.isProtocolType())
-                    Error.error(sl.expr(),
-                            "Switch label must be a protocol case name.",
-                            false, 0000);
-                else if ((!(sl.expr() instanceof NameExpr))
-                        && !sl.expr().isConstant())
-                    Error.error(sl, "Switch labels must be constants.", false,
-                            3045);
+                if ((!(sl.expr() instanceof NameExpr)) && (!lType.isIntegralType() || lType.isLongType()))
+                    Error.addError(sl, "Switch labels must be of type int or a protocol tag.", 3044);
+                else if (sl.expr() instanceof NameExpr && !eType.isProtocolType())
+                    Error.addError(sl.expr(), "Switch label must be of integer type.", 3066);
+                else if ((!(sl.expr() instanceof NameExpr)) && eType.isProtocolType())
+                    Error.addError(sl.expr(), "Switch label must be a protocol case name.", 3067);
+                else if ((!(sl.expr() instanceof NameExpr)) && !sl.expr().isConstant())
+                    Error.addError(sl, "Switch labels must be constants.", 3045);
                 else {
                     if (sl.expr() instanceof NameExpr) {
                         pt = (ProtocolTypeDecl) eType;
-                        ProtocolCase pc = findProtocolCase(pt,
-                                ((NameExpr) sl.expr()).name().getname());
+                        ProtocolCase pc = findProtocolCase(pt, ((NameExpr) sl.expr()).name().getname());
                         if (pc == null)
-                            Error.error(sl, "Protocol tag '"
-                                    + sl.expr()
-                                    + "' not found in protocol '"
-                                    + ((ProtocolTypeDecl) eType).name()
-                                            .getname() + "'.", false, 3060);
+                            Error.addError(sl, "Protocol tag '" + sl.expr() + "' not found in protocol '"
+                                    + ((ProtocolTypeDecl) eType).name().getname() + "'.", 3060);
                         else
                             protocolTagsSwitchedOn.put(pt.name().getname(), pc);
                     }
@@ -1298,33 +1179,28 @@ public class TypeChecker extends Visitor<Type> {
             // No fall through in switch groups for protocol types
             if (eType.isProtocolType() && sg.statements().size() > 0)
                 if (!(sg.statements().child(sg.statements().size() - 1) instanceof BreakStat))
-                    Error.error(
-                            sg,
-                            "Fall-through cases in protocol switch statement not allowed.",
-                            false, 0);
+                    Error.addError(sg, "Fall-through cases in protocol switch statement not allowed.", 3069);
             if (eType.isProtocolType())
                 protocolTagsSwitchedOn.remove(pt.name().getname());
-
         }
 
         for (SwitchGroup sg : ss.switchBlocks()) {
             for (SwitchLabel sl : sg.labels()) {
                 if (sl.isDefault()) {
                     if (ht.contains("default"))
-                        Error.error(sl, "Duplicate default label.", false, 3046);
+                        Error.addError(sl, "Duplicate default label.", 3046);
                     else
                         ht.add("default");
                     continue;
                 }
                 String strval;
                 if (!(sl.expr() instanceof NameExpr)) {
-                    int val = ((BigDecimal) sl.expr().constantValue())
-                            .intValue();
+                    int val = ((BigDecimal) sl.expr().constantValue()).intValue();
                     strval = Integer.toString(val);
                 } else
                     strval = ((NameExpr) sl.expr()).name().getname();
                 if (ht.contains(strval))
-                    Error.error(sl, "Duplicate case label.", false, 3047);
+                    Error.addError(sl, "Duplicate case label.", 3047);
                 else {
                     ht.add(strval);
                 }
@@ -1344,7 +1220,7 @@ public class TypeChecker extends Visitor<Type> {
         Log.log(ss.line + ": visiting a sync stat.");
         Type t = resolve(ss.barrier().visit(this));
         if (!t.isBarrierType())
-            Error.error(ss, "Non-barrier type in sync statement.", false, 3048);
+            Error.addError(ss, "Non-barrier type in sync statement.", 3048);
         return null;
     }
 
@@ -1357,25 +1233,18 @@ public class TypeChecker extends Visitor<Type> {
         Type falseBranchType = te.falseBranch().visit(this);
 
         if (!eType.isBooleanType())
-            Error.error(te,
-                    "Non boolean Expression found as test in ternary expression.");
+            Error.addError(te, "Non-boolean Expression found as test in ternary expression.", 3070);
 
-        if (trueBranchType instanceof PrimitiveType
-                && falseBranchType instanceof PrimitiveType) {
-            if (Type.assignmentCompatible(falseBranchType, trueBranchType)
-                    || Type.assignmentCompatible(trueBranchType,
-                            falseBranchType))
-                te.type = PrimitiveType.ceilingType(
-                        (PrimitiveType) trueBranchType,
-                        (PrimitiveType) falseBranchType);
+        if (trueBranchType instanceof PrimitiveType && falseBranchType instanceof PrimitiveType) {
+            if (Type.assignmentCompatible(falseBranchType, trueBranchType) || 
+		Type.assignmentCompatible(trueBranchType, falseBranchType))
+                te.type = PrimitiveType.ceilingType((PrimitiveType) trueBranchType, (PrimitiveType) falseBranchType);
             else
-                Error.error(te,
-                        "Both branches of a ternary expression must be of assignment compatible types.");
+                Error.addError(te, "Both branches of a ternary expression must be of assignment compatible types.", 3071);
         } else if (te == null) { // te is never null! just to fool Eclipse
             //TODO: What about assignments of protocol and records wrt to their inheritance and procedures? 			
         } else
-            Error.error(te,
-                    "Both branches of a ternary expression must be of assignment compatible types.");
+            Error.addError(te, "Both branches of a ternary expression must be of assignment compatible types.", 3072);
 
         Log.log(te.line + ": Ternary has type: " + te.type);
         return te.type;
