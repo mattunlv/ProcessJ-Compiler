@@ -45,8 +45,10 @@ public class Yield extends Visitor<Boolean> {
 	System.out.println("visiting an ArrayLiteral");
 	boolean b = false;
         for (int i=0; i<al.elements().size(); i++) {
-            boolean bb = al.elements().child(i).visit(this);
-            b = b || bb;
+	    if (al.elements().child(i) != null) {
+		boolean bb = al.elements().child(i).visit(this);
+		b = b || bb;
+	    }
         }
         return new Boolean(b);
     }
@@ -236,7 +238,11 @@ public class Yield extends Visitor<Boolean> {
 
     public Boolean visitNewArray(NewArray ne) {
 	System.out.println("visiting a NewArray");
-        return new Boolean(ne.dimsExpr().visit(this) || ne.init().visit(this));
+	boolean b = false;
+	b = ne.dimsExpr().visit(this);
+	if (ne.init() != null)
+	    b = b || ne.init().visit(this);
+        return new Boolean(b);
     }
 
     public Boolean visitNewMobile(NewMobile nm) {
@@ -273,6 +279,9 @@ public class Yield extends Visitor<Boolean> {
 	System.out.println("visiting a ProcTypeDecl");
 	boolean b = pd.body().visit(this);
 	if (!pd.annotations().isDefined("yield") && b) {
+	    pd.annotations().add("yield","true");
+	    System.out.println("  Setting [yield=true] for " + pd.name() + ".");
+	} else if (pd.name().getname().equals("main")) {
 	    pd.annotations().add("yield","true");
 	    System.out.println("  Setting [yield=true] for " + pd.name() + ".");
 	}
