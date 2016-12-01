@@ -19,6 +19,7 @@ public class State {
     public static final String ALT_GUARD = "altguard";
     public static final String PROTOCOL_EXPR = "protocolexpr";
     public static final String CLAIMSTAT = "claimstat"; //nested claims are not allowed. so maybe not necessary to put this here and instead just use a class var in code gen.
+    public static final String FOR_LOOP_CONTROL = "forloopcontrol";
 
     private static Map<String, Boolean> state_table = new HashMap<String, Boolean>();
 
@@ -32,6 +33,7 @@ public class State {
         state_table.put(ALT_GUARD, false);
         state_table.put(PROTOCOL_EXPR, false);
         state_table.put(CLAIMSTAT, false);
+        state_table.put(FOR_LOOP_CONTROL, false);
 
         //		currentState();
     }
@@ -43,7 +45,7 @@ public class State {
     public static boolean set(String field, boolean value) {
         boolean old = state_table.get(field);
         state_table.put(field, value);
-        //printStateChange(field);
+//        printStateChange(field);
         return old;
     }
 

@@ -45,7 +45,7 @@ if (<chosen> == -1) {
 	yield();
 }
 
-label(<jmp2>)
+label(<jmp2>);
 >>
 
 AltSwitchGroup(cases, chosen) ::= <<
@@ -91,20 +91,20 @@ if (!<timer>.started) {
 <endif>
 >>
 
-Assignment(left, right, op) ::= "<left> <op> <right>"
+Assignment(left, right, op, isForCtrl) ::= "<left> <op> <right><if(!isForCtrl)>;<endif>"
 
-BinaryExpr(left, right, op) ::= "(<left> <op> <right>)"
+
+BinaryExpr(left, right, op, lhs, lhsOp, exprBlocks) ::= <<
+<if(exprBlocks)><exprBlocks; separator="\n"><endif>
+<if(lhs && lhsOp)><lhs> <lhsOp><endif>(<left> <op> <right>)
+>>
 
 BreakStat() ::= "break"
 
 CastExpr(ct, expr) ::= "(<ct>) (<expr>)"
 
-ChannelWriteStat(channel, expr, jmp0, jmp1, shared) ::= <<
-
-<!switch(runLabel) {
-	case <jmp0>: resume(<jmp0>); break;
-	case <jmp1>: resume(<jmp1>); break;
-}!>
+ChannelWriteStat(channel, expr, argBlocks, jmp0, jmp1, shared) ::= <<
+<if(argBlocks)><argBlocks; separator=";\n"><endif>
 
 label(<jmp0>);
 if (<channel>.isReadyToWrite()) {
@@ -117,17 +117,17 @@ if (<channel>.isReadyToWrite()) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)
+label(<jmp1>);
 >>
 
-ChannelReadExpr(left, channel, alt, jmp0, jmp1) ::= <<
+ChannelReadExpr(left, op, channel, alt, jmp0, jmp1) ::= <<
 <if(alt)>
-<left> = <channel>.read(this);
+<left><if(op)> <op> <else> = <endif><channel>.read(this);
 <else>
 label(<jmp0>);
 if(<channel>.isReadyToRead(this)) {
 <if(left)>
-	<left> = <channel>.read(this);
+	<left><if(op)> <op> <else> = <endif><channel>.read(this);
 <else>
 	<channel>.read(this);
 <endif>
@@ -139,20 +139,20 @@ if(<channel>.isReadyToRead(this)) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)<\\>
+label(<jmp1>);
 <endif>
 >>
 
-ChannelReadExprExtRv(left, channel, alt, extRv, jmp0, jmp1) ::= <<
+ChannelReadExprExtRv(left, op, channel, alt, extRv, jmp0, jmp1) ::= <<
 <if(alt)>
-<left> = <channel>.readPreRendezvous(this);
+<left><if(op)> <op> <else> = <endif><channel>.readPreRendezvous(this);
 <extRv; separator=";\n">
 <channel>.readPostRendezvous(this);
 <else>
 label(<jmp0>);
 if(<channel>.isReadyToRead(this)) {
 <if(left)>
-	<left> = <channel>.readPreRendezvous(this);
+	<left><if(op)> <op> <else> = <endif><channel>.readPreRendezvous(this);
 	<extRv; separator=";\n">;
 	<channel>.readPostRendezvous(this);
 <else>
@@ -168,7 +168,7 @@ if(<channel>.isReadyToRead(this)) {
 	this.runLabel = <jmp0>;
 	yield();
 }
-label(<jmp1>)<\\>
+label(<jmp1>);
 <endif>
 >>
 
@@ -184,10 +184,10 @@ if(<chanNameToReadEndType.keys, chanNameToReadEndType.values: { k, v | <if(v)>!<
 }
 <endif>
 <stats; separator=";\n">;
-<chanNameToReadEndType.keys, chanNameToReadEndType.values: { k, v | <if(v)><k>.unclaimReadingEnd()<else><k>.unclaimWritingEnd()<endif>}; separator=";\n">
+<chanNameToReadEndType.keys, chanNameToReadEndType.values: { k, v | <if(v)><k>.unclaimReadingEnd();<else><k>.unclaimWritingEnd();<endif>}; separator=";\n">
 >>
 
-TimerReadExpr(left) ::= "<left> = PJTimer.read()"
+TimerReadExpr(left) ::= "<left> = PJTimer.read();"
 
 ContinueStat() ::= "continue"
 
@@ -197,25 +197,23 @@ do {
 } while( <expr> )
 >>
 
-ForStat(init, expr, incr, stats) ::= <<
+ForStat(init, expr, incr, stats, binExprBlocks) ::= <<
+<if(binExprBlocks)><binExprBlocks; separator=";\n\n">;<endif>
 for(<init; separator = ",">; <expr>; <incr>){
-  <stats; separator = ";\n">;
+  <stats; separator = "\n">
 }
 >>
 
-GetTrue() ::= <<
-public static boolean getTrue() {
-	return true;
-}
->>
-
-ParForStat(parName, init, expr, incr, barriers, stats, jmp) ::= <<
+ParForStat(parName, init, expr, incr, barriers, stats, jmp, invParamBlocks, binExprBlocks) ::= <<
 final PJPar <parName> = new PJPar(-1, this);
 int cnt = 0;	
 List\<PJProcess> pp = new LinkedList\<PJProcess>(); 
 
+<if(binExprBlocks)><binExprBlocks; separator=";\n\n">;<endif>
+
 for(<init; separator = ",">; <expr>; <incr>){
 	cnt++;
+	<if(invParamBlocks)><invParamBlocks; separator=";\n\n">;<endif>
 	pp.add(
 		<stats; separator=";\n">
 	);
@@ -231,7 +229,7 @@ for(PJProcess p : pp) {
 setNotReady();
 this.runLabel = <jmp>;
 yield();
-label(<jmp>)
+label(<jmp>);
 >>
 
 IfStat(expr, thenPart, elsePart) ::= <<
@@ -250,7 +248,7 @@ InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, bar
     <parName>.decrement();    
 	<if(barriers)><barriers:{b | <b>.resign()}; separator = ";\n">;<endif>
   }
-}).schedule()<\\>
+}).schedule();<\\>
 <elseif(parfor)>
 (new <qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>){
   public void finalize() {
@@ -260,53 +258,53 @@ InvocationNormal(qualifiedProc, procParams, isProcess, par, parfor, parName, bar
 })<\\>
 <endif>
 <else>
-<qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>)<\\>
+<qualifiedProc>(<if(procParams)> <procParams; separator =", "> <endif>);<\\>
 <endif>
 >>
 
-InvocationWithInvocationParamType(left, right, paramBlocks) ::= <<
+InvocationWithInvocationParamType(left, op, right, paramBlocks) ::= <<
 <if(paramBlocks)><paramBlocks; separator=";\n\n">;<endif>
-<if(left)><left>=<endif><right>
+<if(left)><left><if(op)><op><else>=<endif><endif><right>
 >>
 
-LocalDeclNormalProc(typeStr, var, isChanType, isProtoType, isRecType, isBarrierType, isTimerType, notInitialized) ::= <<
+LocalDeclNormalProc(typeStr, var, isChanType, isProtoType, isRecType, isBarrierType, isTimerType, notInitialized, isForCtrl) ::= <<
 <if(isChanType)>
-<typeStr> <var><if(notInitialized)> = new <typeStr>()<endif><\\>
+<typeStr> <var><if(notInitialized)> = new <typeStr>()<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isProtoType)>
-PJProtocolCase <var><if(notInitialized)> = null<endif><\\>
+PJProtocolCase <var><if(notInitialized)> = null<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isRecType)>
-<typeStr> <var><if(notInitialized)> = null<endif><\\>
+<typeStr> <var><if(notInitialized)> = null<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isBarrierType)>
-<typeStr> <var><if(notInitialized)> = new PJBarrier()<endif><\\>
+<typeStr> <var><if(notInitialized)> = new PJBarrier()<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isTimerType)>
 <! Initialization handled by TimeoutStat. We still want LocalDecl to take care of creating fields. !>
 <else>
-<typeStr> <var><\\>
+<if(!notInitialized)><var><endif><if(!isForCtrl)>;<endif><\\>
 <endif>
 >>
 
-LocalDeclYieldingProc(typeStr, var, isChanType, isProtoType, isRecType, isBarrierType, isTimerType, notInitialized) ::= <<
+LocalDeclYieldingProc(typeStr, var, isChanType, isProtoType, isRecType, isBarrierType, isTimerType, notInitialized, isForCtrl) ::= <<
 <if(isChanType)>
-<var><if(notInitialized)> = new <typeStr>()<endif><\\>
+<var><if(notInitialized)> = new <typeStr>()<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isProtoType || isRecType)>
-<var><if(notInitialized)> = null<endif><\\>
+<var><if(notInitialized)> = null<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isBarrierType)>
-<var><if(notInitialized)> = new PJBarrier()<endif><\\>
+<var><if(notInitialized)> = new PJBarrier()<endif><if(!isForCtrl)>;<endif><\\>
 <elseif(isTimerType)>
 <! Initialization handled by TimeoutStat. We still want LocalDecl to take care of creating fields. !>
 <else>
-<if(!notInitialized)><var><endif><\\>
+<if(!notInitialized)><var><endif><if(!isForCtrl)>;<endif><\\>
 <endif>
 >>
 
-NewArray(left, type, dims) ::= <<
-<left> = new <type><dims:{d | [<d>]}; separator = "">
+NewArray(left, type, dims, init) ::= <<
+<if(left)><left> = <endif>new <type><if(dims)><dims:{d | [<d>]}; separator = ""><else>[]<endif><if(init)>{<init:{i | <i>}; separator=",">}<endif>
 >>
 
-NewArrayIntializedElements(left, type, dims) ::= <<
-<left> = (<type>[])new Object[<dims>];
-for(int i=0; i \< <dims>; i++) {
-	<left>[i] = new <type>();
+NewArrayIntializedElements(left, parameterizedType, typeName, dimsExpr) ::= <<
+<left> = new <typeName>[<dimsExpr>];
+for(int i=0; i \< <dimsExpr>; i++) {
+	<left>[i] = new <parameterizedType>();
 }
 >>
 
@@ -343,7 +341,7 @@ public static class <name> extends PJProcess {
 	@Override
 	public synchronized void run() {
 		<lookupswitch>
-		<body; separator = ";\n">;
+		<body; separator = "\n">
 		<if(!retstatFound && !foreverloop)>terminate();<endif>
 	}
 }
@@ -363,7 +361,8 @@ public static void main(String[] args) {
 ProcTypeDeclToMethod(modifiers, returnType, retstatFound, packageName, name, formals, formalNames, globals, implement, body, last, foreverloop, lookupswitch) ::= <<
 
 public static <returnType> <name>(<if(formals)><formals; separator = ", "><endif>) {
-	<body; separator = ";\n">;
+	<if(globals)><globals; separator = ";\n">;<endif>
+	<body; separator = "\n">
 }
 >>
 
@@ -434,15 +433,15 @@ final PJPar <parName> = new PJPar(<parCnt>, this);
 setNotReady();
 this.runLabel = <jmp>;
 yield();
-label(<jmp>)
+label(<jmp>);
 >>
 
 ReturnStat(expr, procYields) ::= <<
 <if (procYields)>
 terminate();
-return<\\>
+return;<\\>
 <else>
-return<if(expr)> <expr><endif><\\>
+return<if(expr)> <expr>;<endif><\\>
 <endif>
 >>
 
@@ -469,7 +468,7 @@ SyncStat(barrier, jmp) ::= <<
 <barrier>.sync(this);
 this.runLabel = <jmp>;
 yield();
-label(<jmp>)
+label(<jmp>);
 >>
 
 Ternary(expr, trueBranch, falseBranch) ::= "<expr> ? <trueBranch> : <falseBranch>"
@@ -478,26 +477,25 @@ TimeoutStat(alt, name, delay, jmp) ::= <<
 <name> = new PJTimer(this, <delay>);
 <if(!alt)>
 try {
-		<name>.start();
-		setNotReady();
-		this.runLabel = <jmp>;
-		this._pd$seed = 0L;
+	<name>.start();
+	setNotReady();
+	this.runLabel = <jmp>;
 	yield();
 } catch (InterruptedException e) {
 	System.out.println("PJTimer Interrupted Exception!");
 }
-label(<jmp>)<\\>
+label(<jmp>);<\\>
 <endif>
 >>
 
-UnaryPostExpr(expr, op) ::= "<expr><op>"
+UnaryPostExpr(expr, op, isForCtrl) ::= "<expr><op><if(!isForCtrl)><endif>"
 
-UnaryPreExpr(expr, op) ::= "<op><expr>"
+UnaryPreExpr(expr, op, isForCtrl) ::= "<op><expr><if(!isForCtrl)><endif>"
 
-Var(name, init) ::= "<if(name)><name><endif><if(name && init)> = <endif><if(init)><init><endif>"
+Var(name, init, isForCtrl) ::= "<if(name)><name><endif><if(name && init)> = <endif><if(init)><init><if(!isForCtrl)>;<endif><endif>"
 
 WhileStat(expr, stat) ::= <<
 while( <expr> ) {
-  <stat; separator = ";\n">;
+  <stat; separator = "\n">
 }
 >>
