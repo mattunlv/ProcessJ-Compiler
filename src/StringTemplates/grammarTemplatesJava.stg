@@ -232,7 +232,8 @@ yield();
 label(<jmp>);
 >>
 
-IfStat(expr, thenPart, elsePart) ::= <<
+IfStat(expr, thenPart, elsePart, binExprBlocks) ::= <<
+<if(binExprBlocks)><binExprBlocks; separator=";\n\n">;<endif>
 if( <expr> ) {
   <thenPart; separator = ";\n">;
 }<if(elsePart)> else {
@@ -341,7 +342,7 @@ public static class <name> extends PJProcess {
 	@Override
 	public synchronized void run() {
 		<lookupswitch>
-		<body; separator = "\n">
+		<body; separator = ";\n">;
 		<if(!retstatFound && !foreverloop)>terminate();<endif>
 	}
 }
@@ -439,9 +440,9 @@ label(<jmp>);
 ReturnStat(expr, procYields) ::= <<
 <if (procYields)>
 terminate();
-return;<\\>
+return<\\>
 <else>
-return<if(expr)> <expr>;<endif><\\>
+return<if(expr)> <expr><endif>;<\\>
 <endif>
 >>
 
@@ -488,14 +489,14 @@ label(<jmp>);<\\>
 <endif>
 >>
 
-UnaryPostExpr(expr, op, isForCtrl) ::= "<expr><op><if(!isForCtrl)><endif>"
+UnaryPostExpr(expr, op, isForCtrl) ::= "<expr><op><if(!isForCtrl)>;<endif>"
 
-UnaryPreExpr(expr, op, isForCtrl) ::= "<op><expr><if(!isForCtrl)><endif>"
+UnaryPreExpr(expr, op, isForCtrl) ::= "<op><expr><if(!isForCtrl)>;<endif>"
 
 Var(name, init, isForCtrl) ::= "<if(name)><name><endif><if(name && init)> = <endif><if(init)><init><if(!isForCtrl)>;<endif><endif>"
 
 WhileStat(expr, stat) ::= <<
 while( <expr> ) {
-  <stat; separator = "\n">
+  <stat; separator = ";\n">;
 }
 >>

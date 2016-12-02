@@ -92,7 +92,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     /**
      * String Template grammar file location.
      */
-    private final String _stGrammarFile = "StringTemplates/grammarTemplatesJava.stg";
+    private final String _stGrammarFile = "src/StringTemplates/grammarTemplatesJava.stg";
 
     /**
      * String Template object to hold all templates.
@@ -268,6 +268,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      * List of generated block codes for invocation parameters.
      */
     private List<String> invParamBlocks = null;
+    
+    /**
+     * List of generated binary expression blocks.
+     */
+    private List<String> binExprBlocks = new ArrayList<String>();
 
     /**
      * Map of protocol name and the corresponding tag that the switch label is currently using as const. expression.
@@ -1195,8 +1200,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         return createBinaryExpr(null, null, be);
     }
 
-    private List<String> binExprBlocks = new ArrayList<String>();
-
     public T createBinaryExpr(String lhs, String lhsOp, BinaryExpr be) {
         ST template = _stGroup.getInstanceOf("BinaryExpr");
 
@@ -1224,7 +1227,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             _fields.add(lbe.type.visit(this) + " " + left);
 
             exprBlock = (String) createBinaryExpr(left, "=", lbe) + DELIM;
-            exprBlocks.add(exprBlock);
+            
+            if (State.is(State.IF_ELSE_PREDICATE)) {
+                binExprBlocks.add(exprBlock);
+            } else {
+                exprBlocks.add(exprBlock);
+            }
+            
         } else {
             left = (String) be.left().visit(this);
         }
@@ -1247,7 +1256,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             _fields.add(rbe.type.visit(this) + " " + right);
 
             exprBlock = (String) createBinaryExpr(right, "=", rbe) + DELIM;
-            exprBlocks.add(exprBlock);
+            
+            if (State.is(State.IF_ELSE_PREDICATE)) {
+                binExprBlocks.add(exprBlock);
+            } else {
+                exprBlocks.add(exprBlock);
+            }
         } else {
             right = (String) be.right().visit(this);
         }
@@ -1320,6 +1334,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         ST template = _stGroup.getInstanceOf("DoStat");
         String[] stats = (String[]) ds.stat().visit(this);
         String expr = (String) ds.expr().visit(this);
+        
+        Expression e = ds.expr();
+        if (e== null)
+            System.out.println("type is null");
+        if (e.type.isBooleanType() && (Boolean)e.constantValue()) {
+           State.set(State.FOREVER_LOOP, true); 
+        }
 
         template.add("stat", stats);
         template.add("expr", expr);
@@ -1355,6 +1376,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String[] initStr = null;
         String[] incrStr = null;
         String expr = null;
+
+        if (fs.foreverLoop) {
+            State.set(State.FOREVER_LOOP, true);
+        }
 
         Sequence<Statement> init = fs.init();
 
@@ -1677,7 +1702,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         Log.log(is.line + ": Visiting a IfStat");
         ST template = _stGroup.getInstanceOf("IfStat");
 
+        List<String> binExprBlocks = new ArrayList<String>();
+        
+        State.set(State.IF_ELSE_PREDICATE, true);
+
         String expr = (String) is.expr().visit(this);
+
+        if (this.binExprBlocks.size() > 0) {
+            binExprBlocks.addAll(this.binExprBlocks);
+
+            this.binExprBlocks.clear();
+        }
+        
+        State.set(State.IF_ELSE_PREDICATE, false);
+        
         Statement elsePart = is.elsepart();
         Object elsePartStr = null;
         Object thenPart = is.thenpart().visit(this);
@@ -1701,6 +1739,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                 template.add("elsePart", (String) elsePartStr);
             }
         }
+        
+        template.add("binExprBlocks", binExprBlocks);
 
         return (T) template.render();
     }
