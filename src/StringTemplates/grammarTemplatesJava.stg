@@ -194,7 +194,7 @@ ContinueStat() ::= "continue"
 DoStat(stat, expr) ::= <<
 do {
   <stat; separator = ";\n">;
-} while( <expr> )
+} while( <expr> );
 >>
 
 ForStat(init, expr, incr, stats, binExprBlocks) ::= <<
