@@ -454,6 +454,16 @@ public class TypeChecker extends Visitor<Type> {
             return ce.type;
         }
 
+	// if the expression is an arrayof channels then .read or .write creates an array of channel ends!
+	Type arrayBaseType = null;
+	int depth = 0;
+	if (t.isArrayType()) {
+	    arrayBaseType = ((ArrayType)t).getActualBaseType();
+	    depth = ((ArrayType)t).getActualDepth();
+	    t = arrayBaseType;
+	    
+	}
+
         if (!t.isChannelType()) {
             ce.type = Error.addError(ce,
                     "Channel end expression requires channel type.", 3019);
@@ -461,10 +471,9 @@ public class TypeChecker extends Visitor<Type> {
         }
 
         ChannelType ct = (ChannelType) t;
-        int end = (ce.isRead() ? ChannelEndType.READ_END
-                : ChannelEndType.WRITE_END);
+        int end = (ce.isRead() ? ChannelEndType.READ_END : ChannelEndType.WRITE_END);
         if (ct.shared() == ChannelType.NOT_SHARED)
-            ce.type = new ChannelEndType(ChannelEndType.NOT_SHARED, ct.baseType(), end);
+	    ce.type = new ChannelEndType(ChannelEndType.NOT_SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_READ_WRITE)
             ce.type = new ChannelEndType(ChannelEndType.SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_READ)
@@ -475,6 +484,11 @@ public class TypeChecker extends Visitor<Type> {
 					 : ChannelType.NOT_SHARED, ct.baseType(), end);
         else
             ce.type = Error.addError(ce, "Unknown sharing status for channel end expression.", 3020);
+	if (arrayBaseType != null) {
+	    // build the new array:
+	    for (int i=0; i<depth; i++)
+		ce.type = new ArrayType(ce.type, 1);
+	}
         Log.log(ce.line + ": Channel End Expr has type: " + ce.type);
         return ce.type;
     }
