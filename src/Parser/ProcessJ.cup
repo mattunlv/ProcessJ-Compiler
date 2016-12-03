@@ -340,6 +340,7 @@ non terminal AltStat 		alt_statement;
 non terminal Sequence 		alt_body;
 non terminal AltCase		alt_case;
 non terminal Guard		guard;
+non terminal AST		replication_opt;
 
 // 10.0 Expressions
 non terminal Expression		primary, primary_no_new_array_or_mobile;
@@ -1193,7 +1194,12 @@ skip_statement ::=
 //- AltStat :> AST
 alt_statement ::=
           PRI ALT LBRACE alt_body:b RBRACE {: RESULT = new AltStat(b, true /* PRI ALT */); :}
-        | ALT LBRACE alt_body:b RBRACE     {: RESULT = new AltStat(b, false /* ALT */); :}
+        | ALT replication_opt LBRACE alt_body:b RBRACE     {: RESULT = new AltStat(b, false /* ALT */); :}
+        ;
+
+replication_opt ::=
+          LPAREN for_init_opt:i SEMICOLON expression_opt:e SEMICOLON for_update_opt:u RPAREN
+        | 
         ;
 
 //- Sequence[AltCase :> AST] :> AST
@@ -1561,7 +1567,7 @@ literal ::=
 // RecordLiteral :> Literal :> Expression :> AST
 record_literal ::=
          NEW type_name:tn LBRACE argument_list:l RBRACE {: RESULT = new RecordLiteral(tn, l); :}
-       | NEW type_name:tn LBRACE RBRACE {: RESULT = new RecordLiteral(tn, new Sequence()); :}
+      // | NEW type_name:tn LBRACE RBRACE {: RESULT = new RecordLiteral(tn, new Sequence()); :}
        ;
 
 // ProtocolLiteral :> Literal :> Expression :> AST
