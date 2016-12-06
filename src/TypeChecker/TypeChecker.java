@@ -1032,7 +1032,7 @@ public class TypeChecker extends Visitor<Type> {
                 }
                 if (!found) {
                     Error.addError(ra, "Unknown field reference '" + fieldName + "' in protocol tag '" + pc.name().getname()
-                            + "' in protocol '" + pt.name().getname() + "'.", 0000);
+                            + "' in protocol '" + pt.name().getname() + "'.", 3073);
                     ra.type = new ErrorType();
                 }
             }
