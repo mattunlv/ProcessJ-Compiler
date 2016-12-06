@@ -103,6 +103,7 @@ public class Reachability extends Visitor<Boolean> {
                 && b && // the statement can run to completion
                 !ds.hasBreak && !ds.hasReturn) { // but has no breaks, so it will loop forever
             loopConstruct = oldLoopConstruct;
+	    ds.foreverLoop = true;
             Error.error(ds, "Do-statement is an infinite loop.", false, 5011);
             return new Boolean(false);
         }
