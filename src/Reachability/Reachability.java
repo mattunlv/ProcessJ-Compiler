@@ -72,7 +72,7 @@ public class Reachability extends Visitor<Boolean> {
                 && ((b && // the statement can run to completion
                         !ws.hasBreak && !ws.hasReturn) // but has no breaks, so it will loop forever
                 || !b)) {
-            Error.error(ws, "While-statement is an infinite loop", false, 5002);
+            Error.warning(ws, "While-statement is an infinite loop", 5002);
             ws.foreverLoop = true;
             loopConstruct = oldLoopConstruct;
             return new Boolean(false);
@@ -104,7 +104,7 @@ public class Reachability extends Visitor<Boolean> {
                 !ds.hasBreak && !ds.hasReturn) { // but has no breaks, so it will loop forever
             loopConstruct = oldLoopConstruct;
 	    ds.foreverLoop = true;
-            Error.error(ds, "Do-statement is an infinite loop.", false, 5011);
+            Error.warning(ds, "Do-statement is an infinite loop.", 5011);
             return new Boolean(false);
         }
         loopConstruct = oldLoopConstruct;
@@ -163,7 +163,7 @@ public class Reachability extends Visitor<Boolean> {
                 .expr().constantValue()))) && b && // the statement can run to completion
                 !fs.hasBreak && !fs.hasReturn) // but has no breaks, so it will loop forever
         {
-            Error.error(fs, "For-statement is an infinite loop.", false, 5005);
+            Error.warning(fs, "For-statement is an infinite loop.", 5005);
             fs.foreverLoop = true;
             loopConstruct = oldLoopConstruct;
             return new Boolean(false);
