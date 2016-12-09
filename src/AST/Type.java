@@ -45,6 +45,12 @@ public abstract class Type extends AST {
     public abstract String signature();
 
     public static boolean assignmentCompatible(Type var, Type val) {
+
+	System.out.println("AC: var: "+var);
+	System.out.println("AC: val: "+val);
+
+
+
         if (var.identical(val)) {// Same type
             return true;
         } else if (var.isNumericType() && val.isNumericType()) {

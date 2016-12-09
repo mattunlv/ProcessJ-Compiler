@@ -25,4 +25,8 @@ public class ExternType extends Type {
     public <S extends Object> S visit(Visitor<S> v) {
         return v.visitExternType(this);
     }
+
+    public String toString() {
+	return typeName();
+    }
 }

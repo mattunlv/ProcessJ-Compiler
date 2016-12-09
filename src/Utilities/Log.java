@@ -3,7 +3,7 @@ package Utilities;
 import AST.AST;
 
 public class Log {
-    public static boolean doLog = false;
+    public static boolean doLog = true;
 
     public static void startLogging() {
         doLog = true;

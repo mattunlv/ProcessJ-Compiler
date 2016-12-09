@@ -187,8 +187,8 @@ public class ProcessJc {
                 //System.out.println("---------- Error Report ----------");
 
 		//System.out.println(Error.errors);
-		System.out.println("** COMPILATION FAILED ** 3");
-                System.exit(1);
+		//System.out.println("** COMPILATION FAILED ** 3");
+                //System.exit(1);
 	    }
 
             ////////////////////////////////////////////////////////////////////////////////
