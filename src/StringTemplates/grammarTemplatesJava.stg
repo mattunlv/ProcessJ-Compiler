@@ -191,10 +191,11 @@ TimerReadExpr(left) ::= "<left> = PJTimer.read();"
 
 ContinueStat() ::= "continue"
 
-DoStat(stat, expr) ::= <<
+DoStat(stat, exprLst, exprBlocks) ::= <<
 do {
+  <if(exprBlocks)><exprBlocks; separator=";\n\n">;<endif>
   <stat; separator = ";\n">;
-} while( <expr> );
+} while( <exprLst> );
 >>
 
 ForStat(init, expr, incr, stats, binExprBlocks) ::= <<
@@ -235,9 +236,9 @@ label(<jmp>);
 IfStat(expr, thenPart, elsePart, binExprBlocks) ::= <<
 <if(binExprBlocks)><binExprBlocks; separator=";\n\n">;<endif>
 if( <expr> ) {
-  <thenPart; separator = ";\n">;
+  <thenPart; separator = ";\n">
 }<if(elsePart)> else {
-  <elsePart; separator = ";\n">;
+  <elsePart; separator = ";\n">
 }<endif>
 >>
 
@@ -342,7 +343,7 @@ public static class <name> extends PJProcess {
 	@Override
 	public synchronized void run() {
 		<lookupswitch>
-		<body; separator = ";\n">;
+		<body; separator = "\n">
 		<if(!retstatFound && !foreverloop)>terminate();<endif>
 	}
 }
@@ -440,9 +441,9 @@ label(<jmp>);
 ReturnStat(expr, procYields) ::= <<
 <if (procYields)>
 terminate();
-return<\\>
+return;<\\>
 <else>
-return<if(expr)> <expr><endif>;<\\>
+return<if(expr)> <expr><else><endif>;<\\>
 <endif>
 >>
 
@@ -489,14 +490,15 @@ label(<jmp>);<\\>
 <endif>
 >>
 
-UnaryPostExpr(expr, op, isForCtrl) ::= "<expr><op><if(!isForCtrl)>;<endif>"
+UnaryPostExpr(expr, op, noDelim) ::= "<expr><op><if(!noDelim)>;<endif>"
 
-UnaryPreExpr(expr, op, isForCtrl) ::= "<op><expr><if(!isForCtrl)>;<endif>"
+UnaryPreExpr(expr, op, noDelim) ::= "<op><expr><if(!noDelim)>;<endif>"
 
 Var(name, init, isForCtrl) ::= "<if(name)><name><endif><if(name && init)> = <endif><if(init)><init><if(!isForCtrl)>;<endif><endif>"
 
-WhileStat(expr, stat) ::= <<
-while( <expr> ) {
-  <stat; separator = ";\n">;
+WhileStat(stat, exprLst, exprBlocks) ::= <<
+<if(exprBlocks)><exprBlocks; separator=";\n\n">;<endif>
+while( <exprLst> ) {
+  	<stat; separator = ";\n">
 }
 >>

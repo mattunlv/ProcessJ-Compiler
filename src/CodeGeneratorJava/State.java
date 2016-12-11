@@ -21,6 +21,10 @@ public class State {
     public static final String CLAIMSTAT = "claimstat"; //nested claims are not allowed. so maybe not necessary to put this here and instead just use a class var in code gen.
     public static final String FOR_LOOP_CONTROL = "forloopcontrol";
     public static final String IF_ELSE_PREDICATE = "ifelsepredicate";
+    public static final String CHAN_WRITE_VALUE = "chanwritevalue";
+    public static final String INV_ARG = "invarg";
+    public static final String WHILE_EXPR = "whileexpr";
+    public static final String RETURN_STAT = "returnstat";
 
     private static Map<String, Boolean> state_table = new HashMap<String, Boolean>();
 
@@ -36,6 +40,10 @@ public class State {
         state_table.put(CLAIMSTAT, false);
         state_table.put(FOR_LOOP_CONTROL, false);
         state_table.put(IF_ELSE_PREDICATE, false);
+        state_table.put(CHAN_WRITE_VALUE, false);
+        state_table.put(INV_ARG, false);
+        state_table.put(WHILE_EXPR, false);
+        state_table.put(RETURN_STAT, false);
 
         //		currentState();
     }

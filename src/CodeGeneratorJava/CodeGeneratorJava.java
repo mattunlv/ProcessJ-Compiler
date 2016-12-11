@@ -687,7 +687,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             argBlocks.add(argBlock);
 
         } else {
+            State.set(State.CHAN_WRITE_VALUE, true);
+
             expr = (String) cw.expr().visit(this);
+
+            State.set(State.CHAN_WRITE_VALUE, false);
         }
 
         template.add("argBlocks", argBlocks);
@@ -891,7 +895,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         return (T) template.render();
     }
 
-    public T createNewArray(String left, NewArray ne) {
+    private T createNewArray(String left, NewArray ne) {
         Log.log(ne.line + ": Creating a NewArray");
 
         ST template = null;
@@ -935,11 +939,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         return (T) template.render();
     }
 
-    public T createInvocation(String left, String op, Invocation in, boolean isParamInvocation) {
+    private T createInvocation(String left, String op, Invocation in, boolean isParamInvocation) {
         return createInvocation(left, op, in, null, isParamInvocation, INV_WRAP_NONE);
     }
 
-    public T createInvocation(String left, String op, Invocation in, List<String> barriers, boolean isParamInvocation,
+    private T createInvocation(String left, String op, Invocation in, List<String> barriers, boolean isParamInvocation,
             int invocationWrapper) {
         Log.log(in.line + ": Creating Invocation (" + in.procedureName().getname() + ") with LHS as " + left);
 
@@ -1013,7 +1017,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                     paramBlocks.add(binaryExprBlock);
                     paramLst.add(fieldNameTemp);
                 } else {
+
+                    State.set(State.INV_ARG, true);
+
                     String name = (String) e.visit(this);
+                    
+                    State.set(State.INV_ARG, true);
+
                     paramLst.add(name);
 
                     if (e instanceof NameExpr) {
@@ -1076,7 +1086,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
     }
     
-    public T createChannelReadExpr(String left, String op, ChannelReadExpr cr) {
+    private T createChannelReadExpr(String left, String op, ChannelReadExpr cr) {
         Log.log(cr.line + ": Creating ChannelReadExpr with LHS as " + left);
 
         ST template = null;
@@ -1200,7 +1210,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         return createBinaryExpr(null, null, be);
     }
 
-    public T createBinaryExpr(String lhs, String lhsOp, BinaryExpr be) {
+    private T createBinaryExpr(String lhs, String lhsOp, BinaryExpr be) {
         ST template = _stGroup.getInstanceOf("BinaryExpr");
 
         List<String> exprBlocks = new ArrayList<String>();
@@ -1324,26 +1334,67 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
     /**
      * DoStat
-     * 
-     * TODO: I think this will crash if we do: do <oneStat> while(<expr>); Since this does not return a String[]
-     * 
      */
     public T visitDoStat(DoStat ds) {
         Log.log(ds.line + ": Visiting a DoStat");
 
         ST template = _stGroup.getInstanceOf("DoStat");
-        String[] stats = (String[]) ds.stat().visit(this);
-        String expr = (String) ds.expr().visit(this);
+        State.set(State.FOREVER_LOOP, ds.foreverLoop); 
         
-        Expression e = ds.expr();
-        if (e== null)
-            System.out.println("type is null");
-        if (e.type.isBooleanType() && (Boolean)e.constantValue()) {
-           State.set(State.FOREVER_LOOP, true); 
-        }
+        List<String> exprLst = new ArrayList<String>();
+        List<String> exprBlocks = new ArrayList<String>();
+        String fieldNameTemp = null;
 
+        Expression e = ds.expr();
+
+        if (e != null) {
+            if (e instanceof ChannelReadExpr) {
+
+                ChannelReadExpr cr = (ChannelReadExpr) e;
+                String typeString = _chanNameToBaseType.get(cr.channel().visit(this));
+                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
+                _fields.add(typeString + " " + fieldNameTemp);
+                String chanReadBlock = (String) createChannelReadExpr(fieldNameTemp, "=", (ChannelReadExpr) e);
+
+                exprBlocks.add(chanReadBlock);
+                exprLst.add(fieldNameTemp);
+
+            } else if (e instanceof Invocation) {
+
+                String typeString = ((Invocation) e).targetProc.returnType().typeName();
+                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
+                _fields.add(typeString + " " + fieldNameTemp);
+                String invocationBlock = (String) createInvocation(fieldNameTemp, "=", (Invocation) e, true);
+
+                exprBlocks.add(invocationBlock);
+                exprLst.add(fieldNameTemp);
+
+            } else if (e instanceof BinaryExpr) {
+                String typeString = (String) ((BinaryExpr) e).type.visit(this);
+                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
+                _fields.add(typeString + " " + fieldNameTemp);
+                String binaryExprBlock = (String) createBinaryExpr(fieldNameTemp, "=", (BinaryExpr) e);
+
+                exprBlocks.add(binaryExprBlock);
+                exprLst.add(fieldNameTemp);
+            } else {
+
+                State.set(State.WHILE_EXPR, true);
+
+                String name = (String) e.visit(this);
+                
+                State.set(State.WHILE_EXPR, true);
+
+                exprLst.add(name);
+
+            } 
+        }
+        
+        String[] stats = (String[]) ds.stat().visit(this);
         template.add("stat", stats);
-        template.add("expr", expr);
+        
+        template.add("exprBlocks", exprBlocks);
+        template.add("exprLst", exprLst);
 
         return (T) template.render();
     }
@@ -1377,9 +1428,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String[] incrStr = null;
         String expr = null;
 
-        if (fs.foreverLoop) {
-            State.set(State.FOREVER_LOOP, true);
-        }
+        State.set(State.FOREVER_LOOP, fs.foreverLoop);
 
         Sequence<Statement> init = fs.init();
 
@@ -2281,7 +2330,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         // Can return null so we must check for this!
         if (expr != null) {
+            State.set(State.RETURN_STAT, true);
             exprStr = (String) expr.visit(this);
+            State.set(State.RETURN_STAT, false);
             template.add("expr", exprStr);
         }
         template.add("procYields", State.is(State.PROC_YIELDS));
@@ -2461,7 +2512,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         template.add("expr", expr);
         template.add("op", op);
-        template.add("isForCtrl", State.is(State.FOR_LOOP_CONTROL));
+        
+        boolean noDelim = State.is(State.FOR_LOOP_CONTROL)
+                            || State.is(State.CHAN_WRITE_VALUE)
+                            || State.is(State.INV_ARG)
+                            || State.is(State.WHILE_EXPR)
+                            || State.is(State.RETURN_STAT)
+                            || State.is(State.IF_ELSE_PREDICATE);
+
+        template.add("noDelim", noDelim);
 
         return (T) template.render();
     }
@@ -2478,7 +2537,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         template.add("expr", expr);
         template.add("op", op);
-        template.add("isForCtrl", State.is(State.FOR_LOOP_CONTROL));
+        
+        boolean noDelim = State.is(State.FOR_LOOP_CONTROL) 
+                || State.is(State.CHAN_WRITE_VALUE)
+                || State.is(State.INV_ARG)
+                || State.is(State.WHILE_EXPR)
+                || State.is(State.RETURN_STAT)
+                || State.is(State.IF_ELSE_PREDICATE);
+
+        template.add("noDelim", noDelim);
 
         return (T) template.render();
     }
@@ -2528,22 +2595,68 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         ST template = _stGroup.getInstanceOf("WhileStat");
 
-        String expr = (String) ws.expr().visit(this);
+        State.set(State.FOREVER_LOOP, ws.foreverLoop);
 
-        if (ws.foreverLoop) {
-            State.set(State.FOREVER_LOOP, true);
+        List<String> exprLst = new ArrayList<String>();
+        List<String> exprBlocks = new ArrayList<String>();
+        String fieldNameTemp = null;
+
+        Expression e = ws.expr();
+
+        if (e != null) {
+            if (e instanceof ChannelReadExpr) {
+
+                ChannelReadExpr cr = (ChannelReadExpr) e;
+                String typeString = _chanNameToBaseType.get(cr.channel().visit(this));
+                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
+                _fields.add(typeString + " " + fieldNameTemp);
+                String chanReadBlock = (String) createChannelReadExpr(fieldNameTemp, "=", (ChannelReadExpr) e);
+
+                exprBlocks.add(chanReadBlock);
+                exprLst.add(fieldNameTemp);
+
+            } else if (e instanceof Invocation) {
+
+                String typeString = ((Invocation) e).targetProc.returnType().typeName();
+                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
+                _fields.add(typeString + " " + fieldNameTemp);
+                String invocationBlock = (String) createInvocation(fieldNameTemp, "=", (Invocation) e, true);
+
+                exprBlocks.add(invocationBlock);
+                exprLst.add(fieldNameTemp);
+
+            } else if (e instanceof BinaryExpr) {
+                String typeString = (String) ((BinaryExpr) e).type.visit(this);
+                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
+                _fields.add(typeString + " " + fieldNameTemp);
+
+                String binaryExprBlock = (String) createBinaryExpr(fieldNameTemp, "=", (BinaryExpr) e);
+
+                exprBlocks.add(binaryExprBlock);
+                exprLst.add(fieldNameTemp);
+            } else {
+
+                State.set(State.WHILE_EXPR, true);
+
+                String name = (String) e.visit(this);
+                
+                State.set(State.WHILE_EXPR, true);
+
+                exprLst.add(name);
+
+            } 
         }
 
         Object stats = ws.stat().visit(this);
 
-        template.add("expr", expr);
-
-        // May be one element or multiple.
         if (stats instanceof String[]) {
             template.add("stat", (String[]) stats);
         } else {
             template.add("stat", (String) stats);
         }
+
+        template.add("exprBlocks", exprBlocks);
+        template.add("exprLst", exprLst);
 
         return (T) template.render();
     }
