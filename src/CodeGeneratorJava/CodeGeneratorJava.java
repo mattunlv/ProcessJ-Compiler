@@ -92,7 +92,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     /**
      * String Template grammar file location.
      */
-    private final String _stGrammarFile = "src/StringTemplates/grammarTemplatesJava.stg";
+    private final String _stGrammarFile = "StringTemplates/grammarTemplatesJava.stg";
 
     /**
      * String Template object to hold all templates.
@@ -1339,7 +1339,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         Log.log(ds.line + ": Visiting a DoStat");
 
         ST template = _stGroup.getInstanceOf("DoStat");
-        State.set(State.FOREVER_LOOP, ds.foreverLoop); 
+        
+        updateForeverLoop(ds.foreverLoop);
         
         List<String> exprLst = new ArrayList<String>();
         List<String> exprBlocks = new ArrayList<String>();
@@ -1428,7 +1429,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String[] incrStr = null;
         String expr = null;
 
-        State.set(State.FOREVER_LOOP, fs.foreverLoop);
+        updateForeverLoop(fs.foreverLoop);
 
         Sequence<Statement> init = fs.init();
 
@@ -2165,7 +2166,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template.add("body", block);
             template.add("lookupswitch", renderLookupSwitchTable(_switchCases));
             template.add("foreverloop", State.is(State.FOREVER_LOOP));
-
+            
             rendered = template.render();
         }
 
@@ -2595,7 +2596,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         ST template = _stGroup.getInstanceOf("WhileStat");
 
-        State.set(State.FOREVER_LOOP, ws.foreverLoop);
+        updateForeverLoop(ws.foreverLoop);
 
         List<String> exprLst = new ArrayList<String>();
         List<String> exprBlocks = new ArrayList<String>();
@@ -2731,6 +2732,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String fieldName = Helper.convertToFieldName(name.getname(), false, this._varId++);
         _localNameToFieldName.put(name.getname(), fieldName);
         name.setName(fieldName);
+    }
+    
+    private void updateForeverLoop(boolean bVal) {
+        if (bVal && !State.is(State.FOREVER_LOOP)) {
+            State.set(State.FOREVER_LOOP, bVal);
+        }
     }
 
     private String[] getStatements(AST stat) {
