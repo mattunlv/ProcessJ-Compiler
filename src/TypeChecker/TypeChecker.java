@@ -183,8 +183,8 @@ public class TypeChecker extends Visitor<Type> {
 
         as.type = null; // gets set to ErrorType if an error happens.
 
-        Type vType = resolve(as.left().type);
-	Type eType = resolve(as.right().type);
+        Type vType = resolve(as.left().visit(this));
+	Type eType = resolve(as.right().visit(this));
 
         // Handle error types in operands
         if (vType.isErrorType() || eType.isErrorType()) {
