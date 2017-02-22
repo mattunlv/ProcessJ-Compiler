@@ -27,6 +27,6 @@ public class ExternType extends Type {
     }
 
     public String toString() {
-	return typeName();
+        return typeName();
     }
 }

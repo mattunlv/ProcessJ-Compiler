@@ -16,9 +16,8 @@ public class NamedType extends Type implements TopLevelDecl {
     public NamedType(Name name, Type type) {
         this(name);
         this.type = type;
-	nchildren = 1;
-	children = new AST[] { name };
-
+        nchildren = 1;
+        children = new AST[] { name };
     }
 
     public Name name() {

@@ -883,7 +883,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             return (T) createNewArray(left, (NewArray) as.right());
         } else if (as.right() instanceof BinaryExpr) {
             return (T) (createBinaryExpr(left, op, (BinaryExpr) as.right()) + DELIM);
-            //TODO unaryExpr check might be needed.
         } else {
             String right = (String) as.right().visit(this);
             template.add("left", left);
@@ -1422,7 +1421,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      */
     public T visitForStat(ForStat fs) {
         Log.log(fs.line + ": Visiting a ForStat");
-
+        
         ST template = _stGroup.getInstanceOf("ForStat");
 
         String[] initStr = null;
@@ -1820,6 +1819,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             fieldName = _recNameToPrefixedName.get(name);
         }
 
+        if (_pjTypeToExternType != null && fieldName == null) {
+            fieldName = _pjTypeToExternType.get(name);
+        }
+
         if (fieldName == null) {
             fieldName = name;
         }
@@ -1830,19 +1833,16 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     public T visitNamedType(NamedType nt) {
         Log.log(nt.line + ": Visiting NamedType (" + nt.name().getname() + ")");
 
-        String pjTypeName = (String) nt.name().visit(this);
+        String pjTypeName = (String) nt.name().getname();
 
         if (nt.type() instanceof ExternType) {
-            String externTypeName = (String) nt.type().visit(this);
-            _pjTypeToExternType.put(pjTypeName, externTypeName);
-            return null;
+            if (!_pjTypeToExternType.containsKey(pjTypeName)) {
+                String externTypeName = (String) nt.type().visit(this);
+                _pjTypeToExternType.put(pjTypeName, externTypeName);
+            }
         }
 
-        if (_pjTypeToExternType.containsKey(pjTypeName)) {
-            return (T) _pjTypeToExternType.get(pjTypeName);
-        } else {
-            return (T) nt.name().visit(this);
-        }
+        return (T) nt.name().visit(this);
     }
 
     /**

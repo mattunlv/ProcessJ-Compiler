@@ -9,13 +9,11 @@ import java.io.Writer;
 
 import AST.AltCase;
 import AST.ExprStat;
-import AST.NamedType;
 import AST.ProcTypeDecl;
 import AST.SkipStat;
 import AST.Statement;
 import AST.TimeoutStat;
 import AST.Type;
-import ProcessJ.runtime.PJProtocolCase;
 import Utilities.Log;
 import Utilities.Settings;
 
