@@ -2285,13 +2285,17 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     public T visitRecordAccess(RecordAccess ra) {
         Log.log(ra.line + ": Visiting a RecordAccess = " + ra.toString());
 
-        ST template = _stGroup.getInstanceOf("RecordAccess");
-
         Type tType = ra.record().type;
-
         if (tType.isRecordType()) {
             Log.log("found a record type");
+            
+            ST template = _stGroup.getInstanceOf("RecordAccess");
+            template.add("record", ra.record().visit(this));
+            template.add("field", ra.field().getname());
+            return (T) template.render();
+
         } else if (tType.isProtocolType()) {
+	    ST template = _stGroup.getInstanceOf("ProtocolAccess");
             ProtocolTypeDecl pt = (ProtocolTypeDecl) ra.record().type;
             String caseName = _protoTagNameToPrefixedName.get(_protoNameToProtoTagSwitchedOn.get(pt.name().getname()));
             String protocolName = _protoTagNameToProtoName.get(caseName);
@@ -2300,9 +2304,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template.add("caseName", caseName);
             template.add("record", ra.record().visit(this));
             template.add("field", ra.field().visit(this));
+            return (T) template.render();
         }
 
-        return (T) template.render();
+        return null;
     }
 
     public T visitRecordLiteral(RecordLiteral rl) {
