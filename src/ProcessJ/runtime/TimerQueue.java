@@ -23,7 +23,6 @@ public class TimerQueue {
      * Holds the PJTimer objects
      */
     public static BlockingQueue<PJTimer> delayQueue = new DelayQueue<PJTimer>();
-    private int size = 0;
 
     private Thread timerThread = new Thread(new Runnable() {
         @Override
@@ -42,14 +41,13 @@ public class TimerQueue {
                     // If the process is still around then set it ready to run again.
                     // time.getProcess() will return 'null' if the process has terminated.
                     if (p != null) {
-                        synchronized (p) { 
+                        synchronized (p) { // ADDED
                             p.setReady();
-                        } 
+                        } // ADDED
                     }
-                    size--;
                 }
             } catch (InterruptedException e) {
-//                System.err.println("[TimerQueue] Unexpected interrupt exception encountered.");
+                //System.err.println("[TimerQueue] Unexpected interrupt exception encountered.");
                 return;
             }
         }
@@ -59,7 +57,6 @@ public class TimerQueue {
      * insert() is called by insertTimer() from Scheduler.java
      */
     public synchronized void insert(PJTimer timer) throws InterruptedException {
-        size++;
         delayQueue.offer(timer);
     }
 
@@ -80,7 +77,14 @@ public class TimerQueue {
         this.timerThread.interrupt();
     }
 
+    /*
+     * isEmpty() is called from the Scheduler class.
+     */
+    public synchronized boolean isEmpty() {
+        return delayQueue.isEmpty();
+    }
+
     public int size() {
-        return size;
+        return delayQueue.size();
     }
 }

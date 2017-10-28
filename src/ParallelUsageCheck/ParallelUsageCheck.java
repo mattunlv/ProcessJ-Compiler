@@ -51,10 +51,12 @@ public class ParallelUsageCheck extends Visitor<Object> {
             Log.log(ra, "Visiting a RecordAccess.");
             String name = ra.toString();
             if (writeSet.containsKey(name)) {
-                Error.error(ra, "Parallel read and write access to record member '"
-                                + name + "' illegal.", false, 5100);
+                Error.error(ra,
+                        "Parallel read and write access to record member '"
+                                + name + "' illegal.", false, 0000);
             } else {
-                Log.log(ra, "RecordAccess: '" + name + "' is added to the read set.");
+                Log.log(ra, "RecordAccess: '" + name
+                        + "' is added to the read set.");
                 readSet.put(name, ra);
             }
         }
@@ -66,12 +68,17 @@ public class ParallelUsageCheck extends Visitor<Object> {
             Log.log(aae, "Visiting a ArrayAccessExpr.");
             String name = aae.toString();
             if (writeSet.containsKey(name)) {
-                Error.error(aae, "Parallel read and write access to array member '"
-                                + name + "' illegal.", false, 5101);
+                Error.error(aae,
+                        "Parallel read and write access to array member '"
+                                + name + "' illegal.", false, 0000);
             } else {
-                Log.log(aae, "ArrayAccessExpr: '" + name + "' is added to the read set.");
+                Log.log(aae, "ArrayAccessExpr: '" + name
+                        + "' is added to the read set.");
                 readSet.put(name, aae);
-                Error.warning(aae, "Parallel usage checking is not fully implemented for array access.", 5102);
+                Error.warning(
+                        aae,
+                        "Parallel usage checking is not fully implemented for array access.",
+                        0000);
                 aae.index().visit(this);
             }
         }
@@ -98,29 +105,38 @@ public class ParallelUsageCheck extends Visitor<Object> {
             if (as.left() instanceof NameExpr) {
                 String name = ((NameExpr) as.left()).name().getname();
                 if (writeSet.containsKey(name))
-                    Error.error(as, "Parallel write access to variable '" + name + "' illegal.", false, 5103);
+                    Error.error(as, "Parallel write access to variable '"
+                            + name + "' illegal.", false, 0000);
                 else {
-                    Log.log(as, "NameExpr: '" + name + "' is added to the write set.");
+                    Log.log(as, "NameExpr: '" + name
+                            + "' is added to the write set.");
                     writeSet.put(name, as.left());
                 }
             } else if (as.left() instanceof RecordAccess) {
                 // TODO: the toString() of as.left() if probably not complete
                 String name = as.left().toString();
                 if (writeSet.containsKey(name))
-                    Error.error(as, "Parallel write access to record member '" + name + "' illegal.", false, 5104);
+                    Error.error(as, "Parallel write access to record member '"
+                            + name + "' illegal.", false, 0000);
                 else {
-                    Log.log(as, "RecordAccess: '" + name + "' is added to the write set.");
+                    Log.log(as, "RecordAccess: '" + name
+                            + "' is added to the write set.");
                     writeSet.put(name, as.left());
                 }
             } else if (as.left() instanceof ArrayAccessExpr) {
                 // TODO: the toString() of as.left() is probably not complete!
                 String name = as.left().toString();
                 if (writeSet.containsKey(name))
-                    Error.error(as, "Parallel write access to array member '" + name + "' illegal.", false, 5105);
+                    Error.error(as, "Parallel write access to array member '"
+                            + name + "' illegal.", false, 0000);
                 else {
-                    Log.log(as, "ArrayAccessExpr: '" + name + "' is added to the write set.");
+                    Log.log(as, "ArrayAccessExpr: '" + name
+                            + "' is added to the write set.");
                     writeSet.put(name, as.left());
-                    Error.warning(as.left(), "Parallel usage checking is not fully implemented for array access.", 5106);
+                    Error.warning(
+                            as.left(),
+                            "Parallel usage checking is not fully implemented for array access.",
+                            0000);
                 }
             }
         }
@@ -133,9 +149,11 @@ public class ParallelUsageCheck extends Visitor<Object> {
             // This should only be reads!
             String name = ne.name().getname();
             if (writeSet.containsKey(name))
-                Error.error(ne, "Parallel read and write access to variable '" + name + "' illegal.", false, 5107);
+                Error.error(ne, "Parallel read and write access to variable '"
+                        + name + "' illegal.", false, 0000);
             else {
-                Log.log(ne, "NameExpr: '" + name + "' is added to the read set.");
+                Log.log(ne, "NameExpr: '" + name
+                        + "' is added to the read set.");
                 readSet.put(name, ne);
             }
         }
@@ -148,29 +166,38 @@ public class ParallelUsageCheck extends Visitor<Object> {
             if (up.expr() instanceof NameExpr) {
                 String name = ((NameExpr) up.expr()).name().getname();
                 if (writeSet.containsKey(name))
-                    Error.error(up, "Parallel write access to variable '" + name + "' illegal.", false, 5108);
+                    Error.error(up, "Parallel write access to variable '"
+                            + name + "' illegal.", false, 0000);
                 else {
-                    Log.log(up, "NameExpr: '" + name + "' is added to the write set.");
+                    Log.log(up, "NameExpr: '" + name
+                            + "' is added to the write set.");
                     writeSet.put(name, up.expr());
                 }
             } else if (up.expr() instanceof RecordAccess) {
                 // TODO: the toString() of up.expr() if probably not complete
                 String name = up.expr().toString();
                 if (writeSet.containsKey(name))
-                    Error.error(up, "Parallel write access to record member '" + name + "' illegal.", false, 5109);
+                    Error.error(up, "Parallel write access to record member '"
+                            + name + "' illegal.", false, 0000);
                 else {
-                    Log.log(up, "RecordAccess: '" + name + "' is added to the write set.");
+                    Log.log(up, "RecordAccess: '" + name
+                            + "' is added to the write set.");
                     writeSet.put(name, up.expr());
                 }
             } else if (up.expr() instanceof ArrayAccessExpr) {
                 // TODO: the toString() of up.expr() is probably not complete!
                 String name = up.expr().toString();
                 if (writeSet.containsKey(name))
-                    Error.error(up, "Parallel write access to array member '" + name + "' illegal.", false, 5110);
+                    Error.error(up, "Parallel write access to array member '"
+                            + name + "' illegal.", false, 0000);
                 else {
-                    Log.log(up, "ArrayAccessExpr: '" + name + "' is added to the write set.");
+                    Log.log(up, "ArrayAccessExpr: '" + name
+                            + "' is added to the write set.");
                     writeSet.put(name, up.expr());
-                    Error.warning(up.expr(), "Parallel usage checking is not fully implemented for array access.", 5111);
+                    Error.warning(
+                            up.expr(),
+                            "Parallel usage checking is not fully implemented for array access.",
+                            0000);
                 }
             }
         }
@@ -185,29 +212,40 @@ public class ParallelUsageCheck extends Visitor<Object> {
                 if (up.expr() instanceof NameExpr) {
                     String name = ((NameExpr) up.expr()).name().getname();
                     if (writeSet.containsKey(name))
-                        Error.error(up, "Parallel write access to variable '" + name + "' illegal.", false, 5112);
+                        Error.error(up, "Parallel write access to variable '"
+                                + name + "' illegal.", false, 0000);
                     else {
-                        Log.log(up, "NameExpr: '" + name + "' is added to the write set.");
+                        Log.log(up, "NameExpr: '" + name
+                                + "' is added to the write set.");
                         writeSet.put(name, up.expr());
                     }
                 } else if (up.expr() instanceof RecordAccess) {
                     // TODO: the toString() of up.expr() if probably not complete
                     String name = up.expr().toString();
                     if (writeSet.containsKey(name))
-                        Error.error(up, "Parallel write access to record member '" + name + "' illegal.", false, 5113);
+                        Error.error(up,
+                                "Parallel write access to record member '"
+                                        + name + "' illegal.", false, 0000);
                     else {
-                        Log.log(up, "RecordAccess: '" + name + "' is added to the write set.");
+                        Log.log(up, "RecordAccess: '" + name
+                                + "' is added to the write set.");
                         writeSet.put(name, up.expr());
                     }
                 } else if (up.expr() instanceof ArrayAccessExpr) {
                     // TODO: the toString() of up.expr() is probably not complete!
                     String name = up.expr().toString();
                     if (writeSet.containsKey(name))
-                        Error.error(up, "Parallel write access to array member '" + name + "' illegal.", false, 5114);
+                        Error.error(up,
+                                "Parallel write access to array member '"
+                                        + name + "' illegal.", false, 0000);
                     else {
-                        Log.log(up, "ArrayAccessExpr: '" + name + "' is added to the write set.");
+                        Log.log(up, "ArrayAccessExpr: '" + name
+                                + "' is added to the write set.");
                         writeSet.put(name, up.expr());
-                        Error.warning(up.expr(), "Parallel usage checking is not fully implemented for array access.", 5115);
+                        Error.warning(
+                                up.expr(),
+                                "Parallel usage checking is not fully implemented for array access.",
+                                0000);
                     }
                 }
             } else

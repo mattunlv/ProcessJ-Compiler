@@ -106,10 +106,10 @@ public class TypeChecker extends Visitor<Type> {
                     + ((NamedType) t).name().getname());
             Type tt = t.visit(this); // this resolves all NamedTypes
             Log.log("  > Resolved " + ((NamedType) t).name().getname() + " -> "
-                    + tt + "\n---");
+                    + tt.typeName());
             return tt;
         } else {
-            Log.log("  > Nothing to resolve - type remains: " + t  + "\n---");
+            Log.log("  > Nothing to resolve - type remains: " + t);
             return t;
         }
     }
@@ -184,7 +184,7 @@ public class TypeChecker extends Visitor<Type> {
         as.type = null; // gets set to ErrorType if an error happens.
 
         Type vType = resolve(as.left().visit(this));
-	Type eType = resolve(as.right().visit(this));
+        Type eType = resolve(as.right().visit(this));
 
         // Handle error types in operands
         if (vType.isErrorType() || eType.isErrorType()) {
@@ -202,10 +202,10 @@ public class TypeChecker extends Visitor<Type> {
 
         switch (as.op()) {
             case Assignment.EQ: {
-		if (!Type.assignmentCompatible(vType, eType))
+                if (!Type.assignmentCompatible(vType, eType))
                     as.type = Error.addError(as, "Cannot assign value of type "
-					     + eType.typeName() + " to variable of type "
-					     + vType.typeName() + ".", 3003); // test OK
+                            + eType.typeName() + " to variable of type "
+                            + vType.typeName() + ".", 3003); // test OK
                 break;
             }
             case Assignment.MULTEQ:
@@ -454,16 +454,6 @@ public class TypeChecker extends Visitor<Type> {
             return ce.type;
         }
 
-	// if the expression is an arrayof channels then .read or .write creates an array of channel ends!
-	Type arrayBaseType = null;
-	int depth = 0;
-	if (t.isArrayType()) {
-	    arrayBaseType = ((ArrayType)t).getActualBaseType();
-	    depth = ((ArrayType)t).getActualDepth();
-	    t = arrayBaseType;
-	    
-	}
-
         if (!t.isChannelType()) {
             ce.type = Error.addError(ce,
                     "Channel end expression requires channel type.", 3019);
@@ -471,9 +461,10 @@ public class TypeChecker extends Visitor<Type> {
         }
 
         ChannelType ct = (ChannelType) t;
-        int end = (ce.isRead() ? ChannelEndType.READ_END : ChannelEndType.WRITE_END);
+        int end = (ce.isRead() ? ChannelEndType.READ_END
+                : ChannelEndType.WRITE_END);
         if (ct.shared() == ChannelType.NOT_SHARED)
-	    ce.type = new ChannelEndType(ChannelEndType.NOT_SHARED, ct.baseType(), end);
+            ce.type = new ChannelEndType(ChannelEndType.NOT_SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_READ_WRITE)
             ce.type = new ChannelEndType(ChannelEndType.SHARED, ct.baseType(), end);
         else if (ct.shared() == ChannelType.SHARED_READ)
@@ -484,11 +475,6 @@ public class TypeChecker extends Visitor<Type> {
 					 : ChannelType.NOT_SHARED, ct.baseType(), end);
         else
             ce.type = Error.addError(ce, "Unknown sharing status for channel end expression.", 3020);
-	if (arrayBaseType != null) {
-	    // build the new array:
-	    for (int i=0; i<depth; i++)
-		ce.type = new ArrayType(ce.type, 1);
-	}
         Log.log(ce.line + ": Channel End Expr has type: " + ce.type);
         return ce.type;
     }
@@ -660,7 +646,9 @@ public class TypeChecker extends Visitor<Type> {
                                 + " ) ");
                         for (int i = 0; i < in.params().size(); i++) {
                             candidate = candidate
-				&& Type.assignmentCompatible(resolve(((ParamDecl) ptd.formalParams().child(i)).type()), in
+                                    && Type.assignmentCompatible(
+                                            ((ParamDecl) ptd.formalParams()
+                                                    .child(i)).type(), in
                                                     .params().child(i).type);
                         }
                         if (candidate) {
@@ -785,11 +773,13 @@ public class TypeChecker extends Visitor<Type> {
 
     /** NAMED TYPE */
     public Type visitNamedType(NamedType nt) {
-        Log.log(nt.line + ": visiting a named type (" + nt.name().getname() + ").");
+        Log.log(nt.line + ": visiting a named type (" + nt.name().getname()
+                + ").");
         // TODO: not sure how to handle error type here 
         if (nt.type() == null) {
             // go look up the type and set the type field of nt.
-            Type t = resolve((Type) topLevelDecls.getIncludeImports(nt.name().getname()));
+            Type t = (Type) topLevelDecls
+                    .getIncludeImports(nt.name().getname());
             if (t == null) {
                 // check if it was a external packaged type (i.e., something with ::)
                 if (nt.name().resolvedPackageAccess != null) {
@@ -1028,7 +1018,7 @@ public class TypeChecker extends Visitor<Type> {
                 }
                 if (!found) {
                     Error.addError(ra, "Unknown field reference '" + fieldName + "' in protocol tag '" + pc.name().getname()
-                            + "' in protocol '" + pt.name().getname() + "'.", 3073);
+                            + "' in protocol '" + pt.name().getname() + "'.", 0000);
                     ra.type = new ErrorType();
                 }
             }

@@ -65,9 +65,9 @@ public class Error {
 
     public static void warning(AST e, String msg, int errorno) {
         System.out.print(fileName + ":" + e.line + ": ");
-        System.out.println(ColorCodes.ParseColors(":yellow,n:" + msg + "[RC]"));
+        System.out.println(ColorCodes.ParseColors(":red,n:" + msg + "[RC]"));
         System.out.print("Warning number: ");
-        System.out.println(ColorCodes.ParseColors(":yellow,n:" + errorno + "[RC]"));
+        System.out.println(ColorCodes.ParseColors(":red,n:" + errorno + "[RC]"));
         errors += "\n" + fileName + ":" + e.line + ": " + msg;
         errors += "\n" + "Warning number: " + errorno;
     }

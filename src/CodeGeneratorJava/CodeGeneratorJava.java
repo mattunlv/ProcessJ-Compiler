@@ -73,15 +73,6 @@ import AST.UnaryPostExpr;
 import AST.UnaryPreExpr;
 import AST.Var;
 import AST.WhileStat;
-import ProcessJ.runtime.PJAlt;
-import ProcessJ.runtime.PJBarrier;
-import ProcessJ.runtime.PJChannel;
-import ProcessJ.runtime.PJMany2ManyChannel;
-import ProcessJ.runtime.PJMany2OneChannel;
-import ProcessJ.runtime.PJOne2ManyChannel;
-import ProcessJ.runtime.PJOne2OneChannel;
-import ProcessJ.runtime.PJProtocolCase;
-import ProcessJ.runtime.PJTimer;
 import Utilities.Error;
 import Utilities.Log;
 import Utilities.SymbolTable;
@@ -98,11 +89,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      * String Template object to hold all templates.
      */
     private STGroup _stGroup;
-
-    /**
-     * Constant for no block wrap around invocation.
-     */
-    private static final int INV_WRAP_NONE = -1;
 
     /**
      * Constant denoting the invocation is inside par block.
@@ -130,19 +116,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     private static final String MAIN_SIGNATURE = "([T;)V";
 
     /**
-     * Code line delimiter.
-     */
-    private static final String DELIM = ";";
-
-    /**
      * Channel end type. - Can be CHAN_READ_END or CHAN_WRITE_END
      */
     private int _chanEndType = 0;
-
-    /**
-     * Channel base type.
-     */
-    private String _chanBaseType = null;
 
     /**
      * Variable unique identifier.
@@ -168,6 +144,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      * Flag denoting channel read end.
      */
     private boolean _isReadingChannelEnd = false;
+
+    /**
+     * Flag to control getTrue method addition.
+     */
+    private boolean _addTrueMethod = false;
 
     /**
      * User working directory set in Settings file.
@@ -225,11 +206,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     private Map<String, Integer> _chanNameToEndType = new HashMap<String, Integer>();
 
     /**
-     * Map of channel name and the type of data it carries (base type) .
-     */
-    private Map<String, String> _chanNameToBaseType = new HashMap<String, String>();
-
-    /**
      * Map of parameter name and its modified field name.
      */
     private Map<String, String> _paramNameToFieldName = null;
@@ -258,21 +234,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      * Map of protocol tag name and the protocol name that it belongs to.
      */
     private Map<String, String> _protoTagNameToProtoName = new HashMap<String, String>();
-
-    /**
-     * Map of ProcessJ type to its external type.
-     */
-    private Map<String, String> _pjTypeToExternType = new HashMap<String, String>();
-
-    /**
-     * List of generated block codes for invocation parameters.
-     */
-    private List<String> invParamBlocks = null;
     
     /**
-     * List of generated binary expression blocks.
+     * Map of ProcessJ type to its external type;
      */
-    private List<String> binExprBlocks = new ArrayList<String>();
+    Map<String, String> _pjTypeToExternType = new HashMap<String, String>();
 
     /**
      * Map of protocol name and the corresponding tag that the switch label is currently using as const. expression.
@@ -327,38 +293,24 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         ST altBGArrTemplate = _stGroup.getInstanceOf("AltBooleanGuardsArr");
         String[] constants = new String[caseCount];
         List<String> tempExprs = new ArrayList<String>();
-
         for (int i = 0; i < caseCount; i++) {
-
             AltCase ac = altCaseList.child(i);
-
             if (ac.precondition() == null) {
-
                 constants[i] = String.valueOf(true);
-
             } else if (ac.precondition().isConstant()) {
-
                 constants[i] = (String) ac.precondition().visit(this);
-
             } else {
-
                 String tempVar = "bTemp" + i;
                 Name n = new Name(tempVar);
-
-                tempExprs.add((String) new LocalDecl(
-                                                new PrimitiveType(PrimitiveType.BooleanKind), 
-                                                new Var(n, ac.precondition()), 
-                                                false
-                                            ).visit(this)
-                                          );
-
+                tempExprs.add((String) new LocalDecl(new PrimitiveType(PrimitiveType.BooleanKind), new Var(n, ac
+                        .precondition()), false).visit(this));
                 constants[i] = (String) n.visit(this);
             }
         }
-
         altBGArrTemplate.add("tempExprs", tempExprs);
         altBGArrTemplate.add("constants", constants);
         altBGArrTemplate.add("altCnt", _altId);
+        //------------------------------------------------------
 
         /*
          * Creating actual guards array
@@ -414,7 +366,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                 statementList.addAll(Arrays.asList(stats)); //the statements in the channelexpr guard 
 
             } else if (caseExprStmt instanceof SkipStat) {
-                guards[i] = PJAlt.class.getSimpleName() + ".SKIP_GUARD";
+                guards[i] = "PJAlt.SKIP_GUARD";
 
                 stats = getStatements(ac.stat());
                 statementList.addAll(Arrays.asList(stats)); //the statements in the skip guard
@@ -433,9 +385,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
          */
         List<String> timerStarts = new ArrayList<String>();
         List<String> timerKills = new ArrayList<String>();
-
         for (String t : timerNames) {
-
             ST timerStart = _stGroup.getInstanceOf("AltTimerStart");
             timerStart.add("timer", t);
 
@@ -446,6 +396,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
             timerKills.add(timerKill.render());
         }
+        //----------------
 
         /*
          * Creating timer start cases
@@ -456,6 +407,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             altCase.add("statementList", timerStarts);
             altCases.add(altCase.render());
         }
+        //---------------
 
         String fieldNameChosen = Helper.convertToFieldName("chosen", false, this._varId++);
         _fields.add("int " + fieldNameChosen);
@@ -469,6 +421,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             altGuardArrTemplate.add("guards", guards);
             altGuardArrTemplate.add("altCnt", _altId);
         }
+
+        //--------------------
 
         template.add("timers", timers);
         template.add("caseCount", caseCount);
@@ -486,7 +440,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         _jumpCnt++;
 
         String fieldNameAlt = Helper.convertToFieldName("alt", false, this._varId++);
-        _fields.add(PJAlt.class.getSimpleName() + " " + fieldNameAlt);
+        _fields.add("PJAlt " + fieldNameAlt);
         template.add("name", fieldNameAlt);
 
         template.add("altCnt", _altId);
@@ -510,10 +464,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
     /**
      * ArrayLiteral
+     * 
+     * TODO: Just the base method for now as a placeholder. What to do about this?
      */
     public T visitArrayLiteral(ArrayLiteral al) {
-        Log.log(al.line + ": Visting ArrayLiteral.");
-        return (T) al.elements().visit(this);
+        return al.visitChildren(this);
     }
 
     /**
@@ -531,27 +486,41 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     public T visitChannelType(ChannelType ct) {
         Log.log(ct.line + ": Visiting a Channel Type!");
 
-        String typeString = null;
-        
+        String typeString;
         switch (ct.shared()) {
             case ChannelType.NOT_SHARED:
-                typeString = PJOne2OneChannel.class.getSimpleName();
+                typeString = "PJOne2OneChannel";
                 break;
             case ChannelType.SHARED_WRITE:
-                typeString = PJMany2OneChannel.class.getSimpleName();
+                typeString = "PJMany2OneChannel";
                 break;
             case ChannelType.SHARED_READ:
-                typeString = PJOne2ManyChannel.class.getSimpleName();
+                typeString = "PJOne2ManyChannel";
                 break;
             case ChannelType.SHARED_READ_WRITE:
-                typeString = PJMany2ManyChannel.class.getSimpleName();
+                typeString = "PJMany2ManyChannel";
                 break;
+            default:
+                typeString = "One2OneChannel";
         }
 
         Type t = ct.baseType();
-        _chanBaseType = getChannelBaseType(t);
+        //TODO rename this to generictype or template or something
+        String basetype = null;
+        if (t.isNamedType()) {
+            NamedType tt = (NamedType) t;
 
-        return (T) (typeString + "<" + _chanBaseType + ">");
+            if (isProtocolType(tt)) {
+                basetype = "PJProtocolCase";
+            } else {
+                basetype = (String) tt.visit(this);
+            }
+        } else {
+            //FIXME maybe do a check for primitive type...and rename the below method.
+            basetype = Helper.getWrapperType(t);
+        }
+
+        return (T) (typeString + "<" + basetype + ">");
     }
 
     /**
@@ -578,24 +547,38 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         Log.log(ct.line + ": Visiting a Channel End Type!");
 
         //Getting the channel type
-        String maintype = PJChannel.class.getSimpleName();
+        String maintype = "PJChannel";
         if (ct.isShared()) {
             if (ct.isRead()) {
-                maintype = PJOne2ManyChannel.class.getSimpleName();
+                maintype = "PJOne2ManyChannel";
             } else {
-                maintype = PJMany2OneChannel.class.getSimpleName();
+                maintype = "PJMany2OneChannel";
             }
         } else {
-            maintype = PJOne2OneChannel.class.getSimpleName();
+            maintype = "PJOne2OneChannel";
         }
 
-        _chanBaseType = getChannelBaseType(ct.baseType());
+        //Getting the Channel<'basetype'>
+        Type t = ct.baseType();
+        String basetype = null;
+        if (t.isNamedType()) {
+            NamedType tt = (NamedType) t;
+
+            if (isProtocolType(tt)) {
+                basetype = "PJProtocolCase";
+            } else {
+                basetype = (String) tt.visit(this);
+            }
+        } else {
+            //FIXME maybe do a check for primitive type...and rename the below method.
+            basetype = Helper.getWrapperType(t);
+        }
 
         String chanEndType = "";
         if (State.is(State.PARAMS)) {
-            chanEndType = PJChannel.class.getSimpleName() + "<" + _chanBaseType + ">";
+            chanEndType = "PJChannel<" + basetype + ">";
         } else {
-            chanEndType = maintype + "<" + _chanBaseType + ">";
+            chanEndType = maintype + "<" + basetype + ">";
         }
 
         if (ct.isRead()) {
@@ -612,7 +595,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      */
     public T visitChannelReadExpr(ChannelReadExpr cr) {
         Log.log(cr.line + ": Visiting ChannelReadExpr");
-        return (T) createChannelReadExpr(null, null, cr);
+        return (T) createChannelReadExpr(null, cr);
     }
 
     /**
@@ -655,46 +638,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             }
         }
 
+        String expr = (String) cw.expr().visit(this);
         String channel = (String) channelExpr.visit(this);
-        String expr = null;
-        List<String> argBlocks = new ArrayList<String>();
-        String argBlock = null;
-
-        if (cw.expr() instanceof Assignment) {
-
-            Assignment a = (Assignment) cw.expr();
-            argBlock = (String) a.visit(this);
-            argBlocks.add(argBlock);
-            expr = (String) a.left().visit(this);
-
-        } else if (cw.expr() instanceof BinaryExpr) {
-
-            BinaryExpr be = (BinaryExpr) cw.expr();
-            expr = Helper.convertToFieldName("temp", false, this._varId++);
-            _fields.add(be.type.visit(this) + " " + expr);
-
-            argBlock = (String) new Assignment(new NameExpr(new Name(expr)), be, Assignment.EQ).visit(this);
-            argBlocks.add(argBlock);
-
-        } else if (cw.expr() instanceof ChannelReadExpr) {
-
-            ChannelReadExpr cr = (ChannelReadExpr) cw.expr();
-            expr = Helper.convertToFieldName("temp", false, this._varId++);
-
-            _fields.add(_chanNameToBaseType.get(cr.channel().visit(this)) + " " + expr);
-
-            argBlock = (String) createChannelReadExpr(expr, "=", cr);
-            argBlocks.add(argBlock);
-
-        } else {
-            State.set(State.CHAN_WRITE_VALUE, true);
-
-            expr = (String) cw.expr().visit(this);
-
-            State.set(State.CHAN_WRITE_VALUE, false);
-        }
-
-        template.add("argBlocks", argBlocks);
         template.add("channel", channel);
         template.add("expr", expr);
 
@@ -761,7 +706,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                 return ((RecordTypeDecl) o1).extend().size() - ((RecordTypeDecl) o2).extend().size();
             }
         });
-
         typeDeclsStr.addAll(Arrays.asList((String[]) individualDecls.visit(this)));
         typeDeclsStr.addAll(Arrays.asList((String[]) extendedDecls.visit(this)));
 
@@ -808,6 +752,15 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
          * Visit remaining items on the list which are all ProcTypeDecls.
          */
         typeDeclsStr.addAll(Arrays.asList((String[]) typeDecls.visit(this)));
+
+        /*
+         * FIXME: might need to handle other types of infinite loops such as for(;;)
+         * Adding proc for while(true)loops:
+         * proc boolean getTrue() { return true; }
+         */
+        if (this._addTrueMethod) {
+            typeDeclsStr.add((String) (((ST) _stGroup.getInstanceOf("GetTrue")).render()));
+        }
 
         template.add("typeDecls", typeDeclsStr);
         template.add("packageName", this._sourceFilename);
@@ -876,77 +829,52 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String op = (String) as.opString();
 
         if (as.right() instanceof ChannelReadExpr) {
-            return (T) createChannelReadExpr(left, op, (ChannelReadExpr) as.right());
+            return (T) createChannelReadExpr(left, (ChannelReadExpr) as.right());
         } else if (as.right() instanceof Invocation) {
-            return (T) createInvocation(left, op, (Invocation) as.right(), false);
+            return (T) createInvocation(left, (Invocation) as.right(), false);
         } else if (as.right() instanceof NewArray) {
             return (T) createNewArray(left, (NewArray) as.right());
-        } else if (as.right() instanceof BinaryExpr) {
-            return (T) (createBinaryExpr(left, op, (BinaryExpr) as.right()) + DELIM);
         } else {
             String right = (String) as.right().visit(this);
             template.add("left", left);
             template.add("right", right);
             template.add("op", op);
-            template.add("isForCtrl", State.is(State.FOR_LOOP_CONTROL));
         }
 
         return (T) template.render();
     }
 
-    private T createNewArray(String left, NewArray ne) {
+    public T createNewArray(String left, NewArray ne) {
         Log.log(ne.line + ": Creating a NewArray");
 
         ST template = null;
 
         Type bt = ne.baseType();
-
         if (bt.isChannelType() || bt.isChannelEndType() || (bt.isNamedType() && (isProtocolType((NamedType) bt)))) {
             template = _stGroup.getInstanceOf("NewArrayIntializedElements");
-
-            String parameterizedType = (String) ne.baseType().visit(this);
-            String typeName = parameterizedType.substring(0, parameterizedType.indexOf('<')).trim();
-            String[] dimsExpr = (String[]) ne.dimsExpr().visit(this);
-
-            template.add("parameterizedType", parameterizedType);
-            template.add("typeName", typeName);
-            template.add("dimsExpr", dimsExpr);
         } else {
             template = _stGroup.getInstanceOf("NewArray");
-
-            String type = (String) ne.baseType().visit(this);
-            
-            String[] init = null;
-            if (ne.init() != null) {
-                init = (String[]) ne.init().visit(this);
-            }
-            String[] dims = (String[]) ne.dimsExpr().visit(this);
-
-            template.add("type", type);
-
-            if (dims.length == 0) {
-                template.add("dims", null);
-            } else {
-                template.add("dims", dims);
-            }
-
-            template.add("init", init);
         }
 
+        String myType = (String) ne.baseType().visit(this);
+        Sequence<Expression> dimsExpr = ne.dimsExpr();
+        String[] dims = (String[]) dimsExpr.visit(this);
+
         template.add("left", left);
+        template.add("type", myType);
+        template.add("dims", dims);
 
         return (T) template.render();
     }
 
-    private T createInvocation(String left, String op, Invocation in, boolean isParamInvocation) {
-        return createInvocation(left, op, in, null, isParamInvocation, INV_WRAP_NONE);
+    public T createInvocation(String left, Invocation in, boolean isParamInvocation) {
+        return createInvocation(left, in, null, isParamInvocation, -1);
     }
 
-    private T createInvocation(String left, String op, Invocation in, List<String> barriers, boolean isParamInvocation,
+    public T createInvocation(String left, Invocation in, List<String> barriers, boolean isParamInvocation,
             int invocationWrapper) {
         Log.log(in.line + ": Creating Invocation (" + in.procedureName().getname() + ") with LHS as " + left);
 
-        invParamBlocks = new ArrayList<String>();
         ST template = null;
         ProcTypeDecl pd = in.targetProc;
         String qualifiedPkg = Helper.getQualifiedPkg(pd, this._sourceFilename);
@@ -992,7 +920,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                     String typeString = in.targetProc.formalParams().child(i).type().typeName();
                     fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
                     _fields.add(typeString + " " + fieldNameTemp);
-                    String chanReadBlock = (String) createChannelReadExpr(fieldNameTemp, "=", (ChannelReadExpr) e);
+                    String chanReadBlock = (String) createChannelReadExpr(fieldNameTemp, (ChannelReadExpr) e);
 
                     paramBlocks.add(chanReadBlock);
                     paramLst.add(fieldNameTemp);
@@ -1002,27 +930,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                     String typeString = ((Invocation) e).targetProc.returnType().typeName();
                     fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
                     _fields.add(typeString + " " + fieldNameTemp);
-                    String invocationBlock = (String) createInvocation(fieldNameTemp, "=", (Invocation) e, true);
+                    String invocationBlock = (String) createInvocation(fieldNameTemp, (Invocation) e, true);
 
                     paramBlocks.add(invocationBlock);
                     paramLst.add(fieldNameTemp);
 
-                } else if (e instanceof BinaryExpr) {
-                    String typeString = (String) ((BinaryExpr) e).type.visit(this);
-                    fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                    _fields.add(typeString + " " + fieldNameTemp);
-                    String binaryExprBlock = (String) createBinaryExpr(fieldNameTemp, "=", (BinaryExpr) e);
-
-                    paramBlocks.add(binaryExprBlock);
-                    paramLst.add(fieldNameTemp);
                 } else {
-
-                    State.set(State.INV_ARG, true);
-
                     String name = (String) e.visit(this);
-                    
-                    State.set(State.INV_ARG, true);
-
                     paramLst.add(name);
 
                     if (e instanceof NameExpr) {
@@ -1040,7 +954,9 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                             if (t.isBarrierType()) {
                                 barriers.add(name);
                             }
+
                         }
+
                     }
                 }
             }
@@ -1071,21 +987,16 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             String invocationBlock = template.render();
             template = _stGroup.getInstanceOf("InvocationWithInvocationParamType");
 
-            if (invocationWrapper == INV_WRAP_PARFOR) {
-                invParamBlocks.addAll(paramBlocks);
-            } else {
-                template.add("paramBlocks", paramBlocks);
-            }
+            template.add("paramBlocks", paramBlocks);
             template.add("left", left);
-            template.add("op", op);
             template.add("right", invocationBlock);
         }
 
         return (T) template.render();
 
     }
-    
-    private T createChannelReadExpr(String left, String op, ChannelReadExpr cr) {
+
+    public T createChannelReadExpr(String left, ChannelReadExpr cr) {
         Log.log(cr.line + ": Creating ChannelReadExpr with LHS as " + left);
 
         ST template = null;
@@ -1175,7 +1086,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             }
 
             template.add("channel", channel);
-            template.add("op", op);
             template.add("left", left);
             //FIXME I might not even need _inAlt here.
             template.add("alt", (State.is(State.ALT) && State.is(State.ALT_GUARD)));
@@ -1206,80 +1116,13 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      */
     public T visitBinaryExpr(BinaryExpr be) {
         Log.log(be.line + ": Visiting a Binary Expression");
-        return createBinaryExpr(null, null, be);
-    }
-
-    private T createBinaryExpr(String lhs, String lhsOp, BinaryExpr be) {
         ST template = _stGroup.getInstanceOf("BinaryExpr");
 
-        List<String> exprBlocks = new ArrayList<String>();
-        String exprBlock = "";
-        String left = null;
-        String right = null;
-
-        if (be.left() instanceof ChannelReadExpr) {
-            ChannelReadExpr cr = (ChannelReadExpr) be.left();
-            left = Helper.convertToFieldName("temp", false, this._varId++);
-            
-            _fields.add(_chanNameToBaseType.get(cr.channel().visit(this)) + " " + left);
-
-            exprBlock = (String) createChannelReadExpr(left, "=", cr);
-
-            if (State.is(State.FOR_LOOP_CONTROL)) {
-                binExprBlocks.add(exprBlock);
-            } else {
-                exprBlocks.add(exprBlock);
-            }
-        } else if (be.left() instanceof BinaryExpr && !State.is(State.FOR_LOOP_CONTROL)) {
-            BinaryExpr lbe = (BinaryExpr) be.left();
-            left = Helper.convertToFieldName("temp", false, this._varId++);
-            _fields.add(lbe.type.visit(this) + " " + left);
-
-            exprBlock = (String) createBinaryExpr(left, "=", lbe) + DELIM;
-            
-            if (State.is(State.IF_ELSE_PREDICATE)) {
-                binExprBlocks.add(exprBlock);
-            } else {
-                exprBlocks.add(exprBlock);
-            }
-            
-        } else {
-            left = (String) be.left().visit(this);
-        }
-
-        if (be.right() instanceof ChannelReadExpr) {
-            ChannelReadExpr cr = (ChannelReadExpr) be.right();
-            right = Helper.convertToFieldName("temp", false, this._varId++);
-            _fields.add(_chanNameToBaseType.get(cr.channel().visit(this)) + " " + right);
-
-            exprBlock = (String) createChannelReadExpr(right, "=", cr);
-
-            if (State.is(State.FOR_LOOP_CONTROL)) {
-                binExprBlocks.add(exprBlock);
-            } else {
-                exprBlocks.add(exprBlock);
-            }
-        } else if (be.right() instanceof BinaryExpr && !State.is(State.FOR_LOOP_CONTROL)) {
-            BinaryExpr rbe = (BinaryExpr) be.right();
-            right = Helper.convertToFieldName("temp", false, this._varId++);
-            _fields.add(rbe.type.visit(this) + " " + right);
-
-            exprBlock = (String) createBinaryExpr(right, "=", rbe) + DELIM;
-            
-            if (State.is(State.IF_ELSE_PREDICATE)) {
-                binExprBlocks.add(exprBlock);
-            } else {
-                exprBlocks.add(exprBlock);
-            }
-        } else {
-            right = (String) be.right().visit(this);
-        }
-
+        String left = (String) be.left().visit(this);
+        String right = (String) be.right().visit(this);
         String op = (String) be.opString();
-        
-        template.add("lhs", lhs);
-        template.add("lhsOp", lhsOp);
-        template.add("exprBlocks", exprBlocks);
+
+        // TODO: Add support for string concatenation here.
 
         template.add("left", left);
         template.add("right", right);
@@ -1333,68 +1176,19 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
     /**
      * DoStat
+     * 
+     * TODO: I think this will crash if we do: do <oneStat> while(<expr>); Since this does not return a String[]
+     * 
      */
     public T visitDoStat(DoStat ds) {
         Log.log(ds.line + ": Visiting a DoStat");
 
         ST template = _stGroup.getInstanceOf("DoStat");
-        
-        updateForeverLoop(ds.foreverLoop);
-        
-        List<String> exprLst = new ArrayList<String>();
-        List<String> exprBlocks = new ArrayList<String>();
-        String fieldNameTemp = null;
-
-        Expression e = ds.expr();
-
-        if (e != null) {
-            if (e instanceof ChannelReadExpr) {
-
-                ChannelReadExpr cr = (ChannelReadExpr) e;
-                String typeString = _chanNameToBaseType.get(cr.channel().visit(this));
-                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                _fields.add(typeString + " " + fieldNameTemp);
-                String chanReadBlock = (String) createChannelReadExpr(fieldNameTemp, "=", (ChannelReadExpr) e);
-
-                exprBlocks.add(chanReadBlock);
-                exprLst.add(fieldNameTemp);
-
-            } else if (e instanceof Invocation) {
-
-                String typeString = ((Invocation) e).targetProc.returnType().typeName();
-                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                _fields.add(typeString + " " + fieldNameTemp);
-                String invocationBlock = (String) createInvocation(fieldNameTemp, "=", (Invocation) e, true);
-
-                exprBlocks.add(invocationBlock);
-                exprLst.add(fieldNameTemp);
-
-            } else if (e instanceof BinaryExpr) {
-                String typeString = (String) ((BinaryExpr) e).type.visit(this);
-                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                _fields.add(typeString + " " + fieldNameTemp);
-                String binaryExprBlock = (String) createBinaryExpr(fieldNameTemp, "=", (BinaryExpr) e);
-
-                exprBlocks.add(binaryExprBlock);
-                exprLst.add(fieldNameTemp);
-            } else {
-
-                State.set(State.WHILE_EXPR, true);
-
-                String name = (String) e.visit(this);
-                
-                State.set(State.WHILE_EXPR, true);
-
-                exprLst.add(name);
-
-            } 
-        }
-        
         String[] stats = (String[]) ds.stat().visit(this);
+        String expr = (String) ds.expr().visit(this);
+
         template.add("stat", stats);
-        
-        template.add("exprBlocks", exprBlocks);
-        template.add("exprLst", exprLst);
+        template.add("expr", expr);
 
         return (T) template.render();
     }
@@ -1407,12 +1201,12 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         return (T) es.expr().visit(this);
     }
-
+    
     /**
      * ExternType
      */
     public T visitExternType(ExternType et) {
-        Log.log(et.line + ": Visiting an ExternType (" + et.name() + ")");
+        Log.log(et.line + ": Visiting an ExternType (" + et.name() +")");
         return (T) et.name().getname();
     }
 
@@ -1421,20 +1215,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      */
     public T visitForStat(ForStat fs) {
         Log.log(fs.line + ": Visiting a ForStat");
-        
+
         ST template = _stGroup.getInstanceOf("ForStat");
 
         String[] initStr = null;
         String[] incrStr = null;
         String expr = null;
 
-        updateForeverLoop(fs.foreverLoop);
-
         Sequence<Statement> init = fs.init();
-
-        List<String> binExprBlocks = new ArrayList<String>();
-
-        State.set(State.FOR_LOOP_CONTROL, true);
         if (init != null) {
             initStr = (String[]) init.visit(this);
         }
@@ -1449,158 +1237,81 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             expr = (String) fs.expr().visit(this);
         }
 
-        if (this.binExprBlocks.size() > 0) {
-            binExprBlocks.addAll(this.binExprBlocks);
-
-            this.binExprBlocks.clear();
-        }
-
-        State.set(State.FOR_LOOP_CONTROL, false);
-
         String object = null;
-        boolean emptyBlock = false;
 
         if (fs.isPar()) {
+            boolean oldVal = State.set(State.PARFOR, true);
 
-            if(fs.stats() instanceof Block && ((Block) fs.stats()).stats().size() == 0) {
-               emptyBlock = true; 
+            template = _stGroup.getInstanceOf("ParForStat");
+
+            String nameHolder = _currParName;
+            _currParName = "parfor" + ++_parId;
+
+            List<String> barriersTemp = null;
+            Sequence<Expression> bs = fs.barriers();
+            if (bs != null) {
+                barriersTemp = new ArrayList<String>();
+                barriersTemp.addAll(_barriers);
+                _barriers.clear();
+                _barriers.addAll(Arrays.asList((String[]) bs.visit(this)));
             }
-            
-            boolean oldVal = false;
-            String nameHolder = null;
-            List<String> barriersTemp = null; 
-            Sequence<Expression> barriers = null;
 
-            if (!emptyBlock) {
+            Annotations a = new Annotations();
+            a.add("yield", "true");
 
-                oldVal = State.set(State.PARFOR, true);
-                template = _stGroup.getInstanceOf("ParForStat");
-
-                nameHolder = _currParName; 
-                _currParName = "parfor" + ++_parId; 
-
-                barriers = fs.barriers();
-                if (barriers != null) {
-                    barriersTemp = new ArrayList<String>();
-                    barriersTemp.addAll(_barriers);
-                    _barriers.clear();
-                    _barriers.addAll(Arrays.asList((String[]) barriers.visit(this)));
-                }
-            }
-            
             String rendered = null;
-            List<String> invocationParamBlocks = new ArrayList<String>();
-
+            //FIXME serious refactoring needed for the following block. just making it work for now.
             if (fs.stats() instanceof Block) {
-
                 Block b = (Block) fs.stats();
-
-                if (!emptyBlock) {
-
-                    if (b.stats().size() == 1 
-                            && b.stats().child(0) instanceof ExprStat
-                            && ((ExprStat) b.stats().child(0)).expr() instanceof Invocation) {
-
-                        Invocation in = (Invocation) ((ExprStat) b.stats().child(0)).expr();
-                        ProcTypeDecl pd = in.targetProc;
-
-                        if (Helper.isYieldingProc(pd)) {
-                            rendered = (String) createInvocation(
-                                    null, 
-                                    null, 
-                                    in, 
-                                    _barriers, 
-                                    false,
-                                    INV_WRAP_PARFOR
-                                );
-
-                            invocationParamBlocks.addAll(invParamBlocks);
-
-                        } else {
-                            rendered = (String) (createAnonymousProcTypeDecl(b).visit(this)); 
-                        }
-
-                    } else {
-
-                        rendered = (String) (createAnonymousProcTypeDecl(b).visit(this));
-                       
-                    } 
+                if (b.stats().size() == 1 && b.stats().child(0) instanceof ExprStat
+                        && ((ExprStat) b.stats().child(0)).expr() instanceof Invocation) {
+                    Invocation in = (Invocation) ((ExprStat) b.stats().child(0)).expr();
+                    rendered = (String) createInvocation(null, in, _barriers, false, INV_WRAP_PARFOR);
+                } else {
+                    rendered = (String) (new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(),
+                            new Sequence(), a, b)).visit(this);
                 }
-                
             } else if (fs.stats() instanceof ExprStat) {
-
                 ExprStat es = (ExprStat) fs.stats();
-
-                if (es != null) {
-                    if (es.expr() instanceof Invocation) {
-
-                        Invocation in = (Invocation) es.expr();
-                        ProcTypeDecl pd = in.targetProc;
-
-                        if (Helper.isYieldingProc(pd)) {
-                            rendered = (String) createInvocation(
-                                    null, 
-                                    null, 
-                                    in, 
-                                    _barriers, 
-                                    false,
-                                    INV_WRAP_PARFOR
-                                );
-                        } else {
-                            rendered = (String) (createAnonymousProcTypeDecl(fs.stats()).visit(this)); 
-                        }
-                        
-                        invocationParamBlocks.addAll(invParamBlocks);
-
-                    } else {
-
-                        rendered = (String) (createAnonymousProcTypeDecl(fs.stats()).visit(this));
-
-                    }
+                if (es.expr() instanceof Invocation) {
+                    rendered = (String) createInvocation(null, (Invocation) es.expr(), _barriers, false,
+                            INV_WRAP_PARFOR);
+                } else {
+                    rendered = (String) (new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(),
+                            new Sequence(), a, new Block(new Sequence(fs.stats())))).visit(this);
                 }
-                
-
-            } else if (fs.stats() != null){
-
-                rendered = (String) (createAnonymousProcTypeDecl(fs.stats()).visit(this));
-
+            } else {
+                rendered = (String) (new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(),
+                        new Sequence(), a, new Block(new Sequence(fs.stats())))).visit(this);
             }
 
+            //TODO: fix for empty forstat block
             template.add("stats", rendered);
 
-            if (!emptyBlock) {
-                template.add("parName", _currParName);
-                template.add("barriers", _barriers);
-                
-                /*
-                 * Adding resumption points
-                 */
-                template.add("jmp", _jumpCnt);
-                _switchCases.add(renderLookupSwitchCase(_jumpCnt));
-                _jumpCnt++;
+            template.add("parName", _currParName);
+            template.add("barriers", _barriers);
+            //----------------
 
-                if (invocationParamBlocks.size() > 0) { 
-                    template.add("invParamBlocks", invocationParamBlocks);
-                } 
-            }
+            /*
+             * Adding resumption points
+             */
+            template.add("jmp", _jumpCnt);
+            _switchCases.add(renderLookupSwitchCase(_jumpCnt));
+            _jumpCnt++;
 
             template.add("init", initStr);
             template.add("incr", incrStr);
             template.add("expr", expr);
 
-            template.add("binExprBlocks", binExprBlocks);
-
             object = template.render();
 
-            if (!emptyBlock) {
-                _currParName = nameHolder;
-                if (barriersTemp != null) {
-                    _barriers.clear();
-                    _barriers.addAll(barriersTemp);
-                }
-                State.set(State.PARFOR, oldVal);
+            _currParName = nameHolder;
+            if (barriersTemp != null) {
+                _barriers.clear();
+                _barriers.addAll(barriersTemp);
             }
-            
+            State.set(State.PARFOR, oldVal);
+
         } else {
             template = _stGroup.getInstanceOf("ForStat");
             /*
@@ -1623,8 +1334,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template.add("incr", incrStr);
             template.add("expr", expr);
 
-            template.add("binExprBlocks", binExprBlocks);
-
             object = template.render();
         }
 
@@ -1636,7 +1345,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      */
     public T visitInvocation(Invocation in) {
         Log.log(in.line + ": Visiting Invocation (" + in.procedureName().getname() + ")");
-        return (T) createInvocation(null, null, in, false);
+        return (T) createInvocation(null, in, false);
     }
 
     public T visitConstantDecl(ConstantDecl cd) {
@@ -1662,11 +1371,8 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String name = (String) ld.var().name().visit(this);
 
         if (ld.type() instanceof ChannelEndType
-                || ((ld.type() instanceof ArrayType) && (((ArrayType) ld.type()).baseType() instanceof ChannelEndType))) {
+                || (ld.type() instanceof ArrayType && ((ArrayType) ld.type()).baseType() instanceof ChannelEndType)) {
             _chanNameToEndType.put(name, _chanEndType);
-            _chanNameToBaseType.put(name, _chanBaseType);
-        } else if (ld.type().isTimerType()) {
-            _chanNameToBaseType.put(name, "long");
         }
 
         boolean isTimerType = false;
@@ -1682,7 +1388,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         }
 
         if (isProtoType) {
-            _fields.add(PJProtocolCase.class.getSimpleName() + " " + name);
+            _fields.add("PJProtocolCase " + name);
         } else {
             _fields.add(typeString + " " + name);
         }
@@ -1692,11 +1398,10 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template = _stGroup.getInstanceOf("LocalDeclYieldingProc");
         } else {
             /*
-             * This template also has flags for chanType, protoType, recType,
-             * barrierType, etc. though those constructs are only for a yielding
-             * proc. However, they are here to handle any declaration programmers
-             * may put in their program though they don't use it (e.g. chan.read)
-             * making the proc non-yielding.
+             * There's really no need to set chanType and barrierType for
+             * this as the use of those would make the proc a yielding one.
+             * But we have it anyway just to accommodate any declaration
+             * that might be put in by the pj programmers inside non-yielding proc.
              */
             template = _stGroup.getInstanceOf("LocalDeclNormalProc");
         }
@@ -1736,7 +1441,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             String var = (String) ld.var().visit(this);
             template.add("var", var);
             template.add("typeStr", typeString);
-            template.add("isForCtrl", State.is(State.FOR_LOOP_CONTROL));
 
             return (T) template.render();
         }
@@ -1751,20 +1455,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         Log.log(is.line + ": Visiting a IfStat");
         ST template = _stGroup.getInstanceOf("IfStat");
 
-        List<String> binExprBlocks = new ArrayList<String>();
-        
-        State.set(State.IF_ELSE_PREDICATE, true);
-
         String expr = (String) is.expr().visit(this);
-
-        if (this.binExprBlocks.size() > 0) {
-            binExprBlocks.addAll(this.binExprBlocks);
-
-            this.binExprBlocks.clear();
-        }
-        
-        State.set(State.IF_ELSE_PREDICATE, false);
-        
         Statement elsePart = is.elsepart();
         Object elsePartStr = null;
         Object thenPart = is.thenpart().visit(this);
@@ -1788,8 +1479,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
                 template.add("elsePart", (String) elsePartStr);
             }
         }
-        
-        template.add("binExprBlocks", binExprBlocks);
 
         return (T) template.render();
     }
@@ -1819,10 +1508,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             fieldName = _recNameToPrefixedName.get(name);
         }
 
-        if (_pjTypeToExternType != null && fieldName == null) {
-            fieldName = _pjTypeToExternType.get(name);
-        }
-
         if (fieldName == null) {
             fieldName = name;
         }
@@ -1832,17 +1517,20 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
     public T visitNamedType(NamedType nt) {
         Log.log(nt.line + ": Visiting NamedType (" + nt.name().getname() + ")");
-
-        String pjTypeName = (String) nt.name().getname();
-
+        
+        String pjTypeName = (String) nt.name().visit(this);
+        
         if (nt.type() instanceof ExternType) {
-            if (!_pjTypeToExternType.containsKey(pjTypeName)) {
-                String externTypeName = (String) nt.type().visit(this);
-                _pjTypeToExternType.put(pjTypeName, externTypeName);
-            }
+            String externTypeName = (String)nt.type().visit(this);
+            _pjTypeToExternType.put(pjTypeName, externTypeName);
+            return null;
+        } 
+        
+        if (_pjTypeToExternType.containsKey(pjTypeName)) {
+            return (T)_pjTypeToExternType.get(pjTypeName);
+        } else {
+            return (T) nt.name().visit(this);
         }
-
-        return (T) nt.name().visit(this);
     }
 
     /**
@@ -1893,18 +1581,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String name = pd.paramName().getname();
         String fieldName = Helper.convertToFieldName(name, true, this._varId++);
         pd.paramName().setName(name);
-
         if (_paramNameToFieldName != null) {
             _paramNameToFieldName.put(name, fieldName);
         }
         name = (String) pd.paramName().visit(this);
 
         if (pd.type() instanceof ChannelEndType
-                || ((pd.type() instanceof ArrayType) && (((ArrayType) pd.type()).baseType() instanceof ChannelEndType))) {
+                || (pd.type() instanceof ArrayType && ((ArrayType) pd.type()).baseType() instanceof ChannelEndType)) {
             _chanNameToEndType.put(name, _chanEndType);
-            _chanNameToBaseType.put(name, _chanBaseType);
-        } else if (pd.type().isTimerType()) {
-            _chanNameToBaseType.put(name, "long");
         }
 
         template.add("name", name);
@@ -1917,11 +1601,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
      * ParBlock
      */
     public T visitParBlock(ParBlock pb) {
-        Log.log(pb.line + ": Visiting a ParBlock with stat size " + pb.stats().size());
-
-        if (pb.stats().size() == 0) {
-            return null;
-        }
+        Log.log(pb.line + ": Visiting a ParBlock");
 
         ST parBlockTemplate = _stGroup.getInstanceOf("ParBlock");
 
@@ -1951,35 +1631,25 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         Sequence<Statement> se = pb.stats();
         String[] stats = new String[se.size()];
-        
+
         for (int k = 0; k < se.size(); k++) {
             Object body = null;
 
             Statement st = se.child(k);
 
             if (st != null) {
-                
                 if (st instanceof ExprStat && ((ExprStat) st).expr() instanceof Invocation) {
-                    
-                    ExprStat es = (ExprStat) st;
-                    Invocation inv = (Invocation) es.expr();
-                    ProcTypeDecl pd = inv.targetProc;
 
-                    if (Helper.isYieldingProc(pd)) {
-                        stats[k] = (String) createInvocation(
-                                null, 
-                                null, 
-                                inv, 
-                                _barriers, 
-                                false,
-                                INV_WRAP_PAR
-                            );
-                    } else {
-                        stats[k] = (String) (createAnonymousProcTypeDecl(st).visit(this)); 
-                    }
+                    ExprStat es = (ExprStat) st;
+
+                    stats[k] = (String) createInvocation(null, (Invocation) es.expr(), _barriers, false, INV_WRAP_PAR);
 
                 } else {
-                    stats[k] = (String) (createAnonymousProcTypeDecl(st).visit(this));
+                    //FIXME I don't think annotation is needed as anonymous is only used for processes
+                    Annotations a = new Annotations();
+                    a.add("yield", "true");
+                    stats[k] = (String) (new ProcTypeDecl(new Sequence(), null, new Name("Anonymous"), new Sequence(),
+                            new Sequence(), a, new Block(new Sequence(st))).visit(this));
                 }
             }
         }
@@ -2001,26 +1671,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         return (T) object;
     }
 
-    private ProcTypeDecl createAnonymousProcTypeDecl(Statement st) {
-        return createAnonymousProcTypeDecl(new Block(new Sequence(st)));
-    }
-
-    private ProcTypeDecl createAnonymousProcTypeDecl(Block b) {
-      //FIXME I don't think annotation is needed as anonymous is only used for processes
-        Annotations a = new Annotations();
-        a.add("yield", "true");
-
-        return new ProcTypeDecl(
-                    new Sequence(), 
-                    null, 
-                    new Name("Anonymous"), 
-                    new Sequence(),
-                    new Sequence(), 
-                    a, 
-                    b
-                ); 
-    }
-
     /**
      * PrimitiveLiteral
      */
@@ -2039,16 +1689,14 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String typeString = py.toString();
         /*
          * Here we list all the primitive types 
-         * that don't perfectly translate to Java
-         * or do not have their own visitor to
-         * return correct type.
+         * that don't perfectly translate to Java.
          */
         if (py.isStringType()) {
             typeString = "String";
         } else if (py.isTimerType()) {
-            typeString = PJTimer.class.getSimpleName();
+            typeString = "PJTimer";
         } else if (py.isBarrierType()) {
-            typeString = PJBarrier.class.getSimpleName();
+            typeString = "PJBarrier";
         }
         return (T) typeString;
     }
@@ -2166,7 +1814,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template.add("body", block);
             template.add("lookupswitch", renderLookupSwitchTable(_switchCases));
             template.add("foreverloop", State.is(State.FOREVER_LOOP));
-            
+
             rendered = template.render();
         }
 
@@ -2285,17 +1933,18 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
     public T visitRecordAccess(RecordAccess ra) {
         Log.log(ra.line + ": Visiting a RecordAccess = " + ra.toString());
 
+
         Type tType = ra.record().type;
         if (tType.isRecordType()) {
             Log.log("found a record type");
-            
-            ST template = _stGroup.getInstanceOf("RecordAccess");
-            template.add("record", ra.record().visit(this));
-            template.add("field", ra.field().getname());
-            return (T) template.render();
+	    
+	    ST template = _stGroup.getInstanceOf("RecordAccess");
+	    template.add("record", ra.record().visit(this));
+	    template.add("field", ra.field().getname());
+	    return (T) template.render();
 
-        } else if (tType.isProtocolType()) {
-	    ST template = _stGroup.getInstanceOf("ProtocolAccess");
+	} else if (tType.isProtocolType()) {
+        ST template = _stGroup.getInstanceOf("ProtocolAccess");
             ProtocolTypeDecl pt = (ProtocolTypeDecl) ra.record().type;
             String caseName = _protoTagNameToPrefixedName.get(_protoNameToProtoTagSwitchedOn.get(pt.name().getname()));
             String protocolName = _protoTagNameToProtoName.get(caseName);
@@ -2304,7 +1953,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template.add("caseName", caseName);
             template.add("record", ra.record().visit(this));
             template.add("field", ra.field().visit(this));
-            return (T) template.render();
+	    return (T) template.render();
         }
 
         return null;
@@ -2336,9 +1985,7 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         // Can return null so we must check for this!
         if (expr != null) {
-            State.set(State.RETURN_STAT, true);
             exprStr = (String) expr.visit(this);
-            State.set(State.RETURN_STAT, false);
             template.add("expr", exprStr);
         }
         template.add("procYields", State.is(State.PROC_YIELDS));
@@ -2518,16 +2165,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         template.add("expr", expr);
         template.add("op", op);
-        
-        boolean noDelim = State.is(State.FOR_LOOP_CONTROL)
-                            || State.is(State.CHAN_WRITE_VALUE)
-                            || State.is(State.INV_ARG)
-                            || State.is(State.WHILE_EXPR)
-                            || State.is(State.RETURN_STAT)
-                            || State.is(State.IF_ELSE_PREDICATE);
-
-        template.add("noDelim", noDelim);
-
         return (T) template.render();
     }
 
@@ -2543,15 +2180,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         template.add("expr", expr);
         template.add("op", op);
-        
-        boolean noDelim = State.is(State.FOR_LOOP_CONTROL) 
-                || State.is(State.CHAN_WRITE_VALUE)
-                || State.is(State.INV_ARG)
-                || State.is(State.WHILE_EXPR)
-                || State.is(State.RETURN_STAT)
-                || State.is(State.IF_ELSE_PREDICATE);
-
-        template.add("noDelim", noDelim);
 
         return (T) template.render();
     }
@@ -2582,13 +2210,11 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
             template.add("name", name);
         }
 
-        // Expr may be null if the variable is not initialized to anything!
+        // Expr may be null if the variable is not intialized to anything!
         if (expr != null) {
             exprStr = (String) expr.visit(this);
             template.add("init", exprStr);
         }
-
-        template.add("isForCtrl", State.is(State.FOR_LOOP_CONTROL));
 
         return (T) template.render();
     }
@@ -2601,93 +2227,27 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
 
         ST template = _stGroup.getInstanceOf("WhileStat");
 
-        updateForeverLoop(ws.foreverLoop);
+        String expr = (String) ws.expr().visit(this);
 
-        List<String> exprLst = new ArrayList<String>();
-        List<String> exprBlocks = new ArrayList<String>();
-        String fieldNameTemp = null;
+        if (ws.foreverLoop) {
+            State.set(State.FOREVER_LOOP, true);
+            expr = "getTrue()";
 
-        Expression e = ws.expr();
-
-        if (e != null) {
-            if (e instanceof ChannelReadExpr) {
-
-                ChannelReadExpr cr = (ChannelReadExpr) e;
-                String typeString = _chanNameToBaseType.get(cr.channel().visit(this));
-                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                _fields.add(typeString + " " + fieldNameTemp);
-                String chanReadBlock = (String) createChannelReadExpr(fieldNameTemp, "=", (ChannelReadExpr) e);
-
-                exprBlocks.add(chanReadBlock);
-                exprLst.add(fieldNameTemp);
-
-            } else if (e instanceof Invocation) {
-
-                String typeString = ((Invocation) e).targetProc.returnType().typeName();
-                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                _fields.add(typeString + " " + fieldNameTemp);
-                String invocationBlock = (String) createInvocation(fieldNameTemp, "=", (Invocation) e, true);
-
-                exprBlocks.add(invocationBlock);
-                exprLst.add(fieldNameTemp);
-
-            } else if (e instanceof BinaryExpr) {
-                String typeString = (String) ((BinaryExpr) e).type.visit(this);
-                fieldNameTemp = Helper.convertToFieldName("temp", false, this._varId++);
-                _fields.add(typeString + " " + fieldNameTemp);
-
-                String binaryExprBlock = (String) createBinaryExpr(fieldNameTemp, "=", (BinaryExpr) e);
-
-                exprBlocks.add(binaryExprBlock);
-                exprLst.add(fieldNameTemp);
-            } else {
-
-                State.set(State.WHILE_EXPR, true);
-
-                String name = (String) e.visit(this);
-                
-                State.set(State.WHILE_EXPR, true);
-
-                exprLst.add(name);
-
-            } 
+            this._addTrueMethod = true;
         }
 
         Object stats = ws.stat().visit(this);
 
+        template.add("expr", expr);
+
+        // May be one element or multiple.
         if (stats instanceof String[]) {
             template.add("stat", (String[]) stats);
         } else {
             template.add("stat", (String) stats);
         }
 
-        template.add("exprBlocks", exprBlocks);
-        template.add("exprLst", exprLst);
-
         return (T) template.render();
-    }
-
-    /**
-     * Getting the basetype for Channel<basetype>
-     */
-    private String getChannelBaseType(Type t) {
-        String basetype = null;
-        if (t.isNamedType()) {
-            NamedType tt = (NamedType) t;
-
-            if (isProtocolType(tt)) {
-                basetype = PJProtocolCase.class.getSimpleName();
-            } else {
-                basetype = (String) tt.visit(this);
-            }
-        } else if (t.isChannelEndType()) {
-            //TODO: does this need to be handled? as channels can be passed through channels.
-            System.out.println("ChannelEndType for Channel baseType not yet handled!!");
-        } else if (t.isPrimitiveType()) {
-            basetype = Helper.getWrapperType(t);
-        }
-
-        return basetype;
     }
 
     private String renderLookupSwitchTable(List<String> cases) {
@@ -2737,12 +2297,6 @@ public class CodeGeneratorJava<T extends Object> extends Visitor<T> {
         String fieldName = Helper.convertToFieldName(name.getname(), false, this._varId++);
         _localNameToFieldName.put(name.getname(), fieldName);
         name.setName(fieldName);
-    }
-    
-    private void updateForeverLoop(boolean bVal) {
-        if (bVal && !State.is(State.FOREVER_LOOP)) {
-            State.set(State.FOREVER_LOOP, bVal);
-        }
     }
 
     private String[] getStatements(AST stat) {
