@@ -49,10 +49,12 @@ public class Reachability extends Visitor<Boolean> {
         // if (true) S1 else S2 - S2 is unreachable
         if (is.expr().isConstant() && ((Boolean) is.expr().constantValue())
                 && is.elsepart() != null)
-            Error.error(is, "Else-part of if-statement unreachable.", false, 5000);
+            Error.error(is, "Else-part of if-statement unreachable.", false,
+                    5000);
         // if (false) S1 ... - S1 is unreachable
         if (is.expr().isConstant() && (!(Boolean) is.expr().constantValue()))
-            Error.error(is, "Then-part of if-statement unreachable.", false, 5001);
+            Error.error(is, "Then-part of if-statement unreachable.", false,
+                    5001);
         boolean thenBranch = true;
         boolean elseBranch = true;
         thenBranch = is.thenpart().visit(this);
@@ -72,7 +74,7 @@ public class Reachability extends Visitor<Boolean> {
                 && ((b && // the statement can run to completion
                         !ws.hasBreak && !ws.hasReturn) // but has no breaks, so it will loop forever
                 || !b)) {
-            Error.warning(ws, "While-statement is an infinite loop", 5002);
+            Error.error(ws, "While-statement is an infinite loop", false, 5002);
             ws.foreverLoop = true;
             loopConstruct = oldLoopConstruct;
             return new Boolean(false);
@@ -103,8 +105,7 @@ public class Reachability extends Visitor<Boolean> {
                 && b && // the statement can run to completion
                 !ds.hasBreak && !ds.hasReturn) { // but has no breaks, so it will loop forever
             loopConstruct = oldLoopConstruct;
-	    ds.foreverLoop = true;
-            Error.warning(ds, "Do-statement is an infinite loop.", 5011);
+            Error.error(ds, "Do-statement is an infinite loop.", false, 5011);
             return new Boolean(false);
         }
         loopConstruct = oldLoopConstruct;
@@ -130,7 +131,8 @@ public class Reachability extends Visitor<Boolean> {
                 if (!b && bl.stats().size() - 1 > i) {
                     Error.error(bl.stats().child(i),
                             "Unreachable code following statement beginning on line "
-                                    + bl.stats().child(i).line + ".", false, 5003);
+                                    + bl.stats().child(i).line + ".", false,
+                            5003);
                     canFinish = false;
                 }
             }
@@ -163,7 +165,7 @@ public class Reachability extends Visitor<Boolean> {
                 .expr().constantValue()))) && b && // the statement can run to completion
                 !fs.hasBreak && !fs.hasReturn) // but has no breaks, so it will loop forever
         {
-            Error.warning(fs, "For-statement is an infinite loop.", 5005);
+            Error.error(fs, "For-statement is an infinite loop.", false, 5005);
             fs.foreverLoop = true;
             loopConstruct = oldLoopConstruct;
             return new Boolean(false);
@@ -183,7 +185,9 @@ public class Reachability extends Visitor<Boolean> {
                     false, 5009);
 
         if (loopConstruct == null && switchConstruct == null) {
-            Error.error(bs, "Break statement outside loop or switch construct.", false, 5006);
+            Error.error(bs,
+                    "Break statement outside loop or switch construct.", false,
+                    5006);
             return new Boolean(true); // this break doesn't matter cause it can't be here anyways!
         }
         if (loopConstruct != null && !insideSwitch)
@@ -207,9 +211,12 @@ public class Reachability extends Visitor<Boolean> {
     public Boolean visitContinueStat(ContinueStat cs) {
         Log.log(cs, "Visiting a continue-statement.");
         if (inParBlock)
-            Error.error(cs, "Continue-statement inside par-block is not legal.", false, 5013);
+            Error.error(cs,
+                    "Continue-statement inside par-block is not legal.", false,
+                    5009);
         if (loopConstruct == null) {
-            Error.error(cs, "Continue statement outside loop construct.", false, 5014);
+            Error.error(cs, "Continue statement outside loop construct.",
+                    false, 5007);
             return new Boolean(true); // this continue doesn't matter cause it can't be here anyways!
         }
         if (loopConstruct != null)
@@ -236,7 +243,9 @@ public class Reachability extends Visitor<Boolean> {
     public Boolean visitReturnStat(ReturnStat rs) {
         Log.log(rs, "Visiting a return-statement.");
         if (inParBlock)
-            Error.error(rs, "Return-statement inside par-block is not legal.", false, 5008);
+            Error.error(rs, "Return-statement inside par-block is not legal.",
+                    false, 5008);
+
         if (loopConstruct != null)
             loopConstruct.hasReturn = true;
         return new Boolean(false);

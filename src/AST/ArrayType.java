@@ -5,8 +5,6 @@ import Utilities.Visitor;
 public class ArrayType extends Type {
 
     public static final int byteSizeC = 4;
-    public Type actualBaseType;
-    public int actualDepth;
 
     private int depth = 0; // How many set of [ ] were there?
 
@@ -14,24 +12,8 @@ public class ArrayType extends Type {
         super(baseType);
         nchildren = 1;
         this.depth = depth;
-	if (!baseType.isArrayType()) {
-	    actualBaseType = baseType;    // we keep the `real' base type because the ArrayTypeConstructor changes the basetype of multi-dimentional arrays to be on array type with one dimension removed.
-	    actualDepth = 1;
-	} else {
-	    actualBaseType = ((ArrayType)baseType).getActualBaseType();
-	    actualDepth = ((ArrayType)baseType).getActualDepth() + 1;
-	}
         children = new AST[] { baseType };
     }
-
-    public Type getActualBaseType() {
-	return actualBaseType;
-    }
-
-    public int getActualDepth() {
-	return actualDepth;
-    }
-    
 
     public Type baseType() {
         return (Type) children[0];

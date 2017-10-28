@@ -93,25 +93,27 @@ public class Helper {
      * Returns the wrapper class name of primitive data types.
      */
     static String getWrapperType(Type t) {
+
         String typeStr = "";
 
-        if (t.isIntegerType()) {
-            typeStr = Integer.class.getSimpleName();
-        } else if (t.isLongType()) {
-            typeStr = Long.class.getSimpleName();
-        } else if (t.isFloatType()) {
-            typeStr = Float.class.getSimpleName();
-        } else if (t.isDoubleType()) {
-            typeStr = Double.class.getSimpleName();
-        } else if (t.isByteType()) {
-            typeStr = Byte.class.getSimpleName();
-        } else if (t.isBooleanType()) {
-            typeStr = Boolean.class.getSimpleName();
-        } else if (t.isCharType()) {
-            typeStr = Character.class.getSimpleName();
-        } else if (t.isShortType()) {
-            typeStr = Short.class.getSimpleName();
-        }
+        if (t.isIntegerType())
+            typeStr = "Integer";
+        else if (t.isLongType())
+            typeStr = "Long";
+        else if (t.isFloatType())
+            typeStr = "Float";
+        else if (t.isDoubleType())
+            typeStr = "Double";
+        else if (t.isByteType())
+            typeStr = "Byte";
+        else if (t.isBooleanType())
+            typeStr = "Boolean";
+        else if (t.isCharType())
+            typeStr = "Char";
+        else if (t.isShortType())
+            typeStr = "Short";
+        else if (t.isChannelEndType())
+            ; //TODO does this need to be handled? as channels can be passed through channels.
 
         return typeStr;
     }

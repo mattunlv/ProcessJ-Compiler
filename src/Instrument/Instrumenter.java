@@ -274,16 +274,6 @@ public class Instrumenter {
             case Opcodes.RETURN: //doesn't have any preceding operation
                 mn.instructions.insertBefore(retNode, jumpDest);
                 break;
-            case Opcodes.GOTO:
-                /*
-                 * Methods with forever loops like while(true) will have
-                 * a goto jump instruction as the last instruction. We
-                 * want to insert the jumpDest after the goto instruction
-                 * and a return to get out of the method.
-                 */
-                mn.instructions.insert(retNode, jumpDest);
-                mn.instructions.insert(jumpDest, new InsnNode(Opcodes.RETURN));
-                break;
             case Opcodes.IRETURN:
             case Opcodes.DRETURN:
             case Opcodes.FRETURN:
