@@ -49,7 +49,7 @@ public class TimerQueue {
                     size--;
                 }
             } catch (InterruptedException e) {
-//                System.err.println("[TimerQueue] Unexpected interrupt exception encountered.");
+                System.err.println("[TimerQueue] Unexpected interrupt exception encountered.");
                 return;
             }
         }
