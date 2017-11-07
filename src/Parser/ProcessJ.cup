@@ -1212,7 +1212,6 @@ alt_body ::=
 alt_case ::=
           LPAREN expression:e RPAREN ANDAND guard:g COLON statement:s {: RESULT = new AltCase(e, g, s); :}
         | guard:g COLON statement:s                                   {: RESULT = new AltCase(null, g, s); :}
-        | alt_statement
         ;
 
 //- Guard (takes in a statement) :> AST

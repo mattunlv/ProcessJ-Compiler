@@ -399,6 +399,8 @@ public static class <name> {
 
 RecordMember(type, name) ::= "<type> <name>"
 
+ProtocolAccess(protocolName, caseName, record, field) ::= "((<protocolName>.<caseName>) <record>).<field>"
+
 RecordAccess(protocolName, caseName, record, field) ::= "((<protocolName>.<caseName>) <record>).<field>"
 
 RecordLiteral(name, params) ::= <<
